@@ -77,7 +77,7 @@ export function Login() {
         setRegister(false)
         setPassword('')
       } else {
-        await authenticate('login', { identifier: email, password })
+        await authenticate('login', { identifier: email.trim(), password })
       }
     } catch (failure) {
       setError(failure.message)

@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { api } from '../lib/api'
+import { api, getStoredToken, setStoredToken } from '../lib/api'
 
 const AppContext = createContext(null)
 
@@ -65,7 +65,11 @@ export function AppProvider({ children }) {
       return payload
     } catch (error) {
       setConnected(false)
-      if (error.status === 401) { setUser(null); setData(null) }
+      if (error.status === 401) {
+        setStoredToken(null)
+        setUser(null)
+        setData(null)
+      }
       throw error
     }
   }, [])
@@ -85,14 +89,21 @@ export function AppProvider({ children }) {
   }, [refresh, toast])
   const authenticate = async (mode, payload) => {
     const account = await api[mode](payload)
+    if (account?.token) {
+      setStoredToken(account.token)
+    }
     setUser(account)
     await refresh()
   }
   const logout = async () => {
-    await api.logout()
-    setUser(null)
-    setData(null)
-    setConnected(false)
+    try {
+      await api.logout()
+    } finally {
+      setStoredToken(null)
+      setUser(null)
+      setData(null)
+      setConnected(false)
+    }
   }
   const mutate = async (operation, message) => {
     try {
@@ -101,7 +112,11 @@ export function AppProvider({ children }) {
       toast(message)
       return result
     } catch (error) {
-      if (error.status === 401) { setUser(null); setData(null) }
+      if (error.status === 401) {
+        setStoredToken(null)
+        setUser(null)
+        setData(null)
+      }
       toast(error.message, 'warn')
       throw error
     }

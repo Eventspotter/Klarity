@@ -68,21 +68,32 @@ def seed_test_account():
 
 def check_origin(request: Request):
     origin = request.headers.get("origin")
-    if origin and (origin in CORS_ORIGINS or origin == str(request.base_url).rstrip("/")):
+    if not origin:
+        return
+    origin_clean = origin.rstrip("/")
+    allowed = {o.rstrip("/") for o in CORS_ORIGINS}
+    if (
+        origin_clean in allowed
+        or origin_clean == str(request.base_url).rstrip("/")
+        or origin_clean.endswith(".onrender.com")
+        or origin_clean.startswith("http://localhost:")
+        or origin_clean.startswith("http://127.0.0.1:")
+    ):
         return
     sec_fetch_site = request.headers.get("sec-fetch-site")
-    if sec_fetch_site == "cross-site":
-        if origin and (origin in CORS_ORIGINS or origin == str(request.base_url).rstrip("/")):
-            return
-        raise HTTPException(403, "Cross-site request blocked by resource isolation policy")
-    if origin and origin not in CORS_ORIGINS and origin != str(request.base_url).rstrip("/"):
+    if sec_fetch_site == "cross-site" or origin:
         raise HTTPException(403, "Origin not allowed")
 
 
 def current_account(request: Request, db: Session = Depends(get_db)):
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request)
-    token = request.cookies.get("klarity_session", "")
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    if not token:
+        token = request.cookies.get("klarity_session", "")
     session = db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest()) if token else None
     account = db.get(Account, session.account_id) if session and session.expires_at > datetime.utcnow() else None
     if not account:
@@ -102,6 +113,9 @@ def public_account(account):
 
 def start_session(account, request, response, db):
     old_token = request.cookies.get("klarity_session")
+    auth_header = request.headers.get("Authorization", "")
+    if not old_token and auth_header.startswith("Bearer "):
+        old_token = auth_header[7:].strip()
     if old_token:
         db.query(LoginSession).filter_by(token_hash=hashlib.sha256(old_token.encode()).hexdigest()).delete()
     db.query(LoginSession).filter(LoginSession.expires_at <= datetime.utcnow()).delete()
@@ -120,7 +134,9 @@ def start_session(account, request, response, db):
         max_age=86400,
         path="/",
     )
-    return public_account(account)
+    res = public_account(account)
+    res["token"] = token
+    return res
 
 
 class RegisterRequest(BaseModel):
@@ -274,9 +290,15 @@ def me(account: Account = Depends(current_account)):
 
 @router.post("/logout", status_code=204)
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
-    token = request.cookies.get("klarity_session", "")
-    db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
-    db.commit()
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    if not token:
+        token = request.cookies.get("klarity_session", "")
+    if token:
+        db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
+        db.commit()
     is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)

@@ -71,11 +71,19 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         response = await self.client.post("/api/auth/login", json={"identifier": "ashwik@topper", "password": "klarity"})
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json()["username"], "ashwik")
+        self.assertIn("token", response.json())
+        bearer_token = response.json()["token"]
         self.assertNotIn("password_hash", response.json())
         self.assertIn("HttpOnly", response.headers["set-cookie"])
         token = self.client.cookies.get("klarity_session")
         self.assertEqual((await self.client.get("/api/auth/me")).status_code, 200)
-        self.assertEqual((await self.client.post("/api/auth/logout")).status_code, 204)
+
+        # Verify Bearer token works without cookies
+        self.client.cookies.clear()
+        res_bearer = await self.client.get("/api/bootstrap", headers={"Authorization": f"Bearer {bearer_token}"})
+        self.assertEqual(res_bearer.status_code, 200)
+
+        self.assertEqual((await self.client.post("/api/auth/logout", headers={"Authorization": f"Bearer {bearer_token}"})).status_code, 204)
         self.assertEqual((await self.client.get("/api/bootstrap")).status_code, 401)
         self.client.cookies.set("klarity_session", token)
         self.assertEqual((await self.client.get("/api/auth/me")).status_code, 401)
