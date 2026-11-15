@@ -31,6 +31,7 @@ export const api = {
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   bootstrap: () => request('/bootstrap'),
+  getSubmission: (id) => request(`/submissions/${id}`),
   createSubmission: (payload) =>
     request('/submissions', { method: 'POST', body: JSON.stringify(payload) }),
   reviewSubmission: (id, payload) =>

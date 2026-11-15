@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -18,6 +18,7 @@ import {
   User,
   X,
 } from 'lucide-react'
+import { api } from '../lib/api'
 import { useApp } from '../context/AppContext'
 import { AnimatedValue } from '../components/AnimatedValue'
 import { animateHorizontalBars } from '../lib/animations'
@@ -47,12 +48,14 @@ import {
 
 const typeIcon = { text: FileText, html: LayoutTemplate, document: FileCheck2, image: Image }
 
-const escapeRegExp = (value) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+const escapeRegExp = (value) => String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
-function buildHighlights(issues, text) {
+function buildHighlights(issues = [], text = '') {
+  if (!text || typeof text !== 'string') return []
   const lowered = text.toLowerCase()
   const terms = new Map()
-  issues.forEach((issue) => {
+  ;(issues || []).forEach((issue) => {
+    if (!issue) return
     const source = `${issue.evidence || ''} ${issue.description || ''}`
     const matches = source.match(/[“”"'‘’]([^“”"'‘’]{3,80})[“”"'‘’]/g) || []
     matches.forEach((match) => {
@@ -60,35 +63,44 @@ function buildHighlights(issues, text) {
       if (term.length < 3) return
       if (!lowered.includes(term.toLowerCase())) return
       if (!terms.has(term.toLowerCase())) {
-        terms.set(term.toLowerCase(), { term, severity: issue.severity, title: issue.title })
+        terms.set(term.toLowerCase(), {
+          term,
+          severity: issue.severity || 'suggestion',
+          title: issue.title || 'Guideline item',
+        })
       }
     })
   })
   return [...terms.values()].sort((a, b) => b.term.length - a.term.length)
 }
 
-function HighlightedContent({ text, issues }) {
-  const highlights = useMemo(() => buildHighlights(issues, text), [issues, text])
-  if (!highlights.length) return <>{text}</>
-  const pattern = new RegExp(`(${highlights.map((item) => escapeRegExp(item.term)).join('|')})`, 'gi')
-  const parts = text.split(pattern)
-  return (
-    <>
-      {parts.map((part, index) => {
-        const match = highlights.find((item) => item.term.toLowerCase() === part.toLowerCase())
-        if (!match) return <span key={index}>{part}</span>
-        return (
-          <mark
-            key={index}
-            className={cx('hl', `hl--${match.severity}`)}
-            title={match.title}
-          >
-            {part}
-          </mark>
-        )
-      })}
-    </>
-  )
+function HighlightedContent({ text = '', issues = [] }) {
+  const safeText = typeof text === 'string' ? text : String(text || '')
+  const highlights = useMemo(() => buildHighlights(issues, safeText), [issues, safeText])
+  if (!highlights.length || !safeText) return <>{safeText}</>
+  try {
+    const pattern = new RegExp(`(${highlights.map((item) => escapeRegExp(item.term)).join('|')})`, 'gi')
+    const parts = safeText.split(pattern)
+    return (
+      <>
+        {parts.map((part, index) => {
+          const match = highlights.find((item) => item.term.toLowerCase() === part.toLowerCase())
+          if (!match) return <span key={index}>{part}</span>
+          return (
+            <mark
+              key={index}
+              className={cx('hl', `hl--${match.severity}`)}
+              title={match.title}
+            >
+              {part}
+            </mark>
+          )
+        })}
+      </>
+    )
+  } catch {
+    return <>{safeText}</>
+  }
 }
 
 function VisualPreview({ submission }) {
@@ -112,7 +124,22 @@ function VisualPreview({ submission }) {
 export function ReviewDetail() {
   const { id } = useParams()
   const { data, reviewSubmission, toast, isLead } = useApp()
-  const submission = data.submissions.find((item) => String(item.id) === String(id))
+  const submissionFromData = (data?.submissions || []).find((item) => String(item.id) === String(id))
+  const [remoteSubmission, setRemoteSubmission] = useState(null)
+  const [loadingRemote, setLoadingRemote] = useState(false)
+
+  useEffect(() => {
+    if (!submissionFromData && id) {
+      setLoadingRemote(true)
+      api
+        .getSubmission(id)
+        .then((res) => setRemoteSubmission(res))
+        .catch(() => setRemoteSubmission(null))
+        .finally(() => setLoadingRemote(false))
+    }
+  }, [id, submissionFromData])
+
+  const submission = submissionFromData || remoteSubmission
   const report = submission ? latestReport(submission) : null
   const [expanded, setExpanded] = useState(null)
   const [comment, setComment] = useState('')
@@ -122,13 +149,26 @@ export function ReviewDetail() {
   const reportPanelRef = useRef(null)
 
   useEffect(() => {
-    if (report) {
+    if (report && reportPanelRef.current) {
       const cancel = animateHorizontalBars(reportPanelRef.current)
       return cancel
     }
   }, [report?.overall_score])
 
   if (!submission) {
+    if (loadingRemote) {
+      return (
+        <div className="review-detail review-detail--loading">
+          <Link to="/reviews" className="back-link">
+            <ArrowLeft size={15} /> Reviews
+          </Link>
+          <div className="review-loading-card" style={{ padding: '40px', textAlign: 'center' }}>
+            <p style={{ color: 'var(--ink-soft)' }}>Loading review #{id}…</p>
+          </div>
+        </div>
+      )
+    }
+
     return (
       <EmptyState
         icon={FileText}
@@ -146,7 +186,7 @@ export function ReviewDetail() {
   const Icon = typeIcon[submission.content_type] || FileText
   const status = statusMeta[submission.status] || { label: submission.status, tone: 'muted' }
   const firstOpen = expanded ?? report?.issues?.[0]?.id ?? null
-  const guidelineFor = (issue) => data.guidelines.find((guideline) => guideline.id === issue.guideline_id)
+  const guidelineFor = (issue) => (data?.guidelines || []).find((guideline) => guideline.id === issue?.guideline_id)
 
   const handleAction = async (action) => {
     if ((action === 'rejected' || action === 'changes_requested') && !comment.trim()) {
@@ -174,6 +214,7 @@ export function ReviewDetail() {
   }
 
   const actions = report?.actions || []
+  const wordCount = (submission.content_text || '').trim().split(/\s+/).filter(Boolean).length
 
   return (
     <div className="review-detail">
@@ -188,7 +229,7 @@ export function ReviewDetail() {
           </span>
           <div>
             <div className="detail-head__topline">
-              <span>{typeLabels[submission.content_type]}</span>
+              <span>{typeLabels[submission.content_type] || submission.content_type}</span>
               <span>·</span>
               <span>#{String(submission.id).padStart(4, '0')}</span>
             </div>
@@ -210,10 +251,10 @@ export function ReviewDetail() {
           <div className="content-panel__head">
             <div>
               <h2>Submitted content</h2>
-              <p>{submission.content_text.trim().split(/\s+/).filter(Boolean).length} words</p>
+              <p>{wordCount} {wordCount === 1 ? 'word' : 'words'}</p>
             </div>
             <span className="content-panel__type">
-              <Icon size={14} /> {typeLabels[submission.content_type]}
+              <Icon size={14} /> {typeLabels[submission.content_type] || submission.content_type}
             </span>
           </div>
 
@@ -228,9 +269,14 @@ export function ReviewDetail() {
                   <span />
                   <small>asterandoak.studio/preview</small>
                 </div>
+              ) : submission.content_type === 'document' ? (
+                <div className="content-body__browser">
+                  <FileCheck2 size={13} style={{ color: '#8a6b47', marginRight: 4 }} />
+                  <small>Manuscript Specimen · Long-form Document</small>
+                </div>
               ) : null}
               <p>
-                <HighlightedContent text={submission.content_text} issues={report?.issues || []} />
+                <HighlightedContent text={submission.content_text || ''} issues={report?.issues || []} />
               </p>
             </div>
           )}
