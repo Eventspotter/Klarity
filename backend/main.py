@@ -57,7 +57,7 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
-    response.headers["Cross-Origin-Resource-Policy"] = "same-origin"
+    response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
     return response
 
 app.include_router(auth_router)

@@ -67,10 +67,14 @@ def seed_test_account():
 
 
 def check_origin(request: Request):
+    origin = request.headers.get("origin")
+    if origin and (origin in CORS_ORIGINS or origin == str(request.base_url).rstrip("/")):
+        return
     sec_fetch_site = request.headers.get("sec-fetch-site")
     if sec_fetch_site == "cross-site":
+        if origin and (origin in CORS_ORIGINS or origin == str(request.base_url).rstrip("/")):
+            return
         raise HTTPException(403, "Cross-site request blocked by resource isolation policy")
-    origin = request.headers.get("origin")
     if origin and origin not in CORS_ORIGINS and origin != str(request.base_url).rstrip("/"):
         raise HTTPException(403, "Origin not allowed")
 
@@ -105,8 +109,17 @@ def start_session(account, request, response, db):
     db.add(LoginSession(token_hash=hashlib.sha256(token.encode()).hexdigest(), account_id=account.id,
                         expires_at=datetime.utcnow() + timedelta(days=1)))
     db.commit()
-    response.set_cookie("klarity_session", token, httponly=True, samesite="lax",
-                        secure=os.getenv("COOKIE_SECURE", "false").lower() == "true", max_age=86400, path="/")
+    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    samesite_val = "none" if is_secure else "lax"
+    response.set_cookie(
+        "klarity_session",
+        token,
+        httponly=True,
+        samesite=samesite_val,
+        secure=is_secure,
+        max_age=86400,
+        path="/",
+    )
     return public_account(account)
 
 
@@ -264,5 +277,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     token = request.cookies.get("klarity_session", "")
     db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
     db.commit()
-    response.delete_cookie("klarity_session", path="/")
+    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    samesite_val = "none" if is_secure else "lax"
+    response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
