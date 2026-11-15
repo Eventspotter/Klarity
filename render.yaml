@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: klarity
+    runtime: python
+    plan: free
+    buildCommand: "cd frontend && npm install && npm run build && cd ../backend && pip install -r requirements.txt"
+    startCommand: "cd backend && uvicorn main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://postgres:Ashwiktopper%40123@db.fldqzetudzkzutwftvmn.supabase.co:5432/postgres
+      - key: COOKIE_SECURE
+        value: "true"
+      - key: SEED_DEMO_DATA
+        value: "true"
+      - key: CORS_ORIGINS
+        value: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
