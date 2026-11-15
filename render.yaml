@@ -9,7 +9,7 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: DATABASE_URL
-        value: postgresql://postgres:Ashwiktopper%40123@db.fldqzetudzkzutwftvmn.supabase.co:5432/postgres
+        value: postgresql://postgres.fldqzetudzkzutwftvmn:Ashwiktopper%40123@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
       - key: COOKIE_SECURE
         value: "true"
       - key: SEED_DEMO_DATA
