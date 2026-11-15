@@ -80,6 +80,36 @@ export function CategoryTag({ category }) {
   return <span className={cx('tag', `tag--${category}`)}>{categoryLabels[category] || category}</span>
 }
 
+export function IssuesPill({ count = 0, critical = 0, className = '' }) {
+  if (count === 0) {
+    return (
+      <span className={cx('pill', 'pill--good', 'pill--issues', className)}>
+        <Check size={11} strokeWidth={2.6} />
+        <span>0 issues</span>
+      </span>
+    )
+  }
+
+  if (critical > 0) {
+    return (
+      <span
+        className={cx('pill', 'pill--bad', 'pill--issues', className)}
+        title={`${count} total issues (${critical} blocking review)`}
+      >
+        <span className="pill__dot" aria-hidden="true" />
+        <span>{critical} blocking{count > critical ? ` (${count})` : ''}</span>
+      </span>
+    )
+  }
+
+  return (
+    <span className={cx('pill', 'pill--warn', 'pill--issues', className)}>
+      <span className="pill__dot" aria-hidden="true" />
+      <span>{count} {count === 1 ? 'issue' : 'issues'}</span>
+    </span>
+  )
+}
+
 export function ScorePill({ score, size = 'md' }) {
   const tone = score >= 85 ? 'good' : score >= 70 ? 'warn' : 'bad'
   return (

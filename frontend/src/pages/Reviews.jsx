@@ -19,6 +19,7 @@ import {
   Badge,
   Button,
   EmptyState,
+  IssuesPill,
   Kbd,
   Panel,
   ScorePill,
@@ -253,10 +254,7 @@ export function Reviews({ onNewReview }) {
                         <td className="muted-cell">{formatDate(item.submitted_at)}</td>
                         <td>
                           {report ? (
-                            <span className={cx('issue-count', critical > 0 && 'has-critical')}>
-                              {report.issues.length}
-                              {critical > 0 ? <i>{critical} blocking</i> : null}
-                            </span>
+                            <IssuesPill count={report.issues.length} critical={critical} />
                           ) : (
                             <span className="muted-cell">—</span>
                           )}
