@@ -37,6 +37,14 @@ class WorkspaceSettings(Base):
     brand_code = Column(String(32), nullable=False, default="KLARITY-2026")
 
 
+class Brand(Base):
+    __tablename__ = "brands"
+    id = Column(Integer, primary_key=True)
+    brand_name = Column(String(120), nullable=False, unique=True)
+    brand_values = Column(String(500), nullable=False, default="")
+    brand_code = Column(String(32), nullable=False, unique=True)
+
+
 class LoginSession(Base):
     __tablename__ = "login_sessions"
     token_hash = Column(String(64), primary_key=True)
@@ -65,6 +73,20 @@ def seed_test_account():
 
         if not db.query(Account).filter_by(username="sunless").first():
             db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password("klarity"), role="reviewer"))
+
+        # Seed brands
+        default_brands = [
+            {"brand_name": "Aster & Oak", "brand_values": "Authenticity, craft, sustainability, quiet confidence", "brand_code": "KLARITY-2026"},
+            {"brand_name": "Nova Athletics", "brand_values": "Performance, innovation, bold energy, inclusivity", "brand_code": "NOVA-4821"},
+            {"brand_name": "Ember & Ivy", "brand_values": "Warmth, heritage, natural elegance, timeless design", "brand_code": "EMBER-7390"},
+            {"brand_name": "Solaris Media", "brand_values": "Transparency, creativity, digital-first storytelling, community", "brand_code": "SOLAR-5147"},
+            {"brand_name": "Velvet Thread", "brand_values": "Luxury, precision, modern minimalism, artisan quality", "brand_code": "VELVET-6283"},
+        ]
+        for b in default_brands:
+            existing = db.query(Brand).filter_by(brand_name=b["brand_name"]).first()
+            if not existing:
+                db.add(Brand(**b))
+
         db.commit()
 
 
@@ -212,14 +234,16 @@ class UpdateWorkspaceRequest(BaseModel):
 router = APIRouter(prefix="/api/auth", tags=["accounts"], dependencies=[Depends(check_origin)])
 
 
-@router.get("/brand-code-hint")
-def brand_code_hint(db: Session = Depends(get_db)):
-    setting = db.get(WorkspaceSettings, 1)
-    if not setting:
-        setting = WorkspaceSettings(id=1, brand_name="Aster & Oak", brand_values="Authenticity, craft, sustainability, quiet confidence", brand_code="KLARITY-2026")
-        db.add(setting)
-        db.commit()
-    return {"brand_name": setting.brand_name, "brand_code": setting.brand_code}
+@router.get("/brands")
+def list_brands(db: Session = Depends(get_db)):
+    """Return available brand names (without codes) for the registration page."""
+    brands = db.query(Brand).all()
+    return {
+        "brands": [
+            {"id": b.id, "brand_name": b.brand_name, "brand_values": b.brand_values}
+            for b in brands
+        ]
+    }
 
 
 @router.post("/register", status_code=201)
@@ -251,11 +275,14 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
         db.commit()
         is_approved = True
     else:
-        # User or reviewer must supply valid brand_code
-        expected_code = (setting.brand_code or "KLARITY-2026").strip().upper()
+        # User or reviewer must supply valid brand_code — check against all brands
         provided_code = (payload.brand_code or "").strip().upper()
-        if not provided_code or provided_code != expected_code:
-            raise HTTPException(400, f"Invalid brand value code. Please provide the authorized code from your Brand Admin (e.g. {expected_code}).")
+        matched_brand = db.query(Brand).filter(Brand.brand_code == provided_code).first() if provided_code else None
+        if not matched_brand:
+            # Also check legacy workspace_settings brand_code for backward compatibility
+            expected_code = (setting.brand_code or "KLARITY-2026").strip().upper()
+            if not provided_code or provided_code != expected_code:
+                raise HTTPException(400, "Invalid brand value code. Please provide the authorized code from your Brand Owner.")
         # Reviewers and users require admin/owner approval before login
         is_approved = False
 

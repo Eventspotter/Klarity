@@ -35,12 +35,11 @@ export function Login() {
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [pendingNotice, setPendingNotice] = useState(false)
-  const [activeCodeHint, setActiveCodeHint] = useState('KLARITY-2026')
+  const [availableBrands, setAvailableBrands] = useState([])
 
   useEffect(() => {
-    api.brandCodeHint().then(res => {
-      if (res?.brand_code) setActiveCodeHint(res.brand_code)
-      if (res?.brand_name) setBrandName(res.brand_name)
+    api.listBrands().then(res => {
+      if (res?.brands) setAvailableBrands(res.brands)
     }).catch(() => {})
   }, [])
 
@@ -251,7 +250,7 @@ export function Login() {
                     Brand Value Code
                   </label>
                   <span style={{ fontSize: '11px', color: 'var(--muted)', background: 'var(--cream)', padding: '2px 6px', borderRadius: '4px' }}>
-                    Code: <strong>{activeCodeHint}</strong>
+                    Ask your Brand Owner
                   </span>
                 </div>
                 <div className="login-input-wrap">
@@ -260,10 +259,16 @@ export function Login() {
                     type="text"
                     value={brandCode}
                     onChange={(e) => setBrandCode(e.target.value)}
-                    placeholder="Enter brand code (e.g. KLARITY-2026)"
+                    placeholder="Enter brand code (e.g. BRAND-XXXX)"
                     required
                   />
                 </div>
+                {availableBrands.length > 0 && (
+                  <div style={{ margin: '8px 0 0', fontSize: '11px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    <strong>Available brands:</strong>{' '}
+                    {availableBrands.map(b => b.brand_name).join(', ')}
+                  </div>
+                )}
                 <p style={{ margin: '6px 0 0', fontSize: '11px', color: 'var(--muted)', lineHeight: 1.35 }}>
                   🛡️ Workspace creation is reserved for <strong>Brand Owners</strong>. Team members and reviewers join an existing workspace with a verified Brand Value Code and admin authorization.
                 </p>
