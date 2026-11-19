@@ -16,7 +16,9 @@ import {
   Pipette,
   Plus,
   RotateCcw,
+  Sliders,
   Sparkles,
+  Tag,
   Trash2,
   Type,
   Upload,
@@ -25,6 +27,7 @@ import {
   X,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
+import { DEFAULT_BRANDS, getBrandAssets } from '../lib/brands'
 import {
   Badge,
   Button,
@@ -62,9 +65,9 @@ const swatches = [
   { name: 'Blue wash', hex: '#D7EAFB', role: 'Highlight' },
 ]
 
-function LogoPlate({ dark = false }) {
+function LogoPlate({ dark = false, brandName = 'Aster & Oak' }) {
   return (
-    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Aster & Oak logo lockup">
+    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${brandName} logo lockup`}>
       <rect width="320" height="200" fill={dark ? '#3B2418' : '#F6F1E6'} />
       <text
         x="160"
@@ -73,8 +76,9 @@ function LogoPlate({ dark = false }) {
         dominantBaseline="middle"
         fill={dark ? '#F6F1E6' : '#3B2418'}
         className="asset-svg__wordmark"
+        style={{ fontSize: brandName.length > 15 ? '19px' : '23px', fontWeight: 700 }}
       >
-        Aster &amp; Oak
+        {brandName}
       </text>
       <text x="24" y="168" fill={dark ? '#B9C3B4' : '#5F675C'} className="asset-svg__caption">
         PRIMARY LOCKUP · HORIZONTAL
@@ -83,13 +87,13 @@ function LogoPlate({ dark = false }) {
   )
 }
 
-function MonogramPlate() {
+function MonogramPlate({ mark = 'A&O', color = '#3B2418', bg = '#FBF8F1' }) {
   return (
-    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Aster and Oak monogram">
-      <rect width="320" height="200" fill="#FBF8F1" />
-      <circle cx="160" cy="88" r="54" fill="#3B2418" />
-      <text x="160" y="101" textAnchor="middle" fill="#F6F1E6" className="asset-svg__monogram">
-        A&amp;O
+    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${mark} monogram`}>
+      <rect width="320" height="200" fill={bg} />
+      <circle cx="160" cy="88" r="54" fill={color} />
+      <text x="160" y="101" textAnchor="middle" fill="#FFFFFF" className="asset-svg__monogram">
+        {mark}
       </text>
       <text x="160" y="170" textAnchor="middle" fill="#5F675C" className="asset-svg__caption">
         MONOGRAM · DIGITAL ONLY
@@ -183,27 +187,27 @@ function PalettePlate() {
   return <DynamicPalettePlate swatches={swatches} title="Core palette" />
 }
 
-function TypePlate() {
+function TypePlate({ displayFont = 'Bricolage Grotesque', bodyFont = 'Manrope', sentence = 'Fewer pieces. Kept longer.' }) {
   return (
-    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Aster and Oak typography">
+    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Typography specimen">
       <rect width="320" height="200" fill="#F6F1E6" />
       <text x="22" y="112" fill="#3B2418" className="asset-svg__aa">
         Aa
       </text>
-      <text x="150" y="58" fill="#3B2418" className="asset-svg__type-name">
-        Bricolage Grotesque
+      <text x="135" y="58" fill="#3B2418" className="asset-svg__type-name" style={{ fontSize: '15px' }}>
+        {displayFont}
       </text>
-      <text x="150" y="78" fill="#5F675C" className="asset-svg__caption">
+      <text x="135" y="78" fill="#5F675C" className="asset-svg__caption">
         DISPLAY · 700 / 800
       </text>
-      <text x="150" y="112" fill="#3B2418" className="asset-svg__type-name asset-svg__type-name--body">
-        Manrope
+      <text x="135" y="112" fill="#3B2418" className="asset-svg__type-name asset-svg__type-name--body" style={{ fontSize: '14px' }}>
+        {bodyFont}
       </text>
-      <text x="150" y="132" fill="#5F675C" className="asset-svg__caption">
+      <text x="135" y="132" fill="#5F675C" className="asset-svg__caption">
         UI &amp; BODY · 400–700
       </text>
-      <text x="22" y="176" fill="#3B2418" className="asset-svg__sentence">
-        Fewer pieces. Kept longer.
+      <text x="22" y="176" fill="#3B2418" className="asset-svg__sentence" style={{ fontSize: '11px' }}>
+        {sentence}
       </text>
     </svg>
   )
@@ -263,14 +267,14 @@ function CampaignPlate({ variant = 1 }) {
   )
 }
 
-function SocialPlate() {
+function SocialPlate({ handle = '@BRAND', accentColor = '#298EE4' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Social template">
       <rect width="320" height="200" fill="#3B2418" />
-      <circle cx="236" cy="74" r="58" fill="#298EE4" />
+      <circle cx="236" cy="74" r="58" fill={accentColor} />
       <path d="M0 152c64-28 122-34 172-20 42 12 90 14 148 4v64H0v-48Z" fill="#F6F1E6" />
       <text x="24" y="38" fill="#F6F1E6" className="asset-svg__caption asset-svg__caption--light">
-        @ASTERANDOAK
+        {handle}
       </text>
       <text x="24" y="96" fill="#F6F1E6" className="asset-svg__campaign asset-svg__campaign--social">
         Keep
@@ -410,9 +414,16 @@ const defaultAssets = [
   },
 ]
 
-function renderAssetPreview(asset, large = false) {
+function renderAssetPreview(asset, large = false, brand = null) {
+  const bName = brand?.brand_name || brand?.name || 'Aster & Oak'
+  const bMark = brand?.mark || bName.slice(0, 2).toUpperCase()
+  const bColor = brand?.color || '#3B2418'
+  const bDisplayFont = brand?.displayFont || 'Bricolage Grotesque'
+  const bBodyFont = brand?.bodyFont || 'Manrope'
+  const bSwatches = brand?.swatches || swatches
+
   if (asset.kind === 'colour' || (asset.swatches && asset.swatches.length > 0)) {
-    return <DynamicPalettePlate swatches={asset.swatches || swatches} title={asset.title} />
+    return <DynamicPalettePlate swatches={asset.swatches || bSwatches} title={asset.title} />
   }
   if (asset.imageUrl) {
     return (
@@ -423,13 +434,13 @@ function renderAssetPreview(asset, large = false) {
   }
   switch (asset.plateType) {
     case 'logo-primary':
-      return <LogoPlate dark={large} />
+      return <LogoPlate dark={large} brandName={bName} />
     case 'logo-mono':
-      return <MonogramPlate />
+      return <MonogramPlate mark={bMark} color={bColor} />
     case 'palette':
-      return <PalettePlate />
+      return <DynamicPalettePlate swatches={asset.swatches || bSwatches} title={asset.title} />
     case 'type':
-      return <TypePlate />
+      return <TypePlate displayFont={bDisplayFont} bodyFont={bBodyFont} />
     case 'campaign-1':
       return <CampaignPlate variant={1} />
     case 'campaign-2':
@@ -437,7 +448,7 @@ function renderAssetPreview(asset, large = false) {
     case 'campaign-3':
       return <CampaignPlate variant={3} />
     case 'social':
-      return <SocialPlate />
+      return <SocialPlate handle={`@${bName.replace(/[\s&]+/g, '').toUpperCase()}`} accentColor={bColor} />
     default:
       return (
         <div className="asset-card__image-wrap">
@@ -463,11 +474,25 @@ const categoryOptions = [
 ]
 
 export function Assets() {
-  const { toast } = useApp()
+  const { toast, activeBrand, allBrands = DEFAULT_BRANDS, switchBrand } = useApp()
+  const currentBrand = activeBrand || DEFAULT_BRANDS[0]
+  const brandStorageKey = `klarity_brand_assets_v4_${currentBrand.id || currentBrand.brand_name}`
+
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
+
+  // Brand Specs Edit Drawer
+  const [brandEditOpen, setBrandEditOpen] = useState(false)
+  const [brandEditForm, setBrandEditForm] = useState({
+    brand_name: currentBrand.brand_name || currentBrand.name || '',
+    brand_code: currentBrand.brand_code || currentBrand.code || '',
+    mark: currentBrand.mark || '',
+    color: currentBrand.color || '#298EE4',
+    tagline: currentBrand.tagline || '',
+    values: currentBrand.values || currentBrand.brand_values || '',
+  })
 
   // Upload Drawer State
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -478,17 +503,21 @@ export function Assets() {
     type: 'SVG',
     description: '',
     usage: 'Digital + print',
-    owner: 'Brand team',
+    owner: `${currentBrand.brand_name || 'Brand'} team`,
   })
 
   // Palette Studio State
   const [paletteTab, setPaletteTab] = useState('builder') // 'builder' | 'paste' | 'extract'
-  const [paletteSwatches, setPaletteSwatches] = useState([
-    { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
-    { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
-    { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
-    { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
-  ])
+  const [paletteSwatches, setPaletteSwatches] = useState(() => {
+    return currentBrand.swatches && currentBrand.swatches.length > 0
+      ? [...currentBrand.swatches]
+      : [
+          { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
+          { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
+          { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
+          { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
+        ]
+  })
   const [pasteText, setPasteText] = useState('')
   const [extractedThumb, setExtractedThumb] = useState(null)
   const extractInputRef = useRef(null)
@@ -505,31 +534,59 @@ export function Assets() {
   const drawerPreviewRef = useRef(null)
   const gridRef = useRef(null)
 
-  // Initialize assets from localStorage or defaults
+  // Initialize assets from brand-scoped localStorage or defaults
   const [assetsList, setAssetsList] = useState(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY)
+      const saved = localStorage.getItem(brandStorageKey)
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed.map((item) => {
-            if (item.id === 'palette' && !item.swatches) {
-              return { ...item, swatches }
-            }
-            return item
-          })
+          return parsed
         }
       }
     } catch {}
-    return defaultAssets
+    return getBrandAssets(currentBrand)
   })
 
-  // Persist assets to localStorage
+  // Synchronize when current brand switches
   useEffect(() => {
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(assetsList))
+      const saved = localStorage.getItem(brandStorageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAssetsList(parsed)
+          setBrandEditForm({
+            brand_name: currentBrand.brand_name || currentBrand.name || '',
+            brand_code: currentBrand.brand_code || currentBrand.code || '',
+            mark: currentBrand.mark || '',
+            color: currentBrand.color || '#298EE4',
+            tagline: currentBrand.tagline || '',
+            values: currentBrand.values || currentBrand.brand_values || '',
+          })
+          if (currentBrand.swatches) setPaletteSwatches([...currentBrand.swatches])
+          return
+        }
+      }
     } catch {}
-  }, [assetsList])
+    setAssetsList(getBrandAssets(currentBrand))
+    setBrandEditForm({
+      brand_name: currentBrand.brand_name || currentBrand.name || '',
+      brand_code: currentBrand.brand_code || currentBrand.code || '',
+      mark: currentBrand.mark || '',
+      color: currentBrand.color || '#298EE4',
+      tagline: currentBrand.tagline || '',
+      values: currentBrand.values || currentBrand.brand_values || '',
+    })
+    if (currentBrand.swatches) setPaletteSwatches([...currentBrand.swatches])
+  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey])
+
+  // Persist assets to brand-scoped localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(brandStorageKey, JSON.stringify(assetsList))
+    } catch {}
+  }, [assetsList, brandStorageKey])
 
   useLayoutEffect(() => {
     if (gridRef.current) {
@@ -881,11 +938,39 @@ export function Assets() {
     toast('Asset removed from library.', 'good')
   }
 
-  // Reset to original default library
+  // Reset to original default library for current brand
   const handleResetDefaults = () => {
-    setAssetsList(defaultAssets)
+    const defaults = getBrandAssets(currentBrand)
+    setAssetsList(defaults)
     setSelected(null)
-    toast('Asset library reset to defaults.', 'good')
+    try {
+      localStorage.setItem(brandStorageKey, JSON.stringify(defaults))
+    } catch {}
+    toast(`Asset library for ${currentBrand.brand_name} reset to defaults.`, 'good')
+  }
+
+  // Save Brand Specs
+  const handleSaveBrandSpecs = (e) => {
+    e?.preventDefault?.()
+    if (!brandEditForm.brand_name.trim()) {
+      toast('Brand name cannot be empty.', 'warn')
+      return
+    }
+    if (!brandEditForm.brand_code.trim()) {
+      toast('Brand code cannot be empty.', 'warn')
+      return
+    }
+
+    const updatedBrand = {
+      ...currentBrand,
+      ...brandEditForm,
+      brand_name: brandEditForm.brand_name.trim(),
+      brand_code: brandEditForm.brand_code.trim().toUpperCase(),
+      mark: (brandEditForm.mark || brandEditForm.brand_name.slice(0, 2)).toUpperCase(),
+    }
+    switchBrand(updatedBrand)
+    setBrandEditOpen(false)
+    toast(`Saved brand details for ${updatedBrand.brand_name}.`, 'good')
   }
 
   // Download asset (real file or serialized SVG)
@@ -949,20 +1034,82 @@ export function Assets() {
             <span className="asset-stat">
               <Layers size={15} /> {assetsList.length} approved assets
             </span>
-            {assetsList.length !== defaultAssets.length && (
-              <button
-                type="button"
-                className="asset-reset-btn"
-                onClick={handleResetDefaults}
-                title="Restore default assets"
-              >
-                Reset library
-              </button>
-            )}
+            <button
+              type="button"
+              className="asset-reset-btn"
+              onClick={handleResetDefaults}
+              title={`Restore default ${currentBrand.brand_name} assets`}
+            >
+              Reset library
+            </button>
           </div>
           <Button icon={Upload} variant="primary" onClick={() => setUploadOpen(true)}>
             Upload asset
           </Button>
+        </div>
+      </section>
+
+      {/* Brand Directory & Quick Switcher */}
+      <section className="asset-brand-bar">
+        <div className="asset-brand-bar__head">
+          <div className="asset-brand-bar__info">
+            <span className="asset-brand-bar__tag">Current Brand Workspace</span>
+            <div className="asset-brand-bar__name-row">
+              <span
+                className="asset-brand-bar__mark"
+                style={{ background: currentBrand.color || 'var(--sage)' }}
+              >
+                {currentBrand.mark || (currentBrand.brand_name || 'AO').slice(0, 2).toUpperCase()}
+              </span>
+              <h2>{currentBrand.brand_name}</h2>
+              <span className="asset-brand-code-badge" title="Verified Brand Value Code">
+                <Tag size={12} />
+                <code>{currentBrand.brand_code}</code>
+              </span>
+            </div>
+            <p className="asset-brand-bar__tagline">{currentBrand.tagline || currentBrand.values}</p>
+          </div>
+          <div className="asset-brand-bar__actions">
+            <Button
+              variant="secondary"
+              icon={Sliders}
+              onClick={() => setBrandEditOpen(true)}
+              title="Edit brand name, code, values, and identity"
+            >
+              Edit Brand Specs
+            </Button>
+          </div>
+        </div>
+
+        <div className="asset-brand-selector-list">
+          {allBrands.map((b) => {
+            const isSelected = (b.brand_name || b.name) === (currentBrand.brand_name || currentBrand.name)
+            const bName = b.brand_name || b.name
+            const bCode = b.brand_code || b.code
+            const bMark = b.mark || bName.slice(0, 2).toUpperCase()
+            const bColor = b.color || 'var(--sage)'
+
+            return (
+              <button
+                key={bCode}
+                type="button"
+                className={cx('asset-brand-chip', isSelected && 'is-active')}
+                onClick={() => {
+                  switchBrand(b)
+                  toast(`Switched Brand Assets to ${bName} (${bCode})`, 'good')
+                }}
+              >
+                <span className="asset-brand-chip__mark" style={{ background: bColor }}>
+                  {bMark}
+                </span>
+                <span className="asset-brand-chip__text">
+                  <strong>{bName}</strong>
+                  <span className="asset-brand-chip__code">{bCode}</span>
+                </span>
+                {isSelected && <Check size={14} className="asset-brand-chip__check" />}
+              </button>
+            )
+          })}
         </div>
       </section>
 
@@ -984,7 +1131,7 @@ export function Assets() {
               className={cx('asset-card', asset.kind === 'campaign' && 'asset-card--campaign')}
               onClick={() => handleOpenAsset(asset)}
             >
-              <span className="asset-card__preview">{renderAssetPreview(asset, false)}</span>
+              <span className="asset-card__preview">{renderAssetPreview(asset, false, currentBrand)}</span>
               <span className="asset-card__foot">
                 <span>
                   <strong>{asset.title}</strong>
@@ -1016,15 +1163,15 @@ export function Assets() {
       <section className="palette-section">
         <div className="palette-section__head">
           <div>
-            <h2>Core palette</h2>
+            <h2>Core palette · {currentBrand.brand_name}</h2>
             <p>Click any swatch to copy its hex value.</p>
           </div>
           <span>
-            <Palette size={15} /> 6 tokens
+            <Palette size={15} /> {(currentBrand.swatches || swatches).length} tokens
           </span>
         </div>
         <div className="swatch-grid">
-          {swatches.map((swatch) => (
+          {(currentBrand.swatches || swatches).map((swatch) => (
             <button
               key={swatch.hex}
               type="button"
@@ -1729,7 +1876,7 @@ export function Assets() {
                 ref={drawerPreviewRef}
                 className={cx('asset-drawer__preview', selected.kind === 'campaign' && 'is-campaign')}
               >
-                {renderAssetPreview(selected, true)}
+                {renderAssetPreview(selected, true, currentBrand)}
               </div>
 
               {/* Palette Interactive Tokens Grid & Export Bar */}
@@ -1871,6 +2018,94 @@ export function Assets() {
             </div>
           )
         ) : null}
+      </Drawer>
+
+      {/* Brand Specs Drawer */}
+      <Drawer
+        open={brandEditOpen}
+        onClose={() => setBrandEditOpen(false)}
+        title={`Edit Brand Specs: ${currentBrand.brand_name}`}
+        description="Modify the brand name, value verification code, monogram, and identity specs."
+        footer={
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%' }}>
+            <Button variant="secondary" onClick={() => setBrandEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" icon={Check} onClick={handleSaveBrandSpecs}>
+              Save Brand Changes
+            </Button>
+          </div>
+        }
+      >
+        <form onSubmit={handleSaveBrandSpecs} className="asset-drawer-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Field label="Brand / Organization Name" required>
+            <input
+              type="text"
+              value={brandEditForm.brand_name}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, brand_name: e.target.value }))}
+              placeholder="e.g. Nova Athletics"
+              required
+            />
+          </Field>
+
+          <Field label="Brand Value Code" hint="Used for team onboarding and workspace authorization" required>
+            <input
+              type="text"
+              value={brandEditForm.brand_code}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, brand_code: e.target.value.toUpperCase() }))}
+              placeholder="e.g. NOVA-4821"
+              required
+            />
+          </Field>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Field label="Monogram Initials">
+              <input
+                type="text"
+                maxLength={4}
+                value={brandEditForm.mark}
+                onChange={(e) => setBrandEditForm(prev => ({ ...prev, mark: e.target.value.toUpperCase() }))}
+                placeholder="e.g. NA"
+              />
+            </Field>
+
+            <Field label="Accent Color">
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="color"
+                  value={brandEditForm.color}
+                  onChange={(e) => setBrandEditForm(prev => ({ ...prev, color: e.target.value }))}
+                  style={{ width: '40px', height: '36px', padding: '2px', border: '1px solid var(--line)', borderRadius: '6px', cursor: 'pointer' }}
+                />
+                <input
+                  type="text"
+                  value={brandEditForm.color}
+                  onChange={(e) => setBrandEditForm(prev => ({ ...prev, color: e.target.value }))}
+                  placeholder="#E11D48"
+                  style={{ flex: 1 }}
+                />
+              </div>
+            </Field>
+          </div>
+
+          <Field label="Tagline / Short Descriptor">
+            <input
+              type="text"
+              value={brandEditForm.tagline}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, tagline: e.target.value }))}
+              placeholder="e.g. High-Performance Activewear"
+            />
+          </Field>
+
+          <Field label="Core Brand Values & Tone Guidance">
+            <textarea
+              rows={3}
+              value={brandEditForm.values}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, values: e.target.value }))}
+              placeholder="e.g. Performance, innovation, bold energy, inclusivity"
+            />
+          </Field>
+        </form>
       </Drawer>
     </div>
   )
