@@ -22,7 +22,20 @@ export function CodeBlock({
     <div className={`kn-code-block ${className}`}>
       {(filename || language) && (
         <div className="kn-code-block__header">
-          <span className="kn-code-block__filename">{filename || language}</span>
+          <span className="kn-code-block__filename">
+            {filename ? (
+              <span className="truncate-middle" title={filename}>
+                <span className="truncate-middle__stem">
+                  {filename.includes('.') ? filename.slice(0, filename.lastIndexOf('.')) : filename}
+                </span>
+                {filename.includes('.') && (
+                  <span className="truncate-middle__ext">{filename.slice(filename.lastIndexOf('.'))}</span>
+                )}
+              </span>
+            ) : (
+              language
+            )}
+          </span>
           <button
             type="button"
             className="kn-code-block__copy"

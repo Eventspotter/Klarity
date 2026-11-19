@@ -173,7 +173,7 @@ export function Segmented({ options, value, onChange, label, className = '' }) {
               <option.icon size={13} />
             </span>
           )}
-          <span>{option.label}</span>
+          <span className="reserved-bold" data-text={option.label}>{option.label}</span>
         </button>
       ))}
     </div>
@@ -210,7 +210,7 @@ export function Tabs({ options, value, onChange, label }) {
           className={cx('tabs__item', value === option.value && 'is-active')}
           onClick={() => onChange(option.value)}
         >
-          {option.label}
+          <span className="reserved-bold" data-text={option.label}>{option.label}</span>
           {option.count !== undefined ? <span className="tabs__count">{option.count}</span> : null}
         </button>
       ))}
@@ -479,6 +479,34 @@ export function Select({
         </div>
       )}
     </div>
+  )
+}
+
+export function MiddleTruncate({ filename = '', className = '', title }) {
+  if (!filename) return null
+  const lastDot = filename.lastIndexOf('.')
+  if (lastDot <= 0 || lastDot === filename.length - 1) {
+    return (
+      <span className={cx('truncate-middle', className)} title={title || filename}>
+        <span className="truncate-middle__stem">{filename}</span>
+      </span>
+    )
+  }
+  const stem = filename.slice(0, lastDot)
+  const ext = filename.slice(lastDot)
+  return (
+    <span className={cx('truncate-middle', className)} title={title || filename}>
+      <span className="truncate-middle__stem">{stem}</span>
+      <span className="truncate-middle__ext">{ext}</span>
+    </span>
+  )
+}
+
+export function Acronym({ children, title, className = '' }) {
+  return (
+    <abbr className={cx('acronym', className)} title={title}>
+      {children}
+    </abbr>
   )
 }
 

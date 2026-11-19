@@ -215,7 +215,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
               onClick={onClose}
             >
               <Icon size={18} strokeWidth={1.8} />
-              <span>{label}</span>
+              <span className="reserved-bold" data-text={label}>{label}</span>
               {item.badge && queue > 0 ? <span className="nav-item__badge">{queue}</span> : null}
             </NavLink>
           )
@@ -230,7 +230,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
             title="Brand Owner Command & Access Controls"
           >
             <ShieldCheck size={18} strokeWidth={1.8} />
-            <span>Brand Owner Controls</span>
+            <span className="reserved-bold" data-text="Brand Owner Controls">Brand Owner Controls</span>
             {pendingApprovalsCount > 0 && isOwner && (
               <span
                 className="nav-item__badge"

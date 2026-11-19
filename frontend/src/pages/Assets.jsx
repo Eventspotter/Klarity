@@ -32,6 +32,7 @@ import {
   Drawer,
   EmptyState,
   Field,
+  MiddleTruncate,
   Panel,
   Segmented,
   Select,
@@ -987,7 +988,9 @@ export function Assets() {
               <span className="asset-card__preview">{renderAssetPreview(asset, false)}</span>
               <span className="asset-card__foot">
                 <span>
-                  <strong>{asset.title}</strong>
+                  <strong>
+                    <MiddleTruncate filename={asset.title} />
+                  </strong>
                   <small>
                     {asset.type} · {asset.size}
                   </small>
@@ -1387,6 +1390,9 @@ export function Assets() {
               {uploadFile?.dataUrl ? (
                 <div className="asset-dropzone__preview" onClick={(e) => e.stopPropagation()}>
                   <img src={uploadFile.dataUrl} alt="Upload preview" />
+                  <div className="asset-dropzone__filename">
+                    <MiddleTruncate filename={uploadFile.name || uploadForm.title} />
+                  </div>
                   <button
                     type="button"
                     className="asset-dropzone__clear-btn"
