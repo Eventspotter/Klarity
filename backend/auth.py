@@ -238,13 +238,35 @@ class SwitchBrandRequest(BaseModel):
 router = APIRouter(prefix="/api/auth", tags=["accounts"], dependencies=[Depends(check_origin)])
 
 
+_BRANDS_CACHE: tuple[float, list[dict]] | None = None
+
+
+def _get_cached_brands(db: Session) -> list[dict]:
+    global _BRANDS_CACHE
+    now = time.monotonic()
+    if _BRANDS_CACHE and _BRANDS_CACHE[0] > now:
+        return _BRANDS_CACHE[1]
+    brands = db.query(Brand).all()
+    result = [
+        {
+            "id": b.id,
+            "brand_name": b.brand_name,
+            "brand_code": b.brand_code,
+            "brand_values": b.brand_values,
+        }
+        for b in brands
+    ]
+    _BRANDS_CACHE = (now + 120.0, result)
+    return result
+
+
 @router.get("/brands")
 def list_brands(db: Session = Depends(get_db)):
     """Return available brand names (without codes) for the registration page."""
-    brands = db.query(Brand).all()
+    brands = _get_cached_brands(db)
     return {
         "brands": [
-            {"id": b.id, "brand_name": b.brand_name, "brand_values": b.brand_values}
+            {"id": b["id"], "brand_name": b["brand_name"], "brand_values": b["brand_values"]}
             for b in brands
         ]
     }
@@ -253,18 +275,7 @@ def list_brands(db: Session = Depends(get_db)):
 @router.get("/brand-directory")
 def brand_directory(account: Account = Depends(current_account), db: Session = Depends(get_db)):
     """Return all brands and their brand codes for authenticated workspace members."""
-    brands = db.query(Brand).all()
-    return {
-        "brands": [
-            {
-                "id": b.id,
-                "brand_name": b.brand_name,
-                "brand_code": b.brand_code,
-                "brand_values": b.brand_values,
-            }
-            for b in brands
-        ]
-    }
+    return {"brands": _get_cached_brands(db)}
 
 
 @router.post("/switch-brand")
@@ -291,6 +302,8 @@ def switch_brand(
         setting.brand_values = brand.brand_values
         setting.brand_code = brand.brand_code
     db.commit()
+    global _SETTINGS_CACHE
+    _SETTINGS_CACHE = None
     return {
         "message": f"Switched to {brand.brand_name}",
         "brand_name": brand.brand_name,
@@ -413,8 +426,14 @@ def verify_account(payload: ApproveAccountRequest, account: Account = Depends(cu
         return {"message": f"Account '{target.username}' rejected and removed."}
 
 
-@router.get("/workspace-settings")
-def get_workspace_settings(db: Session = Depends(get_db)):
+_SETTINGS_CACHE: tuple[float, dict] | None = None
+
+
+def _get_cached_settings(db: Session) -> dict:
+    global _SETTINGS_CACHE
+    now = time.monotonic()
+    if _SETTINGS_CACHE and _SETTINGS_CACHE[0] > now:
+        return _SETTINGS_CACHE[1]
     setting = db.get(WorkspaceSettings, 1)
     if not setting:
         setting = WorkspaceSettings(
@@ -425,11 +444,18 @@ def get_workspace_settings(db: Session = Depends(get_db)):
         )
         db.add(setting)
         db.commit()
-    return {
+    data = {
         "brand_name": setting.brand_name,
         "brand_values": setting.brand_values,
         "brand_code": setting.brand_code,
     }
+    _SETTINGS_CACHE = (now + 120.0, data)
+    return data
+
+
+@router.get("/workspace-settings")
+def get_workspace_settings(db: Session = Depends(get_db)):
+    return _get_cached_settings(db)
 
 
 @router.patch("/workspace-settings")
@@ -456,6 +482,8 @@ def update_workspace_settings(
     if payload.brand_code is not None and payload.brand_code.strip():
         setting.brand_code = payload.brand_code.strip().upper()
     db.commit()
+    global _SETTINGS_CACHE
+    _SETTINGS_CACHE = None
     return {
         "message": "Workspace settings updated successfully.",
         "brand_name": setting.brand_name,

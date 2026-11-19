@@ -15,7 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import CORS_ORIGINS, SEED_DEMO_DATA
-from database import SessionLocal, get_db, init_db
+from database import SessionLocal, get_db, init_db, warm_pool
 from routers import dashboard, guidelines, submissions
 from seed import seed_database
 from services.workspace import build_bootstrap
@@ -29,6 +29,7 @@ DIST = ROOT.parent / "frontend" / "dist"
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    warm_pool()
     seed_test_account()
     if SEED_DEMO_DATA:
         seed_database()

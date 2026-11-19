@@ -148,8 +148,10 @@ class BotShieldMiddleware(BaseHTTPMiddleware):
             response = await call_next(request)
             response.headers["X-RateLimit-Limit"] = str(max_req)
             response.headers["X-RateLimit-Remaining"] = str(remaining)
-            # Ensure API responses aren't cached by intermediate proxy bots
-            response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            if path.startswith(("/api/auth/login", "/api/auth/register", "/api/auth/logout")):
+                response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
+            elif "Cache-Control" not in response.headers:
+                response.headers["Cache-Control"] = "private, no-cache"
             response.headers["Server"] = "Klarity-Gateway"
             return response
 

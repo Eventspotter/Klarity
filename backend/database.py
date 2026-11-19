@@ -6,13 +6,33 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 from config import DATABASE_URL
 
 is_sqlite = "sqlite" in DATABASE_URL
-connect_args = {"check_same_thread": False} if is_sqlite else {}
-engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": True}
+connect_args = (
+    {"check_same_thread": False}
+    if is_sqlite
+    else {
+        "keepalives": 1,
+        "keepalives_idle": 30,
+        "keepalives_interval": 10,
+        "keepalives_count": 5,
+    }
+)
+engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": False}
 if not is_sqlite:
-    engine_kwargs.update({"pool_size": 5, "max_overflow": 10, "pool_recycle": 300})
+    engine_kwargs.update({"pool_size": 10, "max_overflow": 15, "pool_recycle": 600})
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def warm_pool():
+    if is_sqlite:
+        return
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception:
+        pass
 
 
 class Base(DeclarativeBase):

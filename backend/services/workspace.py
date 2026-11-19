@@ -7,11 +7,11 @@ from datetime import datetime, timedelta
 from statistics import mean
 from typing import Dict, List
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, selectinload, defer
 from config import DATABASE_URL, SEED_DEMO_DATA
 
 _BOOTSTRAP_CACHE: dict[str, tuple[float, BootstrapOut]] = {}
-_BOOTSTRAP_TTL_SECONDS = 60.0
+_BOOTSTRAP_TTL_SECONDS = 300.0
 
 
 def invalidate_bootstrap_cache() -> None:
@@ -56,13 +56,17 @@ def latest_report_map(submissions: list[ContentSubmission]) -> Dict[int, ReviewR
 
 def _submission_query(db: Session):
     return db.query(ContentSubmission).options(
-        joinedload(ContentSubmission.reports).joinedload(ReviewReport.issues),
-        joinedload(ContentSubmission.reports).joinedload(ReviewReport.actions),
+        defer(ContentSubmission.content_text),
+        selectinload(ContentSubmission.reports).selectinload(ReviewReport.issues),
+        selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
     )
 
 
-def load_submissions(db: Session) -> list[ContentSubmission]:
-    return _submission_query(db).order_by(ContentSubmission.submitted_at.desc()).all()
+def load_submissions(db: Session, since: datetime | None = None) -> list[ContentSubmission]:
+    query = _submission_query(db).order_by(ContentSubmission.submitted_at.desc())
+    if since is not None:
+        query = query.filter(ContentSubmission.submitted_at >= since)
+    return query.all()
 
 
 def _approval_rate(submissions: list[ContentSubmission]) -> float:
@@ -237,7 +241,11 @@ def build_bootstrap(db: Session) -> BootstrapOut:
     if cached and cached[0] > time.monotonic():
         return cached[1]
 
-    submissions = load_submissions(db)
+    now = datetime.utcnow()
+    window_start = now - timedelta(days=65)
+    submissions = load_submissions(db, since=window_start)
+    if not submissions:
+        submissions = load_submissions(db)
     guidelines = (
         db.query(BrandGuideline)
         .order_by(BrandGuideline.priority.desc(), BrandGuideline.title.asc())
