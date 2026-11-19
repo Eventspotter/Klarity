@@ -1,40 +1,9 @@
-const BASE = import.meta.env.VITE_API_URL
-  ? `${import.meta.env.VITE_API_URL.replace(/\/$/, '')}/api`
-  : '/api'
-
-const TOKEN_KEY = 'klarity_token'
-
-export function getStoredToken() {
-  try {
-    return localStorage.getItem(TOKEN_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-export function setStoredToken(token) {
-  try {
-    if (token) {
-      localStorage.setItem(TOKEN_KEY, token)
-    } else {
-      localStorage.removeItem(TOKEN_KEY)
-    }
-  } catch {
-    // Ignore storage errors in restricted contexts
-  }
-}
+const BASE = '/api'
 
 async function request(path, options = {}) {
-  const token = getStoredToken()
-  const headers = {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    ...(options.headers || {}),
-  }
   const response = await fetch(`${BASE}${path}`, {
-    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,
-    headers,
   })
   if (!response.ok) {
     let detail = `Request failed (${response.status})`
@@ -55,6 +24,9 @@ async function request(path, options = {}) {
 export const api = {
   me: () => request('/auth/me'),
   brandCodeHint: () => request('/auth/brand-code-hint'),
+  workspaceSettings: () => request('/auth/workspace-settings'),
+  updateWorkspaceSettings: (payload) =>
+    request('/auth/workspace-settings', { method: 'PATCH', body: JSON.stringify(payload) }),
   pendingAccounts: () => request('/auth/pending-accounts'),
   verifyAccount: (payload) =>
     request('/auth/verify-account', { method: 'POST', body: JSON.stringify(payload) }),
@@ -62,7 +34,6 @@ export const api = {
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   bootstrap: () => request('/bootstrap'),
-  getSubmission: (id) => request(`/submissions/${id}`),
   createSubmission: (payload) =>
     request('/submissions', { method: 'POST', body: JSON.stringify(payload) }),
   reviewSubmission: (id, payload) =>

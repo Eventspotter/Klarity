@@ -5,9 +5,7 @@ import hmac
 import os
 import re
 import secrets
-import time
 from datetime import datetime, timedelta
-from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -69,75 +67,23 @@ def seed_test_account():
 
 
 def check_origin(request: Request):
-    origin = request.headers.get("origin")
-    if not origin:
-        return
-    origin_clean = origin.rstrip("/")
-    allowed = {o.rstrip("/") for o in CORS_ORIGINS}
-    if (
-        origin_clean in allowed
-        or origin_clean == str(request.base_url).rstrip("/")
-        or origin_clean.endswith(".onrender.com")
-        or origin_clean.startswith("http://localhost:")
-        or origin_clean.startswith("http://127.0.0.1:")
-    ):
-        return
     sec_fetch_site = request.headers.get("sec-fetch-site")
-    if sec_fetch_site == "cross-site" or origin:
+    if sec_fetch_site == "cross-site":
+        raise HTTPException(403, "Cross-site request blocked by resource isolation policy")
+    origin = request.headers.get("origin")
+    if origin and origin not in CORS_ORIGINS and origin != str(request.base_url).rstrip("/"):
         raise HTTPException(403, "Origin not allowed")
-
-
-_SESSION_CACHE: dict[str, tuple[float, SimpleNamespace]] = {}
-_SESSION_TTL_SECONDS = 30.0
-
-
-def _cache_account(token_hash: str, account, session_expires_at: datetime) -> SimpleNamespace:
-    snapshot = SimpleNamespace(
-        id=account.id,
-        username=account.username,
-        email=account.email,
-        role=getattr(account, "role", "owner") or "owner",
-        is_approved=getattr(account, "is_approved", True),
-    )
-    remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
-    ttl = min(_SESSION_TTL_SECONDS, remaining)
-    if ttl > 0:
-        if len(_SESSION_CACHE) > 512:
-            _SESSION_CACHE.clear()
-        _SESSION_CACHE[token_hash] = (time.monotonic() + ttl, snapshot)
-    return snapshot
 
 
 def current_account(request: Request, db: Session = Depends(get_db)):
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request)
-    auth_header = request.headers.get("Authorization", "")
-    token = ""
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
-    if not token:
-        token = request.cookies.get("klarity_session", "")
-    if not token:
+    token = request.cookies.get("klarity_session", "")
+    session = db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest()) if token else None
+    account = db.get(Account, session.account_id) if session and session.expires_at > datetime.utcnow() else None
+    if not account:
         raise HTTPException(401, "Sign in to continue")
-
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
-    cached = _SESSION_CACHE.get(token_hash)
-    if cached:
-        if cached[0] > time.monotonic():
-            return cached[1]
-        _SESSION_CACHE.pop(token_hash, None)
-
-    now = datetime.utcnow()
-    row = (
-        db.query(Account, LoginSession.expires_at)
-        .join(LoginSession, LoginSession.account_id == Account.id)
-        .filter(LoginSession.token_hash == token_hash, LoginSession.expires_at > now)
-        .first()
-    )
-    if not row:
-        raise HTTPException(401, "Sign in to continue")
-    account, expires_at = row
-    return _cache_account(token_hash, account, expires_at)
+    return account
 
 
 def public_account(account):
@@ -152,35 +98,16 @@ def public_account(account):
 
 def start_session(account, request, response, db):
     old_token = request.cookies.get("klarity_session")
-    auth_header = request.headers.get("Authorization", "")
-    if not old_token and auth_header.startswith("Bearer "):
-        old_token = auth_header[7:].strip()
     if old_token:
-        old_hash = hashlib.sha256(old_token.encode()).hexdigest()
-        _SESSION_CACHE.pop(old_hash, None)
-        db.query(LoginSession).filter_by(token_hash=old_hash).delete()
-    now = datetime.utcnow()
-    db.query(LoginSession).filter(LoginSession.expires_at <= now).delete()
+        db.query(LoginSession).filter_by(token_hash=hashlib.sha256(old_token.encode()).hexdigest()).delete()
+    db.query(LoginSession).filter(LoginSession.expires_at <= datetime.utcnow()).delete()
     token = secrets.token_urlsafe(32)
-    token_hash = hashlib.sha256(token.encode()).hexdigest()
-    expires_at = now + timedelta(days=1)
-    db.add(LoginSession(token_hash=token_hash, account_id=account.id, expires_at=expires_at))
+    db.add(LoginSession(token_hash=hashlib.sha256(token.encode()).hexdigest(), account_id=account.id,
+                        expires_at=datetime.utcnow() + timedelta(days=1)))
     db.commit()
-    _cache_account(token_hash, account, expires_at)
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
-    samesite_val = "none" if is_secure else "lax"
-    response.set_cookie(
-        "klarity_session",
-        token,
-        httponly=True,
-        samesite=samesite_val,
-        secure=is_secure,
-        max_age=86400,
-        path="/",
-    )
-    res = public_account(account)
-    res["token"] = token
-    return res
+    response.set_cookie("klarity_session", token, httponly=True, samesite="lax",
+                        secure=os.getenv("COOKIE_SECURE", "false").lower() == "true", max_age=86400, path="/")
+    return public_account(account)
 
 
 class RegisterRequest(BaseModel):
@@ -201,6 +128,12 @@ class LoginRequest(BaseModel):
 class ApproveAccountRequest(BaseModel):
     account_id: int
     approve: bool = True
+
+
+class UpdateWorkspaceRequest(BaseModel):
+    brand_name: str | None = Field(default=None, max_length=120)
+    brand_values: str | None = Field(default=None, max_length=500)
+    brand_code: str | None = Field(default=None, max_length=32)
 
 
 router = APIRouter(prefix="/api/auth", tags=["accounts"], dependencies=[Depends(check_origin)])
@@ -327,6 +260,57 @@ def verify_account(payload: ApproveAccountRequest, account: Account = Depends(cu
         return {"message": f"Account '{target.username}' rejected and removed."}
 
 
+@router.get("/workspace-settings")
+def get_workspace_settings(db: Session = Depends(get_db)):
+    setting = db.get(WorkspaceSettings, 1)
+    if not setting:
+        setting = WorkspaceSettings(
+            id=1,
+            brand_name="Aster & Oak",
+            brand_values="Authenticity, craft, sustainability, quiet confidence",
+            brand_code="KLARITY-2026",
+        )
+        db.add(setting)
+        db.commit()
+    return {
+        "brand_name": setting.brand_name,
+        "brand_values": setting.brand_values,
+        "brand_code": setting.brand_code,
+    }
+
+
+@router.patch("/workspace-settings")
+def update_workspace_settings(
+    payload: UpdateWorkspaceRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only the Brand Owner can modify workspace settings.")
+    setting = db.get(WorkspaceSettings, 1)
+    if not setting:
+        setting = WorkspaceSettings(
+            id=1,
+            brand_name="Aster & Oak",
+            brand_values="Authenticity, craft, sustainability, quiet confidence",
+            brand_code="KLARITY-2026",
+        )
+        db.add(setting)
+    if payload.brand_name is not None and payload.brand_name.strip():
+        setting.brand_name = payload.brand_name.strip()
+    if payload.brand_values is not None:
+        setting.brand_values = payload.brand_values.strip()
+    if payload.brand_code is not None and payload.brand_code.strip():
+        setting.brand_code = payload.brand_code.strip().upper()
+    db.commit()
+    return {
+        "message": "Workspace settings updated successfully.",
+        "brand_name": setting.brand_name,
+        "brand_values": setting.brand_values,
+        "brand_code": setting.brand_code,
+    }
+
+
 @router.get("/me")
 def me(account: Account = Depends(current_account)):
     return public_account(account)
@@ -334,18 +318,8 @@ def me(account: Account = Depends(current_account)):
 
 @router.post("/logout", status_code=204)
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
-    auth_header = request.headers.get("Authorization", "")
-    token = ""
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:].strip()
-    if not token:
-        token = request.cookies.get("klarity_session", "")
-    if token:
-        token_hash = hashlib.sha256(token.encode()).hexdigest()
-        _SESSION_CACHE.pop(token_hash, None)
-        db.query(LoginSession).filter_by(token_hash=token_hash).delete()
-        db.commit()
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
-    samesite_val = "none" if is_secure else "lax"
-    response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
+    token = request.cookies.get("klarity_session", "")
+    db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
+    db.commit()
+    response.delete_cookie("klarity_session", path="/")
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'

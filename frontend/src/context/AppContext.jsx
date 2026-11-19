@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { api, getStoredToken, setStoredToken } from '../lib/api'
+import { api } from '../lib/api'
 
 const AppContext = createContext(null)
 
@@ -27,44 +27,12 @@ const DEFAULT_VISIBILITY = {
 }
 
 const VISIBILITY_STORAGE_KEY = 'klarity_role_visibility_matrix.v1'
-const CACHE_STORAGE_KEY = 'klarity_workspace_cache.v1'
-
-function readCachedWorkspace() {
-  try {
-    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY)
-    if (!raw) return null
-    const parsed = JSON.parse(raw)
-    if (parsed?.user && parsed?.data) return parsed
-  } catch {
-    // ignore cache errors
-  }
-  return null
-}
-
-function writeCachedWorkspace(user, data) {
-  try {
-    if (user && data) {
-      sessionStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify({ user, data, ts: Date.now() }))
-    }
-  } catch {
-    // ignore quota errors
-  }
-}
-
-function clearCachedWorkspace() {
-  try {
-    sessionStorage.removeItem(CACHE_STORAGE_KEY)
-  } catch {
-    // ignore storage errors
-  }
-}
 
 export function AppProvider({ children }) {
-  const initialCache = useRef(readCachedWorkspace()).current
-  const [user, setUser] = useState(() => initialCache?.user ?? null)
-  const [data, setData] = useState(() => initialCache?.data ?? null)
-  const [loading, setLoading] = useState(() => !(initialCache?.user && initialCache?.data))
-  const [connected, setConnected] = useState(() => Boolean(initialCache?.data))
+  const [user, setUser] = useState(null)
+  const [data, setData] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [connected, setConnected] = useState(false)
   const [currentRole, setCurrentRole] = useState(() => localStorage.getItem('klarity_role') || 'owner')
   const [visibilitySettings, setVisibilitySettings] = useState(() => {
     try {
@@ -75,6 +43,7 @@ export function AppProvider({ children }) {
     }
   })
   const [toasts, setToasts] = useState([])
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const timers = useRef(new Map())
   const toast = useCallback((message, tone = 'good') => {
     const id = `${Date.now()}-${Math.random()}`
@@ -89,73 +58,45 @@ export function AppProvider({ children }) {
     timers.current.delete(id)
     setToasts(items => items.filter(item => item.id !== id))
   }
-  const refresh = useCallback(async (accountOverride) => {
+  const refresh = useCallback(async () => {
     try {
       const payload = await api.bootstrap()
       setData(payload)
       setConnected(true)
-      const activeUser = accountOverride || user
-      if (activeUser) writeCachedWorkspace(activeUser, payload)
+      api.pendingAccounts().then(accs => {
+        if (Array.isArray(accs)) setPendingApprovalsCount(accs.length)
+      }).catch(() => {})
       return payload
     } catch (error) {
       setConnected(false)
-      if (error.status === 401) {
-        setStoredToken(null)
-        clearCachedWorkspace()
-        setUser(null)
-        setData(null)
-      }
+      if (error.status === 401) { setUser(null); setData(null) }
       throw error
     }
-  }, [user])
+  }, [])
   useEffect(() => {
     let alive = true
-    // Fire auth check and bootstrap in parallel instead of a sequential waterfall
-    Promise.all([api.me(), api.bootstrap()])
-      .then(([account, payload]) => {
-        if (!alive) return
-        setUser(account)
-        setData(payload)
-        setConnected(true)
-        writeCachedWorkspace(account, payload)
-      })
-      .catch(error => {
-        if (!alive) return
-        if (error.status === 401) {
-          setStoredToken(null)
-          clearCachedWorkspace()
-          setUser(null)
-          setData(null)
-          setConnected(false)
-        } else {
-          toast('Cannot reach the workspace. Please try again.', 'warn')
-        }
-      })
-      .finally(() => { if (alive) setLoading(false) })
+    api.me().then(async account => {
+      if (!alive) return
+      setUser(account)
+      await refresh()
+    }).catch(error => {
+      if (alive && error.status !== 401) toast('Cannot reach the workspace. Please try again.', 'warn')
+    }).finally(() => { if (alive) setLoading(false) })
     return () => {
       alive = false
       timers.current.forEach(clearTimeout)
     }
-  }, [toast])
+  }, [refresh, toast])
   const authenticate = async (mode, payload) => {
     const account = await api[mode](payload)
-    if (account?.token) {
-      setStoredToken(account.token)
-    }
     setUser(account)
-    const bootstrapPayload = await refresh(account)
-    writeCachedWorkspace(account, bootstrapPayload)
+    await refresh()
   }
   const logout = async () => {
-    try {
-      await api.logout()
-    } finally {
-      setStoredToken(null)
-      clearCachedWorkspace()
-      setUser(null)
-      setData(null)
-      setConnected(false)
-    }
+    await api.logout()
+    setUser(null)
+    setData(null)
+    setConnected(false)
   }
   const mutate = async (operation, message) => {
     try {
@@ -164,12 +105,7 @@ export function AppProvider({ children }) {
       toast(message)
       return result
     } catch (error) {
-      if (error.status === 401) {
-        setStoredToken(null)
-        clearCachedWorkspace()
-        setUser(null)
-        setData(null)
-      }
+      if (error.status === 401) { setUser(null); setData(null) }
       toast(error.message, 'warn')
       throw error
     }
@@ -242,6 +178,8 @@ export function AppProvider({ children }) {
     visibilitySettings,
     updateRoleVisibility,
     canViewModule,
+    pendingApprovalsCount,
+    setPendingApprovalsCount,
     createSubmission: payload => mutate(() => api.createSubmission(payload), 'Review complete. The report is ready.'),
     reviewSubmission: (id, action, comment) => mutate(() => api.reviewSubmission(id, {
       action, comment: comment || null, performed_by: user.username,
