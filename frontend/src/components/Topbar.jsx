@@ -32,13 +32,13 @@ function AnimatedPopover({ className = '', children }) {
     if (isReducedMotion() || !popoverRef.current) return
     gsap.fromTo(
       popoverRef.current,
-      { opacity: 0, y: -8, scale: 0.98 },
+      { opacity: 0, y: -6, scale: 0.96, transformOrigin: 'top right' },
       { opacity: 1, y: 0, scale: 1, duration: 0.22, ease: 'power2.out' },
     )
   }, [])
 
   return (
-    <div ref={popoverRef} className={className}>
+    <div ref={popoverRef} className={cx('popover-origin-top-right', className)}>
       {children}
     </div>
   )

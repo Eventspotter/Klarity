@@ -56,9 +56,37 @@
   --radius-md: 14px;
   --radius-lg: 20px;
   --radius-xl: 26px;
-  --shadow-sm: 0 1px 2px rgba(59, 36, 24, 0.04), 0 6px 18px -14px rgba(59, 36, 24, 0.22);
-  --shadow-md: 0 2px 4px rgba(59, 36, 24, 0.05), 0 20px 44px -24px rgba(59, 36, 24, 0.3);
-  --shadow-lg: 0 4px 8px rgba(59, 36, 24, 0.06), 0 36px 80px -34px rgba(59, 36, 24, 0.42);
+
+  /* Concentric inner radii: R_inner = max(0px, R_outer - padding) */
+  --radius-inner-xs: max(0px, calc(var(--radius-sm) - 4px)); /* 6px */
+  --radius-inner-sm: max(0px, calc(var(--radius-md) - 6px)); /* 8px */
+  --radius-inner-md: max(0px, calc(var(--radius-lg) - 8px)); /* 12px */
+  --radius-inner-lg: max(0px, calc(var(--radius-xl) - 10px)); /* 16px */
+
+  /* Layered physical diffusion shadows (Contact + Penumbra + Ambient) */
+  --shadow-xs: 0 1px 2px rgba(32, 21, 15, 0.04), 0 1px 1px rgba(32, 21, 15, 0.03);
+  --shadow-sm: 0 1px 2px rgba(32, 21, 15, 0.04), 0 3px 6px -2px rgba(32, 21, 15, 0.06), 0 6px 14px -4px rgba(32, 21, 15, 0.08);
+  --shadow-md: 0 1px 2px rgba(32, 21, 15, 0.04), 0 4px 8px -2px rgba(32, 21, 15, 0.06), 0 12px 24px -6px rgba(32, 21, 15, 0.10);
+  --shadow-lg: 0 1px 2px rgba(32, 21, 15, 0.03), 0 6px 14px -3px rgba(32, 21, 15, 0.06), 0 16px 32px -8px rgba(32, 21, 15, 0.12), 0 32px 64px -16px rgba(32, 21, 15, 0.14);
+  --shadow-xl: 0 2px 4px rgba(32, 21, 15, 0.03), 0 12px 24px -4px rgba(32, 21, 15, 0.08), 0 24px 48px -8px rgba(32, 21, 15, 0.14), 0 48px 96px -16px rgba(32, 21, 15, 0.18);
+  --shadow-dropdown: 0 0 0 1px rgba(32, 21, 15, 0.07), 0 4px 8px -2px rgba(32, 21, 15, 0.06), 0 12px 28px -4px rgba(32, 21, 15, 0.14);
+  --shadow-modal: 0 0 0 1px rgba(32, 21, 15, 0.08), 0 8px 16px -4px rgba(32, 21, 15, 0.08), 0 24px 48px -8px rgba(32, 21, 15, 0.16), 0 48px 96px -16px rgba(32, 21, 15, 0.22);
+  --shadow-bevel: inset 0 1px 0 rgba(255, 255, 255, 0.65), inset 0 -1px 0 rgba(32, 21, 15, 0.04);
+
+  /* Alpha border system (semi-transparent, blends with light cream, white paper, and dark charcoal) */
+  --border-alpha-faint: rgba(59, 36, 24, 0.05);
+  --border-alpha-subtle: rgba(59, 36, 24, 0.09);
+  --border-alpha-medium: rgba(59, 36, 24, 0.15);
+  --border-alpha-strong: rgba(59, 36, 24, 0.22);
+  --border-glass: rgba(255, 255, 255, 0.65);
+  --border-dark-faint: rgba(246, 241, 230, 0.08);
+  --border-dark-subtle: rgba(246, 241, 230, 0.14);
+  --border-dark-medium: rgba(246, 241, 230, 0.22);
+  --border-dark-strong: rgba(246, 241, 230, 0.32);
+
+  --line-alpha: var(--border-alpha-subtle);
+  --line-strong-alpha: var(--border-alpha-medium);
+
   --sidebar-width: 264px;
   --font-display: 'Bricolage Grotesque', 'Trebuchet MS', sans-serif;
   --font-body: 'Manrope', 'Segoe UI', sans-serif;
@@ -319,6 +347,324 @@ kbd,
 .avatar {
   -webkit-hyphens: none !important;
   hyphens: none !important;
+}
+
+/* =========================================================
+   NICHE MODERN CSS & DESIGN ENGINEERING SUITE
+   1. Tabular numbers (font-variant-numeric: tabular-nums)
+   2. Concentric inner radius (R_inner = max(0, R_outer - padding))
+   3. Alpha borders (color-mix & transparent border tokens)
+   4. Layered physical diffusion shadows (Multi-elevation)
+   5. Origin-aware popovers & dropdowns (Anchored transform origins)
+   6. Masked scroll edges (Edge vignette linear gradient masks)
+   ========================================================= */
+
+/* 1. Tabular Numbers (tnum) */
+.tabular-nums,
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* Automatic tabular monospaced alignment for numerals, stats, and timers */
+time,
+data,
+.stat-value,
+.stat-card__value,
+.stats-card strong,
+.stats-card-v2__value,
+.stats-card-v2__delta,
+.metric-value,
+.metric strong,
+strong.metric,
+.score-pill strong,
+.tabs__count,
+.nav-item__badge,
+.badge--number,
+.badge__count,
+.calendar-card-header__date-num,
+.calendar-event-time,
+.calendar-mini-popover .rdp-day_button,
+.rdp-day,
+.rdp-weekday,
+.palette-token-hex,
+.palette-swatch-input--hex,
+.activity-item__timestamp,
+.code-block__line-number,
+.table td.num,
+.table td[data-numeric="true"],
+.table--numeric td,
+.data-table td:has(> time),
+.progress-ring__text,
+.compliance-gauge__pct,
+.kpi-number,
+.count-badge,
+.truncate-middle__ext {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+/* 2. Concentric Corner Radius: R_inner = max(0px, R_outer - padding) */
+.concentric-inner {
+  border-radius: max(0px, calc(var(--parent-radius, var(--radius-md)) - var(--parent-pad, 8px)));
+}
+
+/* Nested card & panel elements aligned to concentric curvature */
+.asset-card {
+  --parent-radius: 15px;
+  --parent-pad: 9px;
+}
+
+.asset-card__preview {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 6px */
+}
+
+.custom-select__dropdown {
+  --parent-radius: var(--radius-md); /* 14px */
+  --parent-pad: 5px;
+}
+
+.custom-select__dropdown .custom-select__option {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 9px */
+}
+
+.sidebar-brands-dropdown {
+  --parent-radius: 12px;
+  --parent-pad: 8px;
+}
+
+.sidebar-brands-dropdown .sidebar-brand-item {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 4px */
+}
+
+.segmented {
+  --parent-radius: var(--radius-sm); /* 10px */
+  --parent-pad: 3px;
+}
+
+.segmented__pill,
+.segmented button,
+.segmented a {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 7px */
+}
+
+.tabs {
+  --parent-radius: var(--radius-sm); /* 10px */
+  --parent-pad: 3px;
+}
+
+.tabs__pill,
+.tabs__item {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 7px */
+}
+
+.panel {
+  --parent-radius: var(--radius-lg); /* 20px */
+  --parent-pad: 24px;
+}
+
+.panel__inner,
+.panel-well {
+  border-radius: max(0px, calc(var(--parent-radius) - 10px)); /* 10px */
+}
+
+.palette-token-card {
+  --parent-radius: 12px;
+  --parent-pad: 8px;
+}
+
+.palette-token-card .palette-token-chip {
+  border-radius: max(0px, calc(var(--parent-radius) - var(--parent-pad))); /* 4px */
+}
+
+/* 3. Alpha Borders (Translucent border tokens & dynamic color-mix) */
+.border-alpha {
+  border: 1px solid var(--border-alpha-subtle);
+}
+
+.border-alpha-faint {
+  border: 1px solid var(--border-alpha-faint);
+}
+
+.border-alpha-medium {
+  border: 1px solid var(--border-alpha-medium);
+}
+
+.border-alpha-strong {
+  border: 1px solid var(--border-alpha-strong);
+}
+
+.border-dark-alpha {
+  border: 1px solid var(--border-dark-subtle);
+}
+
+/* Adaptive alpha border matching current text color at 14% opacity */
+.border-current-alpha {
+  border-color: color-mix(in srgb, currentColor 14%, transparent) !important;
+}
+
+/* Glass border highlight */
+.border-glass-top {
+  border-top: 1px solid var(--border-glass);
+}
+
+/* 4. Layered Physical Diffusion Shadows */
+.shadow-layered-xs {
+  box-shadow: var(--shadow-xs);
+}
+
+.shadow-layered-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-layered-md {
+  box-shadow: var(--shadow-md);
+}
+
+.shadow-layered-lg {
+  box-shadow: var(--shadow-lg);
+}
+
+.shadow-layered-xl {
+  box-shadow: var(--shadow-xl);
+}
+
+.shadow-layered-dropdown {
+  box-shadow: var(--shadow-dropdown);
+}
+
+.shadow-layered-modal {
+  box-shadow: var(--shadow-modal);
+}
+
+.shadow-bevel {
+  box-shadow: var(--shadow-bevel);
+}
+
+/* 5. Origin-Aware Popovers & Menus */
+@keyframes originPopIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes calendarOriginPopIn {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+
+.popover-origin-top-left,
+[data-placement="bottom-start"],
+[data-placement="bottom-left"] {
+  transform-origin: top left;
+}
+
+.popover-origin-top-right,
+[data-placement="bottom-end"],
+[data-placement="bottom-right"] {
+  transform-origin: top right;
+}
+
+.popover-origin-top,
+.popover-origin-top-center,
+[data-placement="bottom"] {
+  transform-origin: top center;
+}
+
+.popover-origin-bottom-left,
+[data-placement="top-start"],
+[data-placement="top-left"] {
+  transform-origin: bottom left;
+}
+
+.popover-origin-bottom-right,
+[data-placement="top-end"],
+[data-placement="top-right"] {
+  transform-origin: bottom right;
+}
+
+.popover-origin-bottom,
+.popover-origin-bottom-center,
+[data-placement="top"] {
+  transform-origin: bottom center;
+}
+
+/* Connect origin-aware animations to Klarity dropdowns, popovers & palettes */
+.custom-select__dropdown {
+  transform-origin: top left;
+  animation: originPopIn 150ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.popover {
+  transform-origin: top right;
+  animation: originPopIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.sidebar-brands-dropdown {
+  transform-origin: top center;
+  animation: originPopIn 170ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.calendar-mini-popover {
+  transform-origin: top center;
+  animation: calendarOriginPopIn 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.palette {
+  transform-origin: top center;
+}
+
+/* 6. Masked Scroll Edges (Vignette edge gradients for scroll containers) */
+.scroll-mask-x {
+  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+}
+
+.scroll-mask-right {
+  mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
+}
+
+.scroll-mask-y {
+  mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
+}
+
+.scroll-mask-bottom {
+  mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
+}
+
+/* Automatically apply graceful edge masking to scrollable UI containers */
+.tabs {
+  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
+}
+
+.sidebar-brands-dropdown__list {
+  mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
+}
+
+.drawer__body {
+  mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+}
+
+.palette__body {
+  mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
 }
 
 a {
