@@ -3049,9 +3049,9 @@ kbd {
 
 .queue-row a {
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 33px 15px;
+  grid-template-columns: 34px minmax(0, 1fr) 33px 15px;
   align-items: center;
-  gap: 9px;
+  gap: 10px;
   padding: 11px 0;
   border-bottom: 1px solid rgba(246, 241, 230, 0.1);
   transition: background 140ms var(--ease-out);
@@ -3063,6 +3063,9 @@ kbd {
 }
 
 .queue-row__index {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   color: rgba(246, 241, 230, 0.55);
   font-size: 11px;
   font-weight: 700;
@@ -6503,7 +6506,7 @@ kbd {
   }
 
   .queue-row a {
-    grid-template-columns: 22px minmax(0, 1fr) 31px;
+    grid-template-columns: 34px minmax(0, 1fr) 31px;
     border-top: 1px solid rgba(246, 241, 230, 0.13);
     border-bottom: 0;
   }
@@ -6801,7 +6804,7 @@ kbd {
   }
 
   .queue-row a {
-    grid-template-columns: 22px minmax(0, 1fr) 31px;
+    grid-template-columns: 34px minmax(0, 1fr) 31px;
   }
 
   .queue-figure {
