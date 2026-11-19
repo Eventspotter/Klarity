@@ -14,6 +14,8 @@ import {
   User,
   X,
 } from 'lucide-react'
+import { DayPicker } from 'react-day-picker'
+import 'react-day-picker/style.css'
 import { useApp } from '../context/AppContext'
 import { Button, Drawer, Panel, ScorePill, Select, StatusPill, Tabs } from '../components/UI'
 import { cx, latestReport } from '../lib/utils'
@@ -142,7 +144,6 @@ export function Calendar({ onNewReview }) {
 
   // Mini calendar date-picker popover state
   const [pickerOpen, setPickerOpen] = useState(false)
-  const [miniMonthDate, setMiniMonthDate] = useState(() => getTodayLocal())
   const pickerRef = useRef(null)
 
   useEffect(() => {
@@ -407,64 +408,9 @@ export function Calendar({ onNewReview }) {
   }, [])
 
   const handleToday = useCallback(() => {
-    const now = getTodayLocal()
-    setAnchorDate(now)
-    setMiniMonthDate(now)
+    setAnchorDate(getTodayLocal())
     setPickerOpen(false)
   }, [])
-
-  const toggleDatePicker = useCallback(() => {
-    setPickerOpen((open) => {
-      if (!open) {
-        setMiniMonthDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1))
-      }
-      return !open
-    })
-  }, [anchorDate])
-
-  const handleMiniSelectDate = useCallback((dateStr) => {
-    const picked = parseLocalDate(dateStr)
-    setAnchorDate(picked)
-    setMiniMonthDate(picked)
-    setPickerOpen(false)
-  }, [])
-
-  // Mini Calendar Grid (Mon-Sun) for the date-picker popover
-  const miniCalendarDays = useMemo(() => {
-    const y = miniMonthDate.getFullYear()
-    const m = miniMonthDate.getMonth()
-    const firstDay = new Date(y, m, 1)
-    const daysInMonth = new Date(y, m + 1, 0).getDate()
-    const startDayIndex = (firstDay.getDay() + 6) % 7
-    const cells = []
-
-    const pushMiniCell = (d) => {
-      const dateStr = toDateStr(d)
-      const hasEvents = (eventsByDate.get(dateStr)?.length || 0) > 0
-      const hasCampaign = getMilestonesForDate(dateStr).length > 0
-      cells.push({
-        dayNumber: d.getDate(),
-        dateStr,
-        isCurrentMonth: d.getMonth() === m,
-        isToday: dateStr === todayStr,
-        isSelected: dateStr === anchorDateStr,
-        hasActivity: hasEvents || hasCampaign,
-      })
-    }
-
-    for (let i = startDayIndex; i > 0; i--) {
-      pushMiniCell(new Date(y, m, 1 - i))
-    }
-    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
-      pushMiniCell(new Date(y, m, dayNum))
-    }
-    const totalCells = cells.length <= 35 ? 35 : 42
-    const remaining = totalCells - cells.length
-    for (let dayNum = 1; dayNum <= remaining; dayNum++) {
-      pushMiniCell(new Date(y, m + 1, dayNum))
-    }
-    return cells
-  }, [miniMonthDate, todayStr, anchorDateStr, eventsByDate, getMilestonesForDate])
 
   // Keyboard navigation: Left/Right arrows & 'T' for Today
   useEffect(() => {
@@ -635,17 +581,14 @@ export function Calendar({ onNewReview }) {
                 </button>
                 <button
                   type="button"
-                  className={cx(
-                    'calendar-today-btn',
-                    isAnchorToday && 'is-active',
-                    pickerOpen && 'is-open'
-                  )}
-                  onClick={toggleDatePicker}
+                  className={cx('calendar-today-btn', pickerOpen && 'is-open')}
+                  onClick={() => setPickerOpen((o) => !o)}
                   aria-expanded={pickerOpen}
                   aria-haspopup="dialog"
-                  title="Open mini calendar to pick a date"
+                  title="Pick a date"
                 >
-                  <span>{isAnchorToday ? 'Today' : formatReadableDate(anchorDateStr)}</span>
+                  <CalendarIcon size={13} />
+                  <span>{formatReadableDate(anchorDateStr, true)}</span>
                   <ChevronDown size={13} className={cx('calendar-today-chevron', pickerOpen && 'is-rotated')} />
                 </button>
                 <button
@@ -661,53 +604,21 @@ export function Calendar({ onNewReview }) {
 
               {pickerOpen && (
                 <div className="calendar-mini-popover" role="dialog" aria-label="Choose a date">
-                  <div className="calendar-mini-head">
-                    <button
-                      type="button"
-                      className="calendar-mini-nav"
-                      onClick={() => setMiniMonthDate((d) => addMonthsClamped(d, -1))}
-                      aria-label="Previous month"
-                    >
-                      <ChevronLeft size={14} />
-                    </button>
-                    <span className="calendar-mini-title">
-                      {MONTH_NAMES[miniMonthDate.getMonth()]} {miniMonthDate.getFullYear()}
-                    </span>
-                    <button
-                      type="button"
-                      className="calendar-mini-nav"
-                      onClick={() => setMiniMonthDate((d) => addMonthsClamped(d, 1))}
-                      aria-label="Next month"
-                    >
-                      <ChevronRight size={14} />
-                    </button>
-                  </div>
-
-                  <div className="calendar-mini-weekdays">
-                    {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((wd) => (
-                      <span key={wd}>{wd}</span>
-                    ))}
-                  </div>
-
-                  <div className="calendar-mini-grid">
-                    {miniCalendarDays.map((cell) => (
-                      <button
-                        key={cell.dateStr}
-                        type="button"
-                        className={cx(
-                          'calendar-mini-day',
-                          !cell.isCurrentMonth && 'is-outside',
-                          cell.isToday && 'is-today',
-                          cell.isSelected && 'is-selected'
-                        )}
-                        onClick={() => handleMiniSelectDate(cell.dateStr)}
-                      >
-                        <span>{cell.dayNumber}</span>
-                        {cell.hasActivity && <i className="calendar-mini-dot" aria-hidden="true" />}
-                      </button>
-                    ))}
-                  </div>
-
+                  <DayPicker
+                    mode="single"
+                    weekStartsOn={1}
+                    showOutsideDays
+                    captionLayout="dropdown"
+                    startMonth={new Date(2020, 0)}
+                    endMonth={new Date(2035, 11)}
+                    selected={anchorDate}
+                    defaultMonth={anchorDate}
+                    onSelect={(date) => {
+                      if (!date) return
+                      setAnchorDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()))
+                      setPickerOpen(false)
+                    }}
+                  />
                   <div className="calendar-mini-foot">
                     <button
                       type="button"
