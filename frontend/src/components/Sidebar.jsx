@@ -167,7 +167,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <div className="sidebar-brands-dropdown__header">
                 <div>
                   <strong>Brand Directory</strong>
-                  <p>Switch active workspace</p>
+                  <p>Switch workspace</p>
                 </div>
                 <span className="sidebar-brands-dropdown__count">{allBrands.length} brands</span>
               </div>
