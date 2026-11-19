@@ -356,7 +356,6 @@ kbd,
    3. Alpha borders (color-mix & transparent border tokens)
    4. Layered physical diffusion shadows (Multi-elevation)
    5. Origin-aware popovers & dropdowns (Anchored transform origins)
-   6. Masked scroll edges (Edge vignette linear gradient masks)
    ========================================================= */
 
 /* 1. Tabular Numbers (tnum) */
@@ -623,48 +622,6 @@ strong.metric,
 
 .palette {
   transform-origin: top center;
-}
-
-/* 6. Masked Scroll Edges (Vignette edge gradients for scroll containers) */
-.scroll-mask-x {
-  mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-}
-
-.scroll-mask-right {
-  mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 32px), transparent 100%);
-}
-
-.scroll-mask-y {
-  mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 24px), transparent 100%);
-}
-
-.scroll-mask-bottom {
-  mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 32px), transparent 100%);
-}
-
-/* Automatically apply graceful edge masking to scrollable UI containers */
-.tabs {
-  mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to right, black calc(100% - 28px), transparent 100%);
-}
-
-.sidebar-brands-dropdown__list {
-  mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 24px), transparent 100%);
-}
-
-.drawer__body {
-  mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-}
-
-.palette__body {
-  mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
-  -webkit-mask-image: linear-gradient(to bottom, black calc(100% - 28px), transparent 100%);
 }
 
 a {
