@@ -58,7 +58,9 @@ export function Sidebar({ open, onClose, onNewReview }) {
 
   const navRef = useRef(null)
   const pillRef = useRef(null)
+  const hoverPillRef = useRef(null)
   const initialRef = useRef(false)
+  const hoverInitialRef = useRef(false)
 
   const updatePill = () => {
     animateSlidingPill({
@@ -68,6 +70,40 @@ export function Sidebar({ open, onClose, onNewReview }) {
       isInitialRef: initialRef,
       isVertical: true,
     })
+  }
+
+  const handleNavItemMouseEnter = (e) => {
+    const target = e.currentTarget
+    if (!target || target.classList.contains('is-active')) {
+      if (hoverPillRef.current) {
+        animateSlidingPill({
+          containerEl: navRef.current,
+          pillEl: hoverPillRef.current,
+          targetEl: null,
+          isVertical: true,
+        })
+      }
+      return
+    }
+    animateSlidingPill({
+      containerEl: navRef.current,
+      pillEl: hoverPillRef.current,
+      targetEl: target,
+      isInitialRef: hoverInitialRef,
+      isVertical: true,
+    })
+  }
+
+  const handleNavMouseLeave = () => {
+    hoverInitialRef.current = false
+    if (hoverPillRef.current) {
+      animateSlidingPill({
+        containerEl: navRef.current,
+        pillEl: hoverPillRef.current,
+        targetEl: null,
+        isVertical: true,
+      })
+    }
   }
 
   useLayoutEffect(() => {
@@ -200,8 +236,13 @@ export function Sidebar({ open, onClose, onNewReview }) {
         </div>
       </div>
 
-      <nav className="sidebar__nav sidebar__nav--animated" ref={navRef}>
+      <nav
+        className="sidebar__nav sidebar__nav--animated"
+        ref={navRef}
+        onMouseLeave={handleNavMouseLeave}
+      >
         <div className="nav-highlight-pill" ref={pillRef} aria-hidden="true" />
+        <div className="nav-hover-pill" ref={hoverPillRef} aria-hidden="true" />
         <p className="sidebar__label">Workspace</p>
         {items.filter(item => canViewModule(item.key)).map((item) => {
           const Icon = item.icon
@@ -213,6 +254,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
               end={item.to === '/'}
               className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
               onClick={onClose}
+              onMouseEnter={handleNavItemMouseEnter}
             >
               <Icon size={18} strokeWidth={1.8} />
               <span className="reserved-bold" data-text={label}>{label}</span>
@@ -227,6 +269,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
             to="/brand-controls"
             className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
             onClick={onClose}
+            onMouseEnter={handleNavItemMouseEnter}
             title="Brand Owner Command & Access Controls"
           >
             <ShieldCheck size={18} strokeWidth={1.8} />

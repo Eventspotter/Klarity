@@ -2276,6 +2276,19 @@ ol {
   will-change: transform, width, height, opacity;
 }
 
+.nav-hover-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: rgba(246, 241, 230, 0.1);
+  border: 1px solid rgba(246, 241, 230, 0.14);
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  will-change: transform, width, height, opacity;
+}
+
 .sidebar__label {
   margin: 20px 10px 7px;
   color: rgba(246, 241, 230, 0.62);
@@ -2379,7 +2392,7 @@ ol {
 }
 
 .sidebar__nav--animated .nav-item:hover:not(.is-active) {
-  background: rgba(246, 241, 230, 0.08);
+  background: transparent;
 }
 
 .nav-item.is-active svg {
