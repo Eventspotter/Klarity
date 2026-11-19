@@ -20,6 +20,7 @@ import {
 import { useApp } from '../context/AppContext'
 import { PulseChart } from '../components/Charts'
 import { AnimatedValue } from '../components/AnimatedValue'
+import { TopPerformersCard } from '../components/TopPerformersCard'
 import { animateHorizontalBars } from '../lib/animations'
 import {
   CategoryTag,
@@ -412,6 +413,8 @@ export function Dashboard({ onNewReview }) {
             </Panel>
           </section>
 
+          <TopPerformersCard submissions={submissions} />
+
           <section className="dashboard-grid dashboard-grid--split">
             <Panel className="issues-panel" ref={issuesPanelRef}>
               <SectionHead
@@ -718,6 +721,12 @@ export function Dashboard({ onNewReview }) {
               </div>
             </Panel>
           </section>
+
+          <TopPerformersCard
+            submissions={submissions}
+            title="Team Guideline Champions"
+            subtitle="Benchmark pieces and creators leading brand adherence across the workspace"
+          />
 
           <section className="dashboard-grid dashboard-grid--split">
             <Panel className="recent-panel">

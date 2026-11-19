@@ -529,3 +529,67 @@ export function animateSlidingPill({
     })
   }
 }
+
+/**
+ * Seamless vertical bar reveal for score trajectory bars using GSAP.
+ * Staggers bar growth upwards from the bottom with spring physics and reveals score badges.
+ */
+export function animateVerticalBars(containerEl) {
+  if (!containerEl || isReducedMotion()) return () => {}
+
+  const bars = containerEl.querySelectorAll('.forge-bar-fill')
+  const scores = containerEl.querySelectorAll('.forge-bar-score')
+  const meters = containerEl.querySelectorAll('.forge-runner-meter-fill')
+  if (!bars.length && !meters.length) return () => {}
+
+  const ctx = gsap.context(() => {
+    if (bars.length) {
+      gsap.fromTo(
+        bars,
+        { scaleY: 0, opacity: 0.15 },
+        {
+          scaleY: 1,
+          opacity: 1,
+          duration: 0.6,
+          stagger: 0.045,
+          ease: 'back.out(1.4)',
+          transformOrigin: 'bottom center',
+          clearProps: 'opacity',
+        }
+      )
+    }
+
+    if (scores.length) {
+      gsap.fromTo(
+        scores,
+        { opacity: 0, y: 5 },
+        {
+          opacity: 1,
+          y: 0,
+          duration: 0.35,
+          stagger: 0.045,
+          delay: 0.15,
+          ease: 'power2.out',
+          clearProps: 'transform,opacity',
+        }
+      )
+    }
+
+    if (meters.length) {
+      gsap.fromTo(
+        meters,
+        { scaleX: 0 },
+        {
+          scaleX: 1,
+          duration: 0.55,
+          stagger: 0.05,
+          ease: 'power2.out',
+          transformOrigin: 'left center',
+        }
+      )
+    }
+  }, containerEl)
+
+  return () => ctx.revert()
+}
+

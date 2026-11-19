@@ -6,3 +6,5 @@ export { ShimmerText } from './ShimmerText';
 export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './Card';
 export { CodeBlock } from './CodeBlock';
 export { TokenStream } from './TokenStream';
+export { StatsCard, TopPerformersCard } from './StatsCard';
+
