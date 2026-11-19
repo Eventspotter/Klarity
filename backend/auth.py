@@ -5,7 +5,9 @@ import hmac
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -67,23 +69,75 @@ def seed_test_account():
 
 
 def check_origin(request: Request):
-    sec_fetch_site = request.headers.get("sec-fetch-site")
-    if sec_fetch_site == "cross-site":
-        raise HTTPException(403, "Cross-site request blocked by resource isolation policy")
     origin = request.headers.get("origin")
-    if origin and origin not in CORS_ORIGINS and origin != str(request.base_url).rstrip("/"):
+    if not origin:
+        return
+    origin_clean = origin.rstrip("/")
+    allowed = {o.rstrip("/") for o in CORS_ORIGINS}
+    if (
+        origin_clean in allowed
+        or origin_clean == str(request.base_url).rstrip("/")
+        or origin_clean.endswith(".onrender.com")
+        or origin_clean.startswith("http://localhost:")
+        or origin_clean.startswith("http://127.0.0.1:")
+    ):
+        return
+    sec_fetch_site = request.headers.get("sec-fetch-site")
+    if sec_fetch_site == "cross-site" or origin:
         raise HTTPException(403, "Origin not allowed")
+
+
+_SESSION_CACHE: dict[str, tuple[float, SimpleNamespace]] = {}
+_SESSION_TTL_SECONDS = 30.0
+
+
+def _cache_account(token_hash: str, account, session_expires_at: datetime) -> SimpleNamespace:
+    snapshot = SimpleNamespace(
+        id=account.id,
+        username=account.username,
+        email=account.email,
+        role=getattr(account, "role", "owner") or "owner",
+        is_approved=getattr(account, "is_approved", True),
+    )
+    remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
+    ttl = min(_SESSION_TTL_SECONDS, remaining)
+    if ttl > 0:
+        if len(_SESSION_CACHE) > 512:
+            _SESSION_CACHE.clear()
+        _SESSION_CACHE[token_hash] = (time.monotonic() + ttl, snapshot)
+    return snapshot
 
 
 def current_account(request: Request, db: Session = Depends(get_db)):
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request)
-    token = request.cookies.get("klarity_session", "")
-    session = db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest()) if token else None
-    account = db.get(Account, session.account_id) if session and session.expires_at > datetime.utcnow() else None
-    if not account:
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    if not token:
+        token = request.cookies.get("klarity_session", "")
+    if not token:
         raise HTTPException(401, "Sign in to continue")
-    return account
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    cached = _SESSION_CACHE.get(token_hash)
+    if cached:
+        if cached[0] > time.monotonic():
+            return cached[1]
+        _SESSION_CACHE.pop(token_hash, None)
+
+    now = datetime.utcnow()
+    row = (
+        db.query(Account, LoginSession.expires_at)
+        .join(LoginSession, LoginSession.account_id == Account.id)
+        .filter(LoginSession.token_hash == token_hash, LoginSession.expires_at > now)
+        .first()
+    )
+    if not row:
+        raise HTTPException(401, "Sign in to continue")
+    account, expires_at = row
+    return _cache_account(token_hash, account, expires_at)
 
 
 def public_account(account):
@@ -98,16 +152,35 @@ def public_account(account):
 
 def start_session(account, request, response, db):
     old_token = request.cookies.get("klarity_session")
+    auth_header = request.headers.get("Authorization", "")
+    if not old_token and auth_header.startswith("Bearer "):
+        old_token = auth_header[7:].strip()
     if old_token:
-        db.query(LoginSession).filter_by(token_hash=hashlib.sha256(old_token.encode()).hexdigest()).delete()
-    db.query(LoginSession).filter(LoginSession.expires_at <= datetime.utcnow()).delete()
+        old_hash = hashlib.sha256(old_token.encode()).hexdigest()
+        _SESSION_CACHE.pop(old_hash, None)
+        db.query(LoginSession).filter_by(token_hash=old_hash).delete()
+    now = datetime.utcnow()
+    db.query(LoginSession).filter(LoginSession.expires_at <= now).delete()
     token = secrets.token_urlsafe(32)
-    db.add(LoginSession(token_hash=hashlib.sha256(token.encode()).hexdigest(), account_id=account.id,
-                        expires_at=datetime.utcnow() + timedelta(days=1)))
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    expires_at = now + timedelta(days=1)
+    db.add(LoginSession(token_hash=token_hash, account_id=account.id, expires_at=expires_at))
     db.commit()
-    response.set_cookie("klarity_session", token, httponly=True, samesite="lax",
-                        secure=os.getenv("COOKIE_SECURE", "false").lower() == "true", max_age=86400, path="/")
-    return public_account(account)
+    _cache_account(token_hash, account, expires_at)
+    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    samesite_val = "none" if is_secure else "lax"
+    response.set_cookie(
+        "klarity_session",
+        token,
+        httponly=True,
+        samesite=samesite_val,
+        secure=is_secure,
+        max_age=86400,
+        path="/",
+    )
+    res = public_account(account)
+    res["token"] = token
+    return res
 
 
 class RegisterRequest(BaseModel):
@@ -318,8 +391,18 @@ def me(account: Account = Depends(current_account)):
 
 @router.post("/logout", status_code=204)
 def logout(request: Request, response: Response, db: Session = Depends(get_db)):
-    token = request.cookies.get("klarity_session", "")
-    db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
-    db.commit()
-    response.delete_cookie("klarity_session", path="/")
+    auth_header = request.headers.get("Authorization", "")
+    token = ""
+    if auth_header.startswith("Bearer "):
+        token = auth_header[7:].strip()
+    if not token:
+        token = request.cookies.get("klarity_session", "")
+    if token:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        _SESSION_CACHE.pop(token_hash, None)
+        db.query(LoginSession).filter_by(token_hash=token_hash).delete()
+        db.commit()
+    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    samesite_val = "none" if is_secure else "lax"
+    response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'

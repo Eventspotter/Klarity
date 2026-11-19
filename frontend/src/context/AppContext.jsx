@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { api } from '../lib/api'
+import { api, getStoredToken, setStoredToken } from '../lib/api'
 
 const AppContext = createContext(null)
 
@@ -27,12 +27,44 @@ const DEFAULT_VISIBILITY = {
 }
 
 const VISIBILITY_STORAGE_KEY = 'klarity_role_visibility_matrix.v1'
+const CACHE_STORAGE_KEY = 'klarity_workspace_cache.v1'
+
+function readCachedWorkspace() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_STORAGE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (parsed?.user && parsed?.data) return parsed
+  } catch {
+    // ignore cache errors
+  }
+  return null
+}
+
+function writeCachedWorkspace(user, data) {
+  try {
+    if (user && data) {
+      sessionStorage.setItem(CACHE_STORAGE_KEY, JSON.stringify({ user, data, ts: Date.now() }))
+    }
+  } catch {
+    // ignore quota errors
+  }
+}
+
+function clearCachedWorkspace() {
+  try {
+    sessionStorage.removeItem(CACHE_STORAGE_KEY)
+  } catch {
+    // ignore storage errors
+  }
+}
 
 export function AppProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [data, setData] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [connected, setConnected] = useState(false)
+  const initialCache = useRef(readCachedWorkspace()).current
+  const [user, setUser] = useState(() => initialCache?.user ?? null)
+  const [data, setData] = useState(() => initialCache?.data ?? null)
+  const [loading, setLoading] = useState(() => !(initialCache?.user && initialCache?.data))
+  const [connected, setConnected] = useState(() => Boolean(initialCache?.data))
   const [currentRole, setCurrentRole] = useState(() => localStorage.getItem('klarity_role') || 'owner')
   const [visibilitySettings, setVisibilitySettings] = useState(() => {
     try {
@@ -58,45 +90,84 @@ export function AppProvider({ children }) {
     timers.current.delete(id)
     setToasts(items => items.filter(item => item.id !== id))
   }
-  const refresh = useCallback(async () => {
+  const fetchPendingCount = useCallback((account) => {
+    const r = (account?.role || '').toLowerCase()
+    if (r === 'owner' || r === 'admin') {
+      api.pendingAccounts().then(accs => {
+        if (Array.isArray(accs)) setPendingApprovalsCount(accs.length)
+      }).catch(() => {})
+    }
+  }, [])
+  const refresh = useCallback(async (accountOverride) => {
     try {
       const payload = await api.bootstrap()
       setData(payload)
       setConnected(true)
-      api.pendingAccounts().then(accs => {
-        if (Array.isArray(accs)) setPendingApprovalsCount(accs.length)
-      }).catch(() => {})
+      const activeUser = accountOverride || user
+      if (activeUser) {
+        writeCachedWorkspace(activeUser, payload)
+        fetchPendingCount(activeUser)
+      }
       return payload
     } catch (error) {
       setConnected(false)
-      if (error.status === 401) { setUser(null); setData(null) }
+      if (error.status === 401) {
+        setStoredToken(null)
+        clearCachedWorkspace()
+        setUser(null)
+        setData(null)
+      }
       throw error
     }
-  }, [])
+  }, [user, fetchPendingCount])
   useEffect(() => {
     let alive = true
-    api.me().then(async account => {
-      if (!alive) return
-      setUser(account)
-      await refresh()
-    }).catch(error => {
-      if (alive && error.status !== 401) toast('Cannot reach the workspace. Please try again.', 'warn')
-    }).finally(() => { if (alive) setLoading(false) })
+    Promise.all([api.me(), api.bootstrap()])
+      .then(([account, payload]) => {
+        if (!alive) return
+        setUser(account)
+        setData(payload)
+        setConnected(true)
+        writeCachedWorkspace(account, payload)
+        fetchPendingCount(account)
+      })
+      .catch(error => {
+        if (!alive) return
+        if (error.status === 401) {
+          setStoredToken(null)
+          clearCachedWorkspace()
+          setUser(null)
+          setData(null)
+          setConnected(false)
+        } else {
+          toast('Cannot reach the workspace. Please try again.', 'warn')
+        }
+      })
+      .finally(() => { if (alive) setLoading(false) })
     return () => {
       alive = false
       timers.current.forEach(clearTimeout)
     }
-  }, [refresh, toast])
+  }, [toast, fetchPendingCount])
   const authenticate = async (mode, payload) => {
     const account = await api[mode](payload)
+    if (account?.token) {
+      setStoredToken(account.token)
+    }
     setUser(account)
-    await refresh()
+    const bootstrapPayload = await refresh(account)
+    writeCachedWorkspace(account, bootstrapPayload)
   }
   const logout = async () => {
-    await api.logout()
-    setUser(null)
-    setData(null)
-    setConnected(false)
+    try {
+      await api.logout()
+    } finally {
+      setStoredToken(null)
+      clearCachedWorkspace()
+      setUser(null)
+      setData(null)
+      setConnected(false)
+    }
   }
   const mutate = async (operation, message) => {
     try {
@@ -105,7 +176,12 @@ export function AppProvider({ children }) {
       toast(message)
       return result
     } catch (error) {
-      if (error.status === 401) { setUser(null); setData(null) }
+      if (error.status === 401) {
+        setStoredToken(null)
+        clearCachedWorkspace()
+        setUser(null)
+        setData(null)
+      }
       toast(error.message, 'warn')
       throw error
     }
