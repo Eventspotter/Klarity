@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   Bell,
   Check,
@@ -23,6 +23,7 @@ import { useApp } from '../context/AppContext'
 import { Avatar, Button, Field, Panel, SectionHead, Select } from '../components/UI'
 import { cx } from '../lib/utils'
 import { api } from '../lib/api'
+import { animateSlidingPill } from '../lib/animations'
 
 const STORAGE_KEY = 'klarity.settings.v1'
 
@@ -79,6 +80,45 @@ export function Settings() {
   const [pendingAccounts, setPendingAccounts] = useState([])
   const [brandCode, setBrandCode] = useState('KLARITY-2026')
   const [loadingPending, setLoadingPending] = useState(false)
+  const [activeSection, setActiveSection] = useState('workspace')
+  const navRef = useRef(null)
+  const pillRef = useRef(null)
+  const initialPillRef = useRef(false)
+
+  // Scrollspy: update activeSection based on window scroll
+  useEffect(() => {
+    const sectionIds = ['workspace', 'review-defaults', 'notifications', 'team', 'role-visibility', 'ai-disclosure']
+    const handleScroll = () => {
+      const scrollY = window.scrollY + 130
+      let current = sectionIds[0]
+      for (const id of sectionIds) {
+        const el = document.getElementById(id)
+        if (el) {
+          const top = el.offsetTop
+          if (scrollY >= top) {
+            current = id
+          }
+        }
+      }
+      setActiveSection(current)
+    }
+
+    window.addEventListener('scroll', handleScroll, { passive: true })
+    handleScroll()
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  // Animate sliding pill whenever activeSection changes
+  useLayoutEffect(() => {
+    if (!navRef.current || !pillRef.current) return
+    animateSlidingPill({
+      containerEl: navRef.current,
+      pillEl: pillRef.current,
+      activeSelector: '.settings-nav a.is-active',
+      isInitialRef: initialPillRef,
+      isVertical: true,
+    })
+  }, [activeSection])
 
   const fetchPending = async () => {
     try {
@@ -185,13 +225,26 @@ export function Settings() {
       </section>
 
       <div className="settings-layout">
-        <nav className="settings-nav" aria-label="Settings sections">
-          <a href="#workspace"><Globe size={15} /> Workspace</a>
-          <a href="#review-defaults"><SlidersHorizontal size={15} /> Review defaults</a>
-          <a href="#notifications"><Bell size={15} /> Notifications</a>
-          <a href="#team"><Users size={15} /> Team</a>
-          <a href="#role-visibility"><ShieldAlert size={15} /> Role Viewability Matrix</a>
-          <a href="#ai-disclosure"><ShieldCheck size={15} /> AI &amp; Confidentiality</a>
+        <nav className="settings-nav" aria-label="Settings sections" ref={navRef}>
+          <div className="nav-highlight-pill" ref={pillRef} aria-hidden="true" />
+          <a href="#workspace" className={cx(activeSection === 'workspace' && 'is-active')}>
+            <Globe size={15} /> <span>Workspace</span>
+          </a>
+          <a href="#review-defaults" className={cx(activeSection === 'review-defaults' && 'is-active')}>
+            <SlidersHorizontal size={15} /> <span>Review defaults</span>
+          </a>
+          <a href="#notifications" className={cx(activeSection === 'notifications' && 'is-active')}>
+            <Bell size={15} /> <span>Notifications</span>
+          </a>
+          <a href="#team" className={cx(activeSection === 'team' && 'is-active')}>
+            <Users size={15} /> <span>Team</span>
+          </a>
+          <a href="#role-visibility" className={cx(activeSection === 'role-visibility' && 'is-active')}>
+            <ShieldAlert size={15} /> <span>Role Viewability Matrix</span>
+          </a>
+          <a href="#ai-disclosure" className={cx(activeSection === 'ai-disclosure' && 'is-active')}>
+            <ShieldCheck size={15} /> <span>AI &amp; Confidentiality</span>
+          </a>
         </nav>
 
         <div className="settings-content">

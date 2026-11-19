@@ -5,13 +5,11 @@ import {
   Calendar,
   ChartNoAxesCombined,
   FileClock,
-  HelpCircle,
   Images,
   LayoutDashboard,
   LifeBuoy,
   Lock,
   Settings,
-  ShieldCheck,
   Sparkles,
 } from 'lucide-react'
 import { BrandMark } from './BrandMark'
@@ -31,7 +29,7 @@ const items = [
 ]
 
 export function Sidebar({ open, onClose, onNewReview }) {
-  const { data, toast, isLead, currentUser, canViewModule, isOwner, pendingApprovalsCount } = useApp()
+  const { data, toast, isLead, currentUser, canViewModule } = useApp()
   const location = useLocation()
   const queue = isLead
     ? (data?.stats?.pending_reviews ?? 0)
@@ -119,32 +117,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
         })}
 
         <p className="sidebar__label sidebar__label--second">Manage</p>
-        {isOwner && (
-          <NavLink
-            to="/settings#team"
-            className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
-            onClick={onClose}
-            title="Brand Owner Access Governance & User Confirmations"
-          >
-            <ShieldCheck size={18} strokeWidth={1.8} />
-            <span>Brand Owner Control</span>
-            {pendingApprovalsCount > 0 && (
-              <span
-                className="nav-item__badge"
-                style={{
-                  background: '#ef4444',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '10.5px',
-                  minWidth: '18px',
-                  height: '18px',
-                }}
-              >
-                {pendingApprovalsCount}
-              </span>
-            )}
-          </NavLink>
-        )}
         {canViewModule('settings') && (
           <NavLink
             to="/settings"

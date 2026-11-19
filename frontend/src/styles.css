@@ -6157,9 +6157,26 @@ kbd {
   background: rgba(251, 248, 241, 0.55);
   border: 1px solid var(--line);
   border-radius: 13px;
+  isolation: isolate;
+}
+
+.settings-nav .nav-highlight-pill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 1;
+  background: #ffffff;
+  border-radius: 8px;
+  border: 1px solid rgba(169, 122, 50, 0.22);
+  box-shadow: 0 4px 12px -2px rgba(59, 36, 24, 0.09), 0 1px 3px rgba(0, 0, 0, 0.05);
+  opacity: 0;
+  will-change: transform, width, height, opacity;
 }
 
 .settings-nav a {
+  position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6168,16 +6185,26 @@ kbd {
   border-radius: 8px;
   font-size: 11px;
   font-weight: 700;
-  transition: background 140ms var(--ease-out), color 140ms var(--ease-out);
+  transition: color 180ms var(--ease-out);
 }
 
 .settings-nav a:hover {
   color: var(--ink);
-  background: var(--sage-wash);
+}
+
+.settings-nav a.is-active {
+  color: var(--ink);
+  font-weight: 800;
+}
+
+.settings-nav a.is-active svg {
+  color: var(--sage, #298ee4);
+  opacity: 1;
 }
 
 .settings-nav a svg {
   opacity: 0.7;
+  transition: color 180ms var(--ease-out), opacity 180ms var(--ease-out);
 }
 
 .settings-content {
