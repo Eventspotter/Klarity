@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Lock,
+  Settings,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
@@ -125,7 +126,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
             title="Brand Owner Command & Access Controls"
           >
             <ShieldCheck size={18} strokeWidth={1.8} />
-            <span>Brand Owner Control</span>
+            <span>Brand Owner Controls</span>
             {pendingApprovalsCount > 0 && isOwner && (
               <span
                 className="nav-item__badge"
@@ -144,12 +145,12 @@ export function Sidebar({ open, onClose, onNewReview }) {
           </NavLink>
         )}
         <NavLink
-          to="/hero"
+          to="/settings"
           className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
           onClick={onClose}
         >
-          <Sparkles size={18} strokeWidth={1.8} />
-          <span>Product overview</span>
+          <Settings size={18} strokeWidth={1.8} />
+          <span>Settings</span>
         </NavLink>
         <a
           href="#help-docs"
