@@ -13,7 +13,7 @@ const pageRoutes = [
   { label: 'Guidelines', path: '/guidelines', description: 'The source of truth' },
   { label: 'Brand assets', path: '/assets', description: 'Logo, palette, type, campaign plates' },
   { label: 'Insights', path: '/insights', description: 'Patterns and governance signals' },
-  { label: 'Settings', path: '/settings', description: 'Workspace and review defaults' },
+  { label: 'Brand Owner Control', path: '/brand-controls', description: 'Brand identity, review defaults, and access governance' },
 ]
 
 export function CommandPalette({ open, onClose }) {

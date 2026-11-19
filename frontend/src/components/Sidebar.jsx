@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Lock,
-  Settings,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
@@ -118,7 +117,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
         })}
 
         <p className="sidebar__label sidebar__label--second">Manage</p>
-        {isOwner && (
+        {(isOwner || canViewModule('brandControls')) && (
           <NavLink
             to="/brand-controls"
             className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
@@ -127,7 +126,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
           >
             <ShieldCheck size={18} strokeWidth={1.8} />
             <span>Brand Owner Control</span>
-            {pendingApprovalsCount > 0 && (
+            {pendingApprovalsCount > 0 && isOwner && (
               <span
                 className="nav-item__badge"
                 style={{
@@ -142,17 +141,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
                 {pendingApprovalsCount}
               </span>
             )}
-          </NavLink>
-        )}
-        {canViewModule('settings') && (
-          <NavLink
-            to="/settings"
-            end
-            className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
-            onClick={onClose}
-          >
-            <Settings size={18} strokeWidth={1.8} />
-            <span>Settings</span>
           </NavLink>
         )}
         <NavLink

@@ -12,7 +12,7 @@ const DEFAULT_VISIBILITY = {
     guidelines: true,
     assets: true,
     insights: true,
-    settings: true,
+    brandControls: true,
   },
   member: {
     overview: true,
@@ -22,7 +22,7 @@ const DEFAULT_VISIBILITY = {
     guidelines: true,
     assets: true,
     insights: false,
-    settings: false,
+    brandControls: false,
   },
 }
 

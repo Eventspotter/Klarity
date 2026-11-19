@@ -13,7 +13,7 @@ import {
   Menu,
   Plus,
   Search,
-  Settings,
+  ShieldCheck,
   Sparkles,
   X,
 } from 'lucide-react'
@@ -51,7 +51,7 @@ const titles = [
   ['/guidelines', 'Guidelines'],
   ['/assets', 'Brand assets'],
   ['/insights', 'Insights'],
-  ['/settings', 'Settings'],
+  ['/brand-controls', 'Brand Owner Control'],
 ]
 
 const kindIcon = {
@@ -289,8 +289,8 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                     <FileClock size={15} /> Review Desk
                   </button>
                 )}
-                <button onClick={() => { setOpenMenu(null); navigate('/settings') }}>
-                  <Settings size={15} /> Workspace settings
+                <button onClick={() => { setOpenMenu(null); navigate('/brand-controls') }}>
+                  <ShieldCheck size={15} /> Brand Owner Control
                 </button>
                 <button onClick={() => { setOpenMenu(null); navigate('/hero') }}>
                   <Sparkles size={15} /> Product overview

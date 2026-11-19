@@ -15,7 +15,6 @@ const loadGuidelines = () => import('./pages/Guidelines')
 const loadAssets = () => import('./pages/Assets')
 const loadInsights = () => import('./pages/Insights')
 const loadCalendar = () => import('./pages/Calendar')
-const loadSettings = () => import('./pages/Settings')
 const loadBrandControls = () => import('./pages/BrandControls')
 const loadHero = () => import('./pages/Hero')
 const loadLogin = () => import('./pages/Login')
@@ -29,7 +28,6 @@ const Guidelines = lazy(() => loadGuidelines().then((m) => ({ default: m.Guideli
 const Assets = lazy(() => loadAssets().then((m) => ({ default: m.Assets })))
 const Insights = lazy(() => loadInsights().then((m) => ({ default: m.Insights })))
 const Calendar = lazy(() => loadCalendar().then((m) => ({ default: m.Calendar })))
-const Settings = lazy(() => loadSettings().then((m) => ({ default: m.Settings })))
 const BrandControls = lazy(() => loadBrandControls().then((m) => ({ default: m.BrandControls })))
 const Hero = lazy(() => loadHero().then((m) => ({ default: m.Hero })))
 const Login = lazy(() => loadLogin().then((m) => ({ default: m.Login })))
@@ -79,7 +77,6 @@ function AppShell() {
       loadAssets()
       loadInsights()
       loadCreatorStudio()
-      loadSettings()
       loadBrandControls()
       loadReviewDetail()
       loadNewReviewDrawer()
@@ -144,7 +141,7 @@ function AppShell() {
                 <Route path="/insights" element={<Insights />} />
                 <Route path="/calendar" element={<Calendar onNewReview={() => setReviewOpen(true)} />} />
                 <Route path="/brand-controls" element={<BrandControls />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/settings" element={<Navigate to="/brand-controls" replace />} />
                 <Route path="/hero" element={<Hero />} />
                 <Route path="/login" element={<Login />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
