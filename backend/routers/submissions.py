@@ -182,3 +182,44 @@ def rewrite_copy(
         guidelines_text=gl_summary,
     )
     return RewriteResponse(rewritten_text=rewritten)
+
+
+@router.post("/{submission_id}/re-evaluate", response_model=ContentSubmissionDetail)
+def reevaluate_submission(
+    submission_id: int,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+) -> ContentSubmission:
+    """Trigger AI generation of the review report score and analysis for this submission."""
+    if getattr(account, "role", "member") not in ("owner", "admin", "lead"):
+        raise HTTPException(403, "Only Brand Owners and Admins can trigger AI score generation.")
+
+    submission = _submission(db, submission_id)
+    result = analyse_content(db, submission.title, submission.content_text, submission.content_type)
+
+    report = ReviewReport(
+        submission=submission,
+        overall_score=result.score,
+        summary=result.summary,
+        created_at=datetime.utcnow(),
+    )
+    db.add(report)
+    db.flush()
+
+    for issue in result.issues:
+        db.add(
+            ReviewIssue(
+                report=report,
+                severity=issue.severity,
+                category=issue.category,
+                title=issue.title,
+                description=issue.description,
+                evidence=issue.evidence,
+                suggested_fix=issue.suggested_fix,
+                guideline_id=issue.guideline_id,
+            )
+        )
+
+    db.commit()
+    invalidate_bootstrap_cache()
+    return _submission(db, submission.id)

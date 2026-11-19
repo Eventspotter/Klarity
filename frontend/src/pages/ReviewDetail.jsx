@@ -144,6 +144,7 @@ export function ReviewDetail() {
   const [expanded, setExpanded] = useState(null)
   const [comment, setComment] = useState('')
   const [busy, setBusy] = useState(null)
+  const [evaluating, setEvaluating] = useState(false)
   const [error, setError] = useState('')
   const commentRef = useRef(null)
   const reportPanelRef = useRef(null)
@@ -210,6 +211,22 @@ export function ReviewDetail() {
       toast('Suggested fix copied to the clipboard.')
     } catch {
       toast('Could not access the clipboard in this browser.', 'warn')
+    }
+  }
+
+  const handleReevaluate = async () => {
+    if (!submission?.id || evaluating) return
+    setEvaluating(true)
+    try {
+      const updated = await api.reevaluateSubmission(submission.id)
+      if (updated) {
+        setRemoteSubmission(updated)
+        toast?.('Completed', 'good')
+      }
+    } catch (err) {
+      toast?.(err.message || 'AI score generation failed.', 'warn')
+    } finally {
+      setEvaluating(false)
     }
   }
 
@@ -303,9 +320,23 @@ export function ReviewDetail() {
                   /100
                 </p>
               </div>
-              <span className={cx('report-status', `tone-${status.tone}`)}>
-                <span /> {status.label}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {isLead ? (
+                  <button
+                    type="button"
+                    className="btn-ai-generate-score"
+                    onClick={handleReevaluate}
+                    disabled={evaluating}
+                    title="Generate an AI Brand Compliance score and audit with Gemini"
+                  >
+                    <Sparkles size={13} className={evaluating ? 'animate-spin' : ''} />
+                    {evaluating ? 'Analyzing...' : 'AI Score'}
+                  </button>
+                ) : null}
+                <span className={cx('report-status', `tone-${status.tone}`)}>
+                  <span /> {status.label}
+                </span>
+              </div>
             </div>
 
             {report ? (
@@ -416,9 +447,6 @@ export function ReviewDetail() {
                   <div className="decision-block">
                     <div className="decision-block__head">
                       <h3>Your decision</h3>
-                      <span>
-                        <ShieldCheck size={14} /> Human approval required
-                      </span>
                     </div>
                     <label htmlFor="review-comment">Reviewer note</label>
                     <textarea
