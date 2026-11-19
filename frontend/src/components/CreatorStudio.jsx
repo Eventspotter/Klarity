@@ -132,7 +132,6 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
       return
     }
     setRewriting(true)
-    toast?.('Asking Gemini AI to rewrite draft to align with brand guidelines...', 'info')
     try {
       const res = await api.rewriteCopy({
         text: draftText,
@@ -140,14 +139,15 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
       })
       if (res?.rewritten_text) {
         setDraftText(res.rewritten_text)
-        toast?.('AI Rewrite complete! Draft updated with on-brand phrasing.', 'good')
+        toast?.('Completed', 'good')
       } else {
         handleFixAll()
+        toast?.('Completed', 'good')
       }
     } catch (err) {
       // Graceful fallback to instant local rule fix
       handleFixAll()
-      toast?.('Applied on-brand phrasing rewrite.', 'good')
+      toast?.('Completed', 'good')
     } finally {
       setRewriting(false)
     }
