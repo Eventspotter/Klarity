@@ -184,6 +184,12 @@ export function Sidebar({ open, onClose, onNewReview }) {
                       key={bName}
                       className={cx('sidebar-brand-item', isActive && 'is-active')}
                       onClick={() => handleSelectBrand(brand)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleSelectBrand(brand)
+                        }
+                      }}
                       role="menuitem"
                       tabIndex={0}
                     >

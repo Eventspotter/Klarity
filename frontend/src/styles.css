@@ -2171,6 +2171,8 @@ ol {
   gap: 3px;
   max-height: 280px;
   overflow-y: auto;
+  padding: 3px;
+  margin: -3px;
 }
 
 .sidebar-brand-item {
@@ -2192,6 +2194,17 @@ ol {
   border-color: rgba(246, 241, 230, 0.08);
 }
 
+.sidebar-brand-item:focus {
+  outline: none;
+}
+
+.sidebar-brand-item:focus-visible {
+  outline: 2px solid var(--sage, #298ee4);
+  outline-offset: -2px;
+  background: rgba(41, 142, 228, 0.16);
+  border-color: rgba(41, 142, 228, 0.45);
+}
+
 .sidebar-brand-item.is-active {
   background: rgba(41, 142, 228, 0.14);
   border-color: rgba(41, 142, 228, 0.35);
@@ -2200,6 +2213,13 @@ ol {
 .sidebar-brand-item.is-active:hover {
   background: rgba(41, 142, 228, 0.18);
   border-color: rgba(41, 142, 228, 0.45);
+}
+
+.sidebar-brand-item.is-active:focus-visible {
+  outline: 2px solid #38bdf8;
+  outline-offset: -2px;
+  background: rgba(41, 142, 228, 0.22);
+  border-color: rgba(41, 142, 228, 0.6);
 }
 
 .sidebar-brand-item__mark {
