@@ -126,8 +126,9 @@ def analyze_with_llm(
     if not api_key:
         return None
 
-    # Google Gemini 2.0 Flash REST endpoint
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+    # Google Gemini 3.5 Flash Lite REST endpoint (ultra-fast, zero-OOM)
+    model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
 
     prompt = f"""You are the Chief Brand Governance Auditor for {brand_name}.
 Core Brand Values: {brand_values}
@@ -175,7 +176,8 @@ Respond STRICTLY with valid JSON following this exact schema:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
-        with urllib.request.urlopen(req, timeout=5.0) as resp:
+        timeout_sec = float(os.getenv("GEMINI_TIMEOUT", "12.0"))
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             data = json.loads(resp.read().decode("utf-8"))
             text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
             return json.loads(text_resp)
