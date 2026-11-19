@@ -138,9 +138,11 @@ export function Settings() {
           <p>Workspace identity, review defaults, and the people who make the final call.</p>
         </div>
         <div className="page-head__actions">
-          <span className={cx('settings-saved', saved && 'is-saved')}>
-            {saved ? <><Check size={14} /> Saved locally</> : isLead ? 'Demo workspace settings' : 'Member view-only'}
-          </span>
+          {(saved || !isLead) && (
+            <span className={cx('settings-saved', saved && 'is-saved')}>
+              {saved ? <><Check size={14} /> Saved</> : 'Member view-only'}
+            </span>
+          )}
           {isLead ? (
             <Button icon={Save} onClick={save}>
               Save changes
@@ -694,7 +696,7 @@ export function Settings() {
               <span>Questions? The workspace owner is {currentUser}.</span>
             </div>
             <span className="settings-foot__version">
-              <Clock3 size={14} /> Klarity v0.1 · demo
+              <Clock3 size={14} /> Klarity v0.1
             </span>
           </div>
         </div>
