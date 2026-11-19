@@ -1975,6 +1975,12 @@ ol {
   background: linear-gradient(180deg, #362217 0%, #1f130b 100%);
   border-right: 1px solid rgba(246, 241, 230, 0.08);
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar__top {
@@ -2102,8 +2108,11 @@ ol {
 
 /* Sidebar Brand Directory Dropdown */
 .sidebar-brands-dropdown {
-  margin-top: 6px;
-  margin-bottom: 8px;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 80;
   padding: 8px;
   background: var(--brown-surface, #2b1b13);
   border: 1px solid rgba(246, 241, 230, 0.14);
