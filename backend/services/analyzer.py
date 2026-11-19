@@ -105,6 +105,85 @@ def _issue(
     )
 
 
+def analyze_with_llm(
+    title: str,
+    content_text: str,
+    content_type: str,
+    guidelines_text: str,
+    brand_name: str = "Aster & Oak",
+    brand_values: str = "Authenticity, craft, sustainability, quiet confidence",
+) -> Optional[dict]:
+    """
+    Zero-overhead, ultra-fast LLM auditor using standard library urllib.
+    Zero memory footprint, zero extra pip packages, strictly bounded by a 5-second timeout.
+    """
+    import json
+    import os
+    import urllib.request
+    import urllib.error
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if not api_key:
+        return None
+
+    # Google Gemini 2.0 Flash REST endpoint
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}"
+
+    prompt = f"""You are the Chief Brand Governance Auditor for {brand_name}.
+Core Brand Values: {brand_values}
+
+Active Workspace Guidelines:
+{guidelines_text}
+
+Content under Review:
+Title: {title}
+Type: {content_type}
+Body:
+'''{content_text}'''
+
+Audit this copy strictly against the brand guidelines and core values.
+Look for tone mismatches, unsubstantiated claims, non-inclusive wording, terminology deviations, or accessibility oversights.
+Respond STRICTLY with valid JSON following this exact schema:
+{{
+  "score": <float between 42.0 and 99.0>,
+  "summary": "<Concise 1-2 sentence executive assessment of brand compliance>",
+  "issues": [
+    {{
+      "severity": "critical" | "warning" | "suggestion",
+      "category": "tone" | "facts" | "terminology" | "visual",
+      "title": "<Short issue title>",
+      "description": "<Why this violates brand governance>",
+      "evidence": "<Exact snippet from the copy>",
+      "suggested_fix": "<Constructive, actionable rewrite preserving creator intent>",
+      "guideline_title": "<Name of relevant guideline>"
+    }}
+  ]
+}}"""
+
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "responseMimeType": "application/json",
+            "temperature": 0.2,
+        },
+    }
+
+    try:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=5.0) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
+            return json.loads(text_resp)
+    except Exception as err:
+        print(f"[LLM Analyzer] Fallback to deterministic rule engine: {err}")
+        return None
+
+
 def analyse_content(
     db: Session,
     title: str,
@@ -114,6 +193,39 @@ def analyse_content(
     """Review a piece of content against the live guideline library."""
 
     guidelines = db.query(BrandGuideline).order_by(BrandGuideline.priority.desc()).all()
+
+    # 1. Zero-RAM Fast LLM analysis (when GEMINI_API_KEY is configured)
+    guidelines_summary = "\n".join([f"- [{g.category.value}] {g.title}: {g.content}" for g in guidelines])
+    llm_output = analyze_with_llm(title, content_text, content_type.value, guidelines_summary)
+
+    if llm_output and "issues" in llm_output:
+        parsed_issues: list[AnalysedIssue] = []
+        for i in llm_output.get("issues", []):
+            try:
+                matched_g = _find_guideline(guidelines, title_hint=i.get("guideline_title"))
+                parsed_issues.append(
+                    AnalysedIssue(
+                        severity=IssueSeverity(i.get("severity", "warning")),
+                        category=IssueCategory(i.get("category", "tone")),
+                        title=i.get("title", "Guideline Deviation"),
+                        description=i.get("description", ""),
+                        evidence=i.get("evidence", ""),
+                        suggested_fix=i.get("suggested_fix", ""),
+                        guideline_title=matched_g.title if matched_g else i.get("guideline_title"),
+                        guideline_id=matched_g.id if matched_g else None,
+                    )
+                )
+            except Exception:
+                continue
+
+        score = max(42.0, min(99.0, float(llm_output.get("score", 85.0))))
+        return AnalysisResult(
+            score=score,
+            summary=llm_output.get("summary", "Brand compliance review complete."),
+            issues=parsed_issues,
+        )
+
+    # 2. Local Rule-Engine Fallback (runs if GEMINI_API_KEY is unset or API exceeds timeout)
     lowered = f"{title}\n{content_text}".lower()
     issues: list[AnalysedIssue] = []
 
