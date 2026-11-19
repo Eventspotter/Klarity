@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   ArrowUpRight,
   Calendar as CalendarIcon,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -138,6 +139,29 @@ export function Calendar({ onNewReview }) {
   const [statusFilter, setStatusFilter] = useState('all')
   const [selectedEvent, setSelectedEvent] = useState(null)
   const [selectedDayStr, setSelectedDayStr] = useState(null) // Opens day schedule drawer
+
+  // Mini calendar date-picker popover state
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [miniMonthDate, setMiniMonthDate] = useState(() => getTodayLocal())
+  const pickerRef = useRef(null)
+
+  useEffect(() => {
+    if (!pickerOpen) return
+    const handlePointerDown = (e) => {
+      if (pickerRef.current && !pickerRef.current.contains(e.target)) {
+        setPickerOpen(false)
+      }
+    }
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') setPickerOpen(false)
+    }
+    document.addEventListener('mousedown', handlePointerDown)
+    document.addEventListener('keydown', handleEsc)
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown)
+      document.removeEventListener('keydown', handleEsc)
+    }
+  }, [pickerOpen])
 
   // Custom calendar milestones persisted in localStorage
   const [milestones, setMilestones] = useState(loadMilestones)
@@ -373,26 +397,74 @@ export function Calendar({ onNewReview }) {
     return [...scoped].sort((a, b) => b.rawDate - a.rawDate)
   }, [filteredEvents, filteredMilestones, agendaScope, currentYear, currentMonth])
 
-  // Navigation handlers — fully view-aware!
+  // Navigation handlers — step day-by-day cleanly across week/month/year boundaries
   const handlePrev = useCallback(() => {
-    setAnchorDate((prev) => {
-      if (viewMode === 'week') return addDays(prev, -7)
-      if (viewMode === 'day') return addDays(prev, -1)
-      return addMonthsClamped(prev, -1)
-    })
-  }, [viewMode])
+    setAnchorDate((prev) => addDays(prev, -1))
+  }, [])
 
   const handleNext = useCallback(() => {
-    setAnchorDate((prev) => {
-      if (viewMode === 'week') return addDays(prev, 7)
-      if (viewMode === 'day') return addDays(prev, 1)
-      return addMonthsClamped(prev, 1)
-    })
-  }, [viewMode])
+    setAnchorDate((prev) => addDays(prev, 1))
+  }, [])
 
   const handleToday = useCallback(() => {
-    setAnchorDate(getTodayLocal())
+    const now = getTodayLocal()
+    setAnchorDate(now)
+    setMiniMonthDate(now)
+    setPickerOpen(false)
   }, [])
+
+  const toggleDatePicker = useCallback(() => {
+    setPickerOpen((open) => {
+      if (!open) {
+        setMiniMonthDate(new Date(anchorDate.getFullYear(), anchorDate.getMonth(), 1))
+      }
+      return !open
+    })
+  }, [anchorDate])
+
+  const handleMiniSelectDate = useCallback((dateStr) => {
+    const picked = parseLocalDate(dateStr)
+    setAnchorDate(picked)
+    setMiniMonthDate(picked)
+    setPickerOpen(false)
+  }, [])
+
+  // Mini Calendar Grid (Mon-Sun) for the date-picker popover
+  const miniCalendarDays = useMemo(() => {
+    const y = miniMonthDate.getFullYear()
+    const m = miniMonthDate.getMonth()
+    const firstDay = new Date(y, m, 1)
+    const daysInMonth = new Date(y, m + 1, 0).getDate()
+    const startDayIndex = (firstDay.getDay() + 6) % 7
+    const cells = []
+
+    const pushMiniCell = (d) => {
+      const dateStr = toDateStr(d)
+      const hasEvents = (eventsByDate.get(dateStr)?.length || 0) > 0
+      const hasCampaign = getMilestonesForDate(dateStr).length > 0
+      cells.push({
+        dayNumber: d.getDate(),
+        dateStr,
+        isCurrentMonth: d.getMonth() === m,
+        isToday: dateStr === todayStr,
+        isSelected: dateStr === anchorDateStr,
+        hasActivity: hasEvents || hasCampaign,
+      })
+    }
+
+    for (let i = startDayIndex; i > 0; i--) {
+      pushMiniCell(new Date(y, m, 1 - i))
+    }
+    for (let dayNum = 1; dayNum <= daysInMonth; dayNum++) {
+      pushMiniCell(new Date(y, m, dayNum))
+    }
+    const totalCells = cells.length <= 35 ? 35 : 42
+    const remaining = totalCells - cells.length
+    for (let dayNum = 1; dayNum <= remaining; dayNum++) {
+      pushMiniCell(new Date(y, m + 1, dayNum))
+    }
+    return cells
+  }, [miniMonthDate, todayStr, anchorDateStr, eventsByDate, getMilestonesForDate])
 
   // Keyboard navigation: Left/Right arrows & 'T' for Today
   useEffect(() => {
@@ -440,8 +512,8 @@ export function Calendar({ onNewReview }) {
     return `1 ${MONTH_SHORT[currentMonth]} ${currentYear} – ${lastDay.getDate()} ${MONTH_SHORT[currentMonth]} ${currentYear}`
   }, [viewMode, weekDays, anchorDate, agendaScope, currentMonth, currentYear, agendaItems.length])
 
-  const navPrevLabel = viewMode === 'week' ? 'Previous week' : viewMode === 'day' ? 'Previous day' : 'Previous month'
-  const navNextLabel = viewMode === 'week' ? 'Next week' : viewMode === 'day' ? 'Next day' : 'Next month'
+  const navPrevLabel = 'Previous day'
+  const navNextLabel = 'Next day'
 
   const openScheduleForDate = (dateStr) => {
     setNewMilestone({
@@ -549,34 +621,104 @@ export function Calendar({ onNewReview }) {
               )}
             </label>
 
-            {/* Navigation Group */}
-            <div className="calendar-nav-group">
-              <button
-                type="button"
-                className="calendar-nav-btn"
-                onClick={handlePrev}
-                aria-label={navPrevLabel}
-                title={`${navPrevLabel} (←)`}
-              >
-                <ChevronLeft size={16} />
-              </button>
-              <button
-                type="button"
-                className={cx('calendar-today-btn', isAnchorToday && 'is-active')}
-                onClick={handleToday}
-                title="Jump to today (T)"
-              >
-                Today
-              </button>
-              <button
-                type="button"
-                className="calendar-nav-btn"
-                onClick={handleNext}
-                aria-label={navNextLabel}
-                title={`${navNextLabel} (→)`}
-              >
-                <ChevronRight size={16} />
-              </button>
+            {/* Day Navigation Group + Mini Calendar Date Picker Popover */}
+            <div className="calendar-picker-anchor" ref={pickerRef}>
+              <div className="calendar-nav-group">
+                <button
+                  type="button"
+                  className="calendar-nav-btn"
+                  onClick={handlePrev}
+                  aria-label={navPrevLabel}
+                  title="Previous day (←)"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  className={cx(
+                    'calendar-today-btn',
+                    isAnchorToday && 'is-active',
+                    pickerOpen && 'is-open'
+                  )}
+                  onClick={toggleDatePicker}
+                  aria-expanded={pickerOpen}
+                  aria-haspopup="dialog"
+                  title="Open mini calendar to pick a date"
+                >
+                  <span>{isAnchorToday ? 'Today' : formatReadableDate(anchorDateStr)}</span>
+                  <ChevronDown size={13} className={cx('calendar-today-chevron', pickerOpen && 'is-rotated')} />
+                </button>
+                <button
+                  type="button"
+                  className="calendar-nav-btn"
+                  onClick={handleNext}
+                  aria-label={navNextLabel}
+                  title="Next day (→)"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+
+              {pickerOpen && (
+                <div className="calendar-mini-popover" role="dialog" aria-label="Choose a date">
+                  <div className="calendar-mini-head">
+                    <button
+                      type="button"
+                      className="calendar-mini-nav"
+                      onClick={() => setMiniMonthDate((d) => addMonthsClamped(d, -1))}
+                      aria-label="Previous month"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="calendar-mini-title">
+                      {MONTH_NAMES[miniMonthDate.getMonth()]} {miniMonthDate.getFullYear()}
+                    </span>
+                    <button
+                      type="button"
+                      className="calendar-mini-nav"
+                      onClick={() => setMiniMonthDate((d) => addMonthsClamped(d, 1))}
+                      aria-label="Next month"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+
+                  <div className="calendar-mini-weekdays">
+                    {['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map((wd) => (
+                      <span key={wd}>{wd}</span>
+                    ))}
+                  </div>
+
+                  <div className="calendar-mini-grid">
+                    {miniCalendarDays.map((cell) => (
+                      <button
+                        key={cell.dateStr}
+                        type="button"
+                        className={cx(
+                          'calendar-mini-day',
+                          !cell.isCurrentMonth && 'is-outside',
+                          cell.isToday && 'is-today',
+                          cell.isSelected && 'is-selected'
+                        )}
+                        onClick={() => handleMiniSelectDate(cell.dateStr)}
+                      >
+                        <span>{cell.dayNumber}</span>
+                        {cell.hasActivity && <i className="calendar-mini-dot" aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="calendar-mini-foot">
+                    <button
+                      type="button"
+                      className="calendar-mini-today-btn"
+                      onClick={handleToday}
+                    >
+                      Jump to Today ({formatReadableDate(todayStr)})
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* View Mode Switcher */}
