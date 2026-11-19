@@ -6,7 +6,6 @@ import {
   ChartNoAxesCombined,
   Check,
   ChevronsUpDown,
-  Copy,
   FileClock,
   Images,
   LayoutDashboard,
@@ -44,7 +43,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
     switchBrand,
   } = useApp()
   const [brandsOpen, setBrandsOpen] = useState(false)
-  const [copiedCode, setCopiedCode] = useState(null)
   const location = useLocation()
   const queue = isLead
     ? (data?.stats?.pending_reviews ?? 0)
@@ -118,18 +116,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
     }
   }, [location.pathname])
 
-  const handleCopyCode = (e, code, brandName) => {
-    e.stopPropagation()
-    try {
-      navigator.clipboard?.writeText(code)
-      setCopiedCode(code)
-      toast(`Copied code: ${code} (${brandName})`, 'good')
-      setTimeout(() => setCopiedCode(null), 2000)
-    } catch {
-      toast(`Code: ${code}`, 'info')
-    }
-  }
-
   const handleSelectBrand = (brand) => {
     switchBrand(brand)
     setBrandsOpen(false)
@@ -181,7 +167,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <div className="sidebar-brands-dropdown__header">
                 <div>
                   <strong>Brand Directory</strong>
-                  <p>Check codes &amp; switch workspace</p>
+                  <p>Switch active workspace</p>
                 </div>
                 <span className="sidebar-brands-dropdown__count">{allBrands.length} brands</span>
               </div>
@@ -189,15 +175,13 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <div className="sidebar-brands-dropdown__list">
                 {allBrands.map((brand) => {
                   const isActive = (brand.brand_name || brand.name) === currentBrandName
-                  const code = brand.brand_code || brand.code || 'KLARITY-2026'
                   const bName = brand.brand_name || brand.name
                   const bMark = brand.mark || bName.slice(0, 2).toUpperCase()
                   const bColor = brand.color || 'var(--sage)'
-                  const isCopied = copiedCode === code
 
                   return (
                     <div
-                      key={code}
+                      key={bName}
                       className={cx('sidebar-brand-item', isActive && 'is-active')}
                       onClick={() => handleSelectBrand(brand)}
                       role="menuitem"
@@ -209,24 +193,8 @@ export function Sidebar({ open, onClose, onNewReview }) {
                       >
                         {bMark}
                       </span>
-                      <div className="sidebar-brand-item__info">
-                        <div className="sidebar-brand-item__name">
-                          <span>{bName}</span>
-                          {isActive && <Check size={13} className="sidebar-brand-item__check" />}
-                        </div>
-                        <div className="sidebar-brand-item__code-row">
-                          <code className="sidebar-brand-item__code">{code}</code>
-                          <button
-                            type="button"
-                            className="sidebar-brand-item__copy-btn"
-                            title={`Copy code ${code}`}
-                            onClick={(e) => handleCopyCode(e, code, bName)}
-                          >
-                            {isCopied ? <Check size={11} color="#22c55e" /> : <Copy size={11} />}
-                            <span>{isCopied ? 'Copied' : 'Copy'}</span>
-                          </button>
-                        </div>
-                      </div>
+                      <span className="sidebar-brand-item__name">{bName}</span>
+                      {isActive && <Check size={14} className="sidebar-brand-item__check" />}
                     </div>
                   )
                 })}
