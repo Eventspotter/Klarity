@@ -1,25 +1,37 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useDeferredValue, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { BrandMark } from './components/BrandMark'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { ToastRegion } from './components/UI'
 import { useApp } from './context/AppContext'
-import { animatePageEnter } from './lib/animations'
 
-// Route-based code splitting so only the active page JS is downloaded initially
-const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
-const CreatorStudioPage = lazy(() => import('./pages/CreatorStudioPage').then((m) => ({ default: m.CreatorStudioPage })))
-const Reviews = lazy(() => import('./pages/Reviews').then((m) => ({ default: m.Reviews })))
-const ReviewDetail = lazy(() => import('./pages/ReviewDetail').then((m) => ({ default: m.ReviewDetail })))
-const Guidelines = lazy(() => import('./pages/Guidelines').then((m) => ({ default: m.Guidelines })))
-const Assets = lazy(() => import('./pages/Assets').then((m) => ({ default: m.Assets })))
-const Insights = lazy(() => import('./pages/Insights').then((m) => ({ default: m.Insights })))
-const Calendar = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.Calendar })))
-const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
-const Hero = lazy(() => import('./pages/Hero').then((m) => ({ default: m.Hero })))
-const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })))
-const NewReviewDrawer = lazy(() => import('./components/NewReviewDrawer').then((m) => ({ default: m.NewReviewDrawer })))
+// Route loaders (kept reusable so we can warm them in the background on idle)
+const loadDashboard = () => import('./pages/Dashboard')
+const loadCreatorStudio = () => import('./pages/CreatorStudioPage')
+const loadReviews = () => import('./pages/Reviews')
+const loadReviewDetail = () => import('./pages/ReviewDetail')
+const loadGuidelines = () => import('./pages/Guidelines')
+const loadAssets = () => import('./pages/Assets')
+const loadInsights = () => import('./pages/Insights')
+const loadCalendar = () => import('./pages/Calendar')
+const loadSettings = () => import('./pages/Settings')
+const loadHero = () => import('./pages/Hero')
+const loadLogin = () => import('./pages/Login')
+const loadNewReviewDrawer = () => import('./components/NewReviewDrawer')
+
+const Dashboard = lazy(() => loadDashboard().then((m) => ({ default: m.Dashboard })))
+const CreatorStudioPage = lazy(() => loadCreatorStudio().then((m) => ({ default: m.CreatorStudioPage })))
+const Reviews = lazy(() => loadReviews().then((m) => ({ default: m.Reviews })))
+const ReviewDetail = lazy(() => loadReviewDetail().then((m) => ({ default: m.ReviewDetail })))
+const Guidelines = lazy(() => loadGuidelines().then((m) => ({ default: m.Guidelines })))
+const Assets = lazy(() => loadAssets().then((m) => ({ default: m.Assets })))
+const Insights = lazy(() => loadInsights().then((m) => ({ default: m.Insights })))
+const Calendar = lazy(() => loadCalendar().then((m) => ({ default: m.Calendar })))
+const Settings = lazy(() => loadSettings().then((m) => ({ default: m.Settings })))
+const Hero = lazy(() => loadHero().then((m) => ({ default: m.Hero })))
+const Login = lazy(() => loadLogin().then((m) => ({ default: m.Login })))
+const NewReviewDrawer = lazy(() => loadNewReviewDrawer().then((m) => ({ default: m.NewReviewDrawer })))
 
 function LoadingScreen() {
   return (
@@ -36,14 +48,9 @@ function LoadingScreen() {
   )
 }
 
-function PageFallback() {
-  return (
-    <div className="loading-screen" style={{ minHeight: '45vh' }}>
-      <div className="loading-screen__bar">
-        <span />
-      </div>
-    </div>
-  )
+// Inline subtle placeholder (never position:fixed full-screen overlay)
+function InlinePageFallback() {
+  return <div className="page-inline-fallback" aria-busy="true" />
 }
 
 function AppShell() {
@@ -51,19 +58,36 @@ function AppShell() {
   const [navOpen, setNavOpen] = useState(false)
   const [reviewOpen, setReviewOpen] = useState(false)
   const location = useLocation()
-  const pageRef = useRef(null)
+  // Keep previous page rendered while a lazy chunk resolves so routes never flash blank
+  const deferredLocation = useDeferredValue(location)
 
   useEffect(() => {
     setNavOpen(false)
     window.scrollTo({ top: 0, behavior: 'instant' })
-  }, [location.pathname, location.search])
+  }, [deferredLocation.pathname, deferredLocation.search])
 
+  // Warm workspace page chunks in the background after initial paint for zero-latency tab switches
   useEffect(() => {
-    if (pageRef.current) {
-      const cancel = animatePageEnter(pageRef.current)
-      return cancel
+    if (!user || !data) return
+    const prefetch = () => {
+      loadDashboard()
+      loadReviews()
+      loadCalendar()
+      loadGuidelines()
+      loadAssets()
+      loadInsights()
+      loadCreatorStudio()
+      loadSettings()
+      loadReviewDetail()
+      loadNewReviewDrawer()
     }
-  }, [location.pathname])
+    if (typeof window.requestIdleCallback === 'function') {
+      const id = window.requestIdleCallback(prefetch, { timeout: 1500 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const timer = window.setTimeout(prefetch, 300)
+    return () => window.clearTimeout(timer)
+  }, [user, data])
 
   const isPublic = location.pathname === '/hero' || location.pathname === '/login'
 
@@ -71,8 +95,8 @@ function AppShell() {
   if (isPublic) {
     return (
       <div className="public-shell">
-        <Suspense fallback={<PageFallback />}>
-          <Routes location={location}>
+        <Suspense fallback={<InlinePageFallback />}>
+          <Routes location={deferredLocation}>
             <Route path="/hero" element={<Hero />} />
             <Route path="/login" element={<Login />} />
             <Route path="*" element={<Navigate to="/hero" replace />} />
@@ -105,9 +129,9 @@ function AppShell() {
           onNewReview={() => setReviewOpen(true)}
         />
         <main className="page" id="main">
-          <div ref={pageRef} key={location.pathname} className="page-view-wrapper">
-            <Suspense fallback={<PageFallback />}>
-              <Routes location={location}>
+          <div key={deferredLocation.pathname} className="page-view-wrapper">
+            <Suspense fallback={<InlinePageFallback />}>
+              <Routes location={deferredLocation}>
                 <Route path="/" element={<Dashboard onNewReview={() => setReviewOpen(true)} />} />
                 <Route path="/studio" element={<CreatorStudioPage onNewReview={() => setReviewOpen(true)} />} />
                 <Route path="/reviews" element={<Reviews onNewReview={() => setReviewOpen(true)} />} />

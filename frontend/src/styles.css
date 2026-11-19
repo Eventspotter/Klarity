@@ -219,10 +219,33 @@ ol {
   flex: 1;
 }
 
+@keyframes pageViewEnter {
+  from {
+    opacity: 0.01;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .page-view-wrapper {
   width: 100%;
   min-width: 0;
   max-width: 100%;
+  animation: pageViewEnter 140ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-view-wrapper {
+    animation: none;
+  }
+}
+
+.page-inline-fallback {
+  min-height: 240px;
+  width: 100%;
 }
 
 .loading-screen {
