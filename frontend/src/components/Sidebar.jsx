@@ -10,9 +10,7 @@ import {
   FileClock,
   Images,
   LayoutDashboard,
-  LifeBuoy,
   Lock,
-  Settings,
   ShieldCheck,
   Sparkles,
 } from 'lucide-react'
@@ -250,26 +248,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
             )}
           </NavLink>
         )}
-        <NavLink
-          to="/settings"
-          className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
-          onClick={onClose}
-        >
-          <Settings size={18} strokeWidth={1.8} />
-          <span>Settings</span>
-        </NavLink>
-        <a
-          href="#help-docs"
-          className="nav-item"
-          onClick={(e) => {
-            e.preventDefault()
-            toast('Help & Docs: Reference the Aster & Oak Brand Guidelines and governance workflow.', 'info')
-            onClose()
-          }}
-        >
-          <LifeBuoy size={18} strokeWidth={1.8} />
-          <span>Help &amp; docs</span>
-        </a>
       </nav>
 
       <div className="sidebar__bottom">
