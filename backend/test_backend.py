@@ -105,6 +105,51 @@ class ApiTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((await self.client.get("/api/auth/me")).status_code, 200)
 
 
+class SecurityBotProtectionTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self):
+        self.lifespan = app.router.lifespan_context(app)
+        await self.lifespan.__aenter__()
+        self.client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
+
+    async def asyncTearDown(self):
+        await self.client.aclose()
+        await self.lifespan.__aexit__(None, None, None)
+
+    async def test_robots_txt_served(self):
+        res = await self.client.get("/robots.txt")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("User-agent: *", res.text)
+        self.assertIn("Disallow: /api/", res.text)
+
+    async def test_malicious_scanner_user_agent_blocked(self):
+        res = await self.client.get("/api/health", headers={"User-Agent": "sqlmap/1.6.4#stable (https://sqlmap.org)"})
+        self.assertEqual(res.status_code, 403)
+        self.assertIn("automated vulnerability scanner", res.json()["detail"].lower())
+
+        res2 = await self.client.get("/api/health", headers={"User-Agent": "Mozilla/5.0 (compatible; Nikto/2.1.6)"})
+        self.assertEqual(res2.status_code, 403)
+
+    async def test_exploit_probe_paths_rejected(self):
+        res = await self.client.get("/.env")
+        self.assertEqual(res.status_code, 404)
+
+        res2 = await self.client.get("/wp-login.php")
+        self.assertEqual(res2.status_code, 404)
+
+    async def test_payload_size_enforcement(self):
+        huge_size = str(20 * 1024 * 1024)
+        res = await self.client.post("/api/auth/login", headers={"Content-Length": huge_size}, json={})
+        self.assertEqual(res.status_code, 413)
+        self.assertIn("Payload too large", res.json()["detail"])
+
+    async def test_rate_limit_headers_on_valid_request(self):
+        res = await self.client.get("/api/health")
+        self.assertEqual(res.status_code, 200)
+        self.assertIn("X-RateLimit-Limit", res.headers)
+        self.assertIn("X-RateLimit-Remaining", res.headers)
+        self.assertEqual(res.headers.get("Server"), "Klarity-Gateway")
+
+
 def tearDownModule():
     engine.dispose()
     temporary_database.cleanup()

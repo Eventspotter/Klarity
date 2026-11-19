@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /api/
+Disallow: /settings
+Disallow: /creator-studio
+Disallow: /admin
+Disallow: /dashboard
+Allow: /
+Allow: /favicon.svg
+Allow: /fonts/
+
+# Politeness rate-limit for crawlers
+Crawl-delay: 2

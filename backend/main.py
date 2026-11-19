@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import CORS_ORIGINS, SEED_DEMO_DATA
@@ -20,6 +20,7 @@ from routers import dashboard, guidelines, submissions
 from seed import seed_database
 from services.workspace import build_bootstrap
 from auth import router as auth_router, current_account, seed_test_account
+from security import BotShieldMiddleware
 
 ROOT = Path(__file__).resolve().parent
 DIST = ROOT.parent / "frontend" / "dist"
@@ -47,6 +48,7 @@ app = FastAPI(
 )
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
+app.add_middleware(BotShieldMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -85,6 +87,22 @@ def health(db: Session = Depends(get_db)) -> dict:
     except SQLAlchemyError:
         raise HTTPException(status_code=503, detail="Database unavailable") from None
     return {"status": "ok", "service": "klarity-api", "demo_data": SEED_DEMO_DATA}
+
+
+@app.get("/robots.txt", response_class=PlainTextResponse, include_in_schema=False)
+def robots_txt() -> str:
+    return (
+        "User-agent: *\n"
+        "Disallow: /api/\n"
+        "Disallow: /settings\n"
+        "Disallow: /creator-studio\n"
+        "Disallow: /admin\n"
+        "Disallow: /dashboard\n"
+        "Allow: /\n"
+        "Allow: /favicon.svg\n"
+        "Allow: /fonts/\n"
+        "Crawl-delay: 2\n"
+    )
 
 
 if DIST.exists():
