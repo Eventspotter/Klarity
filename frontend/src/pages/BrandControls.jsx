@@ -402,22 +402,8 @@ export function BrandControls() {
       {/* Top Header */}
       <section className="page-head">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          <div style={{ marginBottom: '4px' }}>
             <h1 style={{ margin: 0 }}>Brand Owner Controls</h1>
-            <span
-              style={{
-                fontSize: '11px',
-                padding: '3px 9px',
-                borderRadius: '12px',
-                background: isOwner ? 'var(--clay)' : 'var(--sage)',
-                color: '#fff',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {isOwner ? 'Owner Exclusive' : 'Governance Desk'}
-            </span>
           </div>
           <p style={{ margin: 0, color: 'var(--ink-soft)', fontSize: '13.5px' }}>
             Master workspace configuration, review thresholds, account verification, team roles, and privacy governance.
