@@ -126,6 +126,25 @@ function loadMilestones() {
   }
 }
 
+function CalendarSelectDropdown({ options = [], value, onChange, disabled, 'aria-label': ariaLabel, className = '' }) {
+  return (
+    <Select
+      options={options}
+      value={value}
+      onChange={(val) => {
+        onChange?.({ target: { value: val } })
+      }}
+      disabled={disabled}
+      ariaLabel={ariaLabel}
+      className={cx('calendar-mini-select', className)}
+    />
+  )
+}
+
+const DAYPICKER_COMPONENTS = {
+  Dropdown: CalendarSelectDropdown,
+}
+
 export function Calendar({ onNewReview }) {
   const { data, toast } = useApp()
   const navigate = useNavigate()
@@ -613,6 +632,7 @@ export function Calendar({ onNewReview }) {
                     endMonth={new Date(2035, 11)}
                     selected={anchorDate}
                     defaultMonth={anchorDate}
+                    components={DAYPICKER_COMPONENTS}
                     onSelect={(date) => {
                       if (!date) return
                       setAnchorDate(new Date(date.getFullYear(), date.getMonth(), date.getDate()))
