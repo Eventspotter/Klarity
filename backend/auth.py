@@ -5,7 +5,9 @@ import hmac
 import os
 import re
 import secrets
+import time
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
@@ -85,6 +87,27 @@ def check_origin(request: Request):
         raise HTTPException(403, "Origin not allowed")
 
 
+_SESSION_CACHE: dict[str, tuple[float, SimpleNamespace]] = {}
+_SESSION_TTL_SECONDS = 30.0
+
+
+def _cache_account(token_hash: str, account, session_expires_at: datetime) -> SimpleNamespace:
+    snapshot = SimpleNamespace(
+        id=account.id,
+        username=account.username,
+        email=account.email,
+        role=getattr(account, "role", "owner") or "owner",
+        is_approved=getattr(account, "is_approved", True),
+    )
+    remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
+    ttl = min(_SESSION_TTL_SECONDS, remaining)
+    if ttl > 0:
+        if len(_SESSION_CACHE) > 512:
+            _SESSION_CACHE.clear()
+        _SESSION_CACHE[token_hash] = (time.monotonic() + ttl, snapshot)
+    return snapshot
+
+
 def current_account(request: Request, db: Session = Depends(get_db)):
     if request.method not in ("GET", "HEAD", "OPTIONS"):
         check_origin(request)
@@ -94,11 +117,27 @@ def current_account(request: Request, db: Session = Depends(get_db)):
         token = auth_header[7:].strip()
     if not token:
         token = request.cookies.get("klarity_session", "")
-    session = db.get(LoginSession, hashlib.sha256(token.encode()).hexdigest()) if token else None
-    account = db.get(Account, session.account_id) if session and session.expires_at > datetime.utcnow() else None
-    if not account:
+    if not token:
         raise HTTPException(401, "Sign in to continue")
-    return account
+
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    cached = _SESSION_CACHE.get(token_hash)
+    if cached:
+        if cached[0] > time.monotonic():
+            return cached[1]
+        _SESSION_CACHE.pop(token_hash, None)
+
+    now = datetime.utcnow()
+    row = (
+        db.query(Account, LoginSession.expires_at)
+        .join(LoginSession, LoginSession.account_id == Account.id)
+        .filter(LoginSession.token_hash == token_hash, LoginSession.expires_at > now)
+        .first()
+    )
+    if not row:
+        raise HTTPException(401, "Sign in to continue")
+    account, expires_at = row
+    return _cache_account(token_hash, account, expires_at)
 
 
 def public_account(account):
@@ -117,12 +156,17 @@ def start_session(account, request, response, db):
     if not old_token and auth_header.startswith("Bearer "):
         old_token = auth_header[7:].strip()
     if old_token:
-        db.query(LoginSession).filter_by(token_hash=hashlib.sha256(old_token.encode()).hexdigest()).delete()
-    db.query(LoginSession).filter(LoginSession.expires_at <= datetime.utcnow()).delete()
+        old_hash = hashlib.sha256(old_token.encode()).hexdigest()
+        _SESSION_CACHE.pop(old_hash, None)
+        db.query(LoginSession).filter_by(token_hash=old_hash).delete()
+    now = datetime.utcnow()
+    db.query(LoginSession).filter(LoginSession.expires_at <= now).delete()
     token = secrets.token_urlsafe(32)
-    db.add(LoginSession(token_hash=hashlib.sha256(token.encode()).hexdigest(), account_id=account.id,
-                        expires_at=datetime.utcnow() + timedelta(days=1)))
+    token_hash = hashlib.sha256(token.encode()).hexdigest()
+    expires_at = now + timedelta(days=1)
+    db.add(LoginSession(token_hash=token_hash, account_id=account.id, expires_at=expires_at))
     db.commit()
+    _cache_account(token_hash, account, expires_at)
     is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
     samesite_val = "none" if is_secure else "lax"
     response.set_cookie(
@@ -297,7 +341,9 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     if not token:
         token = request.cookies.get("klarity_session", "")
     if token:
-        db.query(LoginSession).filter_by(token_hash=hashlib.sha256(token.encode()).hexdigest()).delete()
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        _SESSION_CACHE.pop(token_hash, None)
+        db.query(LoginSession).filter_by(token_hash=token_hash).delete()
         db.commit()
     is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
     samesite_val = "none" if is_secure else "lax"

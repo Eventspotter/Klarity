@@ -18,34 +18,31 @@ export function animatePageEnter(containerEl) {
   if (!containerEl || isReducedMotion()) return () => {}
 
   const ctx = gsap.context(() => {
-    // 1. Root page fade & subtle lift
     gsap.fromTo(
       containerEl,
-      { opacity: 0, y: 12 },
+      { opacity: 0, y: 6 },
       {
         opacity: 1,
         y: 0,
-        duration: 0.38,
+        duration: 0.16,
         ease: 'power2.out',
         clearProps: 'transform,opacity',
       },
     )
 
-    // 2. Staggered reveal for key panels/cards
     const items = containerEl.querySelectorAll(
-      '.page-head, .asset-toolbar, .page-hero, .metric, .panel, .queue-row, .review-row, .guideline-card, .asset-card, .insight-card, .palette-section, .swatch, .asset-guidelines',
+      '.page-head, .asset-toolbar, .page-hero, .metric, .panel, .queue-row, .review-row, .guideline-card, .asset-card, .insight-card',
     )
     if (items.length > 0) {
       gsap.fromTo(
-        Array.from(items).slice(0, 18),
-        { opacity: 0, y: 14 },
+        Array.from(items).slice(0, 8),
+        { opacity: 0, y: 8 },
         {
           opacity: 1,
           y: 0,
-          duration: 0.42,
-          stagger: 0.035,
+          duration: 0.18,
+          stagger: 0.015,
           ease: 'power2.out',
-          delay: 0.04,
           clearProps: 'transform,opacity',
         },
       )

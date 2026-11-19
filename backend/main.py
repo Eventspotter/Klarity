@@ -10,13 +10,15 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from config import CORS_ORIGINS, SEED_DEMO_DATA
-from database import get_db, init_db
+from database import SessionLocal, get_db, init_db
 from routers import dashboard, guidelines, submissions
 from seed import seed_database
+from services.workspace import build_bootstrap
 from auth import router as auth_router, current_account, seed_test_account
 
 ROOT = Path(__file__).resolve().parent
@@ -29,6 +31,11 @@ async def lifespan(_: FastAPI):
     seed_test_account()
     if SEED_DEMO_DATA:
         seed_database()
+    try:
+        with SessionLocal() as db:
+            build_bootstrap(db)
+    except Exception:
+        pass
     yield
 
 
@@ -39,6 +46,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
@@ -60,6 +68,8 @@ async def security_headers_middleware(request: Request, call_next):
     response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=()"
     response.headers["Cross-Origin-Opener-Policy"] = "same-origin-allow-popups"
     response.headers["Cross-Origin-Resource-Policy"] = "cross-origin"
+    if request.url.path.startswith(("/assets/", "/fonts/")):
+        response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
     return response
 
 app.include_router(auth_router)

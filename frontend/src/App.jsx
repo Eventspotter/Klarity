@@ -1,35 +1,29 @@
-import { useEffect, useRef, useState } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { BrandMark } from './components/BrandMark'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
-import { NewReviewDrawer } from './components/NewReviewDrawer'
 import { ToastRegion } from './components/UI'
 import { useApp } from './context/AppContext'
 import { animatePageEnter } from './lib/animations'
-import { Dashboard } from './pages/Dashboard'
-import { CreatorStudioPage } from './pages/CreatorStudioPage'
-import { Reviews } from './pages/Reviews'
-import { ReviewDetail } from './pages/ReviewDetail'
-import { Guidelines } from './pages/Guidelines'
-import { Assets } from './pages/Assets'
-import { Insights } from './pages/Insights'
-import { Calendar } from './pages/Calendar'
-import { Settings } from './pages/Settings'
-import { Hero } from './pages/Hero'
-import { Login } from './pages/Login'
+
+// Route-based code splitting so only the active page JS is downloaded initially
+const Dashboard = lazy(() => import('./pages/Dashboard').then((m) => ({ default: m.Dashboard })))
+const CreatorStudioPage = lazy(() => import('./pages/CreatorStudioPage').then((m) => ({ default: m.CreatorStudioPage })))
+const Reviews = lazy(() => import('./pages/Reviews').then((m) => ({ default: m.Reviews })))
+const ReviewDetail = lazy(() => import('./pages/ReviewDetail').then((m) => ({ default: m.ReviewDetail })))
+const Guidelines = lazy(() => import('./pages/Guidelines').then((m) => ({ default: m.Guidelines })))
+const Assets = lazy(() => import('./pages/Assets').then((m) => ({ default: m.Assets })))
+const Insights = lazy(() => import('./pages/Insights').then((m) => ({ default: m.Insights })))
+const Calendar = lazy(() => import('./pages/Calendar').then((m) => ({ default: m.Calendar })))
+const Settings = lazy(() => import('./pages/Settings').then((m) => ({ default: m.Settings })))
+const Hero = lazy(() => import('./pages/Hero').then((m) => ({ default: m.Hero })))
+const Login = lazy(() => import('./pages/Login').then((m) => ({ default: m.Login })))
+const NewReviewDrawer = lazy(() => import('./components/NewReviewDrawer').then((m) => ({ default: m.NewReviewDrawer })))
 
 function LoadingScreen() {
-  const brandRef = useRef(null)
-
-  useEffect(() => {
-    if (brandRef.current) {
-      animatePageEnter(brandRef.current)
-    }
-  }, [])
-
   return (
-    <div className="loading-screen" ref={brandRef}>
+    <div className="loading-screen">
       <div className="loading-screen__brand">
         <BrandMark size={44} />
         <span>Klarity</span>
@@ -38,6 +32,16 @@ function LoadingScreen() {
         <span />
       </div>
       <p>Opening the brand workspace…</p>
+    </div>
+  )
+}
+
+function PageFallback() {
+  return (
+    <div className="loading-screen" style={{ minHeight: '45vh' }}>
+      <div className="loading-screen__bar">
+        <span />
+      </div>
     </div>
   )
 }
@@ -61,23 +65,25 @@ function AppShell() {
     }
   }, [location.pathname])
 
-  if (loading) return <LoadingScreen />
-
   const isPublic = location.pathname === '/hero' || location.pathname === '/login'
 
+  // Never block public landing or login routes behind an API auth waterfall
   if (isPublic) {
     return (
       <div className="public-shell">
-        <Routes location={location}>
-          <Route path="/hero" element={<Hero />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="*" element={<Navigate to="/hero" replace />} />
-        </Routes>
+        <Suspense fallback={<PageFallback />}>
+          <Routes location={location}>
+            <Route path="/hero" element={<Hero />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="*" element={<Navigate to="/hero" replace />} />
+          </Routes>
+        </Suspense>
         <ToastRegion toasts={toasts} onDismiss={dismissToast} />
       </div>
     )
   }
 
+  if (loading) return <LoadingScreen />
   if (!user) return <Navigate to="/login" replace />
   if (!data) return <div className="loading-screen"><p>Workspace unavailable.</p><button onClick={() => refresh().catch(() => {})}>Try again</button></div>
 
@@ -100,24 +106,30 @@ function AppShell() {
         />
         <main className="page" id="main">
           <div ref={pageRef} key={location.pathname} className="page-view-wrapper">
-            <Routes location={location}>
-              <Route path="/" element={<Dashboard onNewReview={() => setReviewOpen(true)} />} />
-              <Route path="/studio" element={<CreatorStudioPage onNewReview={() => setReviewOpen(true)} />} />
-              <Route path="/reviews" element={<Reviews onNewReview={() => setReviewOpen(true)} />} />
-              <Route path="/reviews/:id" element={<ReviewDetail />} />
-              <Route path="/guidelines" element={<Guidelines />} />
-              <Route path="/assets" element={<Assets />} />
-              <Route path="/insights" element={<Insights />} />
-              <Route path="/calendar" element={<Calendar onNewReview={() => setReviewOpen(true)} />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="/hero" element={<Hero />} />
-              <Route path="/login" element={<Login />} />
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <Suspense fallback={<PageFallback />}>
+              <Routes location={location}>
+                <Route path="/" element={<Dashboard onNewReview={() => setReviewOpen(true)} />} />
+                <Route path="/studio" element={<CreatorStudioPage onNewReview={() => setReviewOpen(true)} />} />
+                <Route path="/reviews" element={<Reviews onNewReview={() => setReviewOpen(true)} />} />
+                <Route path="/reviews/:id" element={<ReviewDetail />} />
+                <Route path="/guidelines" element={<Guidelines />} />
+                <Route path="/assets" element={<Assets />} />
+                <Route path="/insights" element={<Insights />} />
+                <Route path="/calendar" element={<Calendar onNewReview={() => setReviewOpen(true)} />} />
+                <Route path="/settings" element={<Settings />} />
+                <Route path="/hero" element={<Hero />} />
+                <Route path="/login" element={<Login />} />
+                <Route path="*" element={<Navigate to="/" replace />} />
+              </Routes>
+            </Suspense>
           </div>
         </main>
       </div>
-      <NewReviewDrawer open={reviewOpen} onClose={() => setReviewOpen(false)} />
+      {reviewOpen ? (
+        <Suspense fallback={null}>
+          <NewReviewDrawer open={reviewOpen} onClose={() => setReviewOpen(false)} />
+        </Suspense>
+      ) : null}
       <ToastRegion toasts={toasts} onDismiss={dismissToast} />
     </div>
   )

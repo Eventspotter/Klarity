@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import BrandGuideline
 from schemas import GuidelineCreate, GuidelineOut, GuidelineUpdate
+from services.workspace import invalidate_bootstrap_cache
 
 router = APIRouter(prefix="/api/guidelines", tags=["guidelines"])
 
@@ -44,6 +45,7 @@ def create_guideline(payload: GuidelineCreate, db: Session = Depends(get_db)) ->
     db.add(guideline)
     db.commit()
     db.refresh(guideline)
+    invalidate_bootstrap_cache()
     return guideline
 
 
@@ -61,6 +63,7 @@ def update_guideline(
         setattr(guideline, field, value)
     db.commit()
     db.refresh(guideline)
+    invalidate_bootstrap_cache()
     return guideline
 
 
@@ -71,3 +74,4 @@ def delete_guideline(guideline_id: int, db: Session = Depends(get_db)) -> None:
         raise HTTPException(status_code=404, detail="Guideline not found")
     db.delete(guideline)
     db.commit()
+    invalidate_bootstrap_cache()

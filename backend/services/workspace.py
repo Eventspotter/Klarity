@@ -2,12 +2,20 @@
 
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta
 from statistics import mean
 from typing import Dict, List
 
-from sqlalchemy.orm import Session, selectinload
-from config import SEED_DEMO_DATA
+from sqlalchemy.orm import Session, joinedload
+from config import DATABASE_URL, SEED_DEMO_DATA
+
+_BOOTSTRAP_CACHE: dict[str, tuple[float, BootstrapOut]] = {}
+_BOOTSTRAP_TTL_SECONDS = 60.0
+
+
+def invalidate_bootstrap_cache() -> None:
+    _BOOTSTRAP_CACHE.clear()
 
 from models import (
     ActionType,
@@ -48,8 +56,8 @@ def latest_report_map(submissions: list[ContentSubmission]) -> Dict[int, ReviewR
 
 def _submission_query(db: Session):
     return db.query(ContentSubmission).options(
-        selectinload(ContentSubmission.reports).selectinload(ReviewReport.issues),
-        selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
+        joinedload(ContentSubmission.reports).joinedload(ReviewReport.issues),
+        joinedload(ContentSubmission.reports).joinedload(ReviewReport.actions),
     )
 
 
@@ -70,7 +78,11 @@ def _avg_score(submissions: list[ContentSubmission], reports: Dict[int, ReviewRe
     return round(mean(scores), 1) if scores else 0.0
 
 
-def build_stats(db: Session, submissions: list[ContentSubmission], reports: Dict[int, ReviewReport]) -> DashboardStats:
+def build_stats(
+    guidelines: list[BrandGuideline],
+    submissions: list[ContentSubmission],
+    reports: Dict[int, ReviewReport],
+) -> DashboardStats:
     now = datetime.utcnow()
     previous_start = now - timedelta(days=60)
     window_start = now - timedelta(days=30)
@@ -111,7 +123,7 @@ def build_stats(db: Session, submissions: list[ContentSubmission], reports: Dict
         total_submissions=len(submissions),
         approval_rate=_approval_rate(submissions),
         avg_score=_avg_score(submissions, reports),
-        active_guidelines=db.query(BrandGuideline).count(),
+        active_guidelines=len(guidelines),
         pending_reviews=sum(1 for item in submissions if item.status in (SubmissionStatus.pending, SubmissionStatus.reviewing)),
         open_issues=open_issues,
         reviews_this_week=reviews_this_week,
@@ -160,19 +172,25 @@ def build_issue_breakdown(reports: Dict[int, ReviewReport]) -> List[IssueBreakdo
     ]
 
 
-def build_coverage(db: Session, reports: Dict[int, ReviewReport]) -> List[CoverageItem]:
+def build_coverage(
+    guidelines: list[BrandGuideline],
+    reports: Dict[int, ReviewReport],
+) -> List[CoverageItem]:
     issue_counts: dict[str, int] = {}
     for report in reports.values():
         for issue in report.issues:
             issue_counts[issue.category.value] = issue_counts.get(issue.category.value, 0) + 1
 
+    guideline_counts: dict[GuidelineCategory, int] = {}
+    for g in guidelines:
+        guideline_counts[g.category] = guideline_counts.get(g.category, 0) + 1
+
     items: List[CoverageItem] = []
     for category in GuidelineCategory:
-        guideline_count = db.query(BrandGuideline).filter(BrandGuideline.category == category).count()
         items.append(
             CoverageItem(
                 category=category.value,
-                guidelines=guideline_count,
+                guidelines=guideline_counts.get(category, 0),
                 issues=issue_counts.get(category.value, 0),
             )
         )
@@ -215,6 +233,10 @@ def build_activity(submissions: list[ContentSubmission], reports: Dict[int, Revi
 
 
 def build_bootstrap(db: Session) -> BootstrapOut:
+    cached = _BOOTSTRAP_CACHE.get(DATABASE_URL)
+    if cached and cached[0] > time.monotonic():
+        return cached[1]
+
     submissions = load_submissions(db)
     guidelines = (
         db.query(BrandGuideline)
@@ -222,13 +244,17 @@ def build_bootstrap(db: Session) -> BootstrapOut:
         .all()
     )
     reports = latest_report_map(submissions)
-    return BootstrapOut(
-        stats=build_stats(db, submissions, reports),
-        submissions=submissions[:56],
-        guidelines=guidelines,
-        activity=build_activity(submissions, reports),
-        trends=build_trends(submissions, reports),
-        issue_breakdown=build_issue_breakdown(reports),
-        coverage=build_coverage(db, reports),
-        demo_data=SEED_DEMO_DATA,
+    payload = BootstrapOut.model_validate(
+        {
+            "stats": build_stats(guidelines, submissions, reports),
+            "submissions": submissions[:56],
+            "guidelines": guidelines,
+            "activity": build_activity(submissions, reports),
+            "trends": build_trends(submissions, reports),
+            "issue_breakdown": build_issue_breakdown(reports),
+            "coverage": build_coverage(guidelines, reports),
+            "demo_data": SEED_DEMO_DATA,
+        }
     )
+    _BOOTSTRAP_CACHE[DATABASE_URL] = (time.monotonic() + _BOOTSTRAP_TTL_SECONDS, payload)
+    return payload

@@ -5,13 +5,13 @@ from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 from config import DATABASE_URL
 
-connect_args = {"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
+is_sqlite = "sqlite" in DATABASE_URL
+connect_args = {"check_same_thread": False} if is_sqlite else {}
+engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": True}
+if not is_sqlite:
+    engine_kwargs.update({"pool_size": 5, "max_overflow": 10, "pool_recycle": 300})
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args=connect_args,
-    pool_pre_ping=True,
-)
+engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
@@ -34,10 +34,18 @@ def init_db():
 
     Base.metadata.create_all(bind=engine)
 
-    # Automatic schema migration for existing databases
+    # Automatic schema & index migration for existing databases
+    index_ddl = [
+        "CREATE INDEX IF NOT EXISTS idx_submissions_submitted_at ON content_submissions (submitted_at DESC)",
+        "CREATE INDEX IF NOT EXISTS idx_submissions_status ON content_submissions (status)",
+        "CREATE INDEX IF NOT EXISTS idx_review_reports_submission_id ON review_reports (submission_id)",
+        "CREATE INDEX IF NOT EXISTS idx_review_issues_report_id ON review_issues (report_id)",
+        "CREATE INDEX IF NOT EXISTS idx_review_actions_report_id ON review_actions (report_id)",
+        "CREATE INDEX IF NOT EXISTS idx_login_sessions_expires_at ON login_sessions (expires_at)",
+    ]
     with engine.connect() as conn:
         try:
-            if "sqlite" in DATABASE_URL:
+            if is_sqlite:
                 cols = [row[1] for row in conn.execute(text("PRAGMA table_info(accounts)")).fetchall()]
                 if cols:
                     if "role" not in cols:
@@ -47,7 +55,11 @@ def init_db():
             else:
                 conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role VARCHAR(30) DEFAULT 'owner'"))
                 conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE"))
+            for stmt in index_ddl:
+                try:
+                    conn.execute(text(stmt))
+                except Exception:
+                    pass
             conn.commit()
-        except Exception as e:
-            # Table might not exist yet or permissions issue
+        except Exception:
             pass

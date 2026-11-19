@@ -25,6 +25,7 @@ from schemas import (
     ContentSubmit,
 )
 from services.analyzer import analyse_content
+from services.workspace import invalidate_bootstrap_cache
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
 
@@ -120,6 +121,7 @@ def create_submission(payload: ContentSubmit, db: Session = Depends(get_db), acc
         )
 
     db.commit()
+    invalidate_bootstrap_cache()
     return _submission(db, submission.id)
 
 
@@ -147,4 +149,5 @@ def review_submission(
     submission.reviewed_at = datetime.utcnow()
     submission.reviewer_notes = action.comment
     db.commit()
+    invalidate_bootstrap_cache()
     return _submission(db, submission.id)

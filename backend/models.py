@@ -107,9 +107,9 @@ class ContentSubmission(Base):
     title = Column(String(255), nullable=False)
     content_type = Column(SAEnum(ContentType), nullable=False, default=ContentType.text)
     content_text = Column(Text, nullable=False)
-    status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending)
+    status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending, index=True)
     submitted_by = Column(String(120), nullable=False)
-    submitted_at = Column(DateTime, default=_utcnow)
+    submitted_at = Column(DateTime, default=_utcnow, index=True)
     reviewed_at = Column(DateTime, nullable=True)
     reviewer_notes = Column(Text, nullable=True)
 
@@ -120,7 +120,7 @@ class ReviewReport(Base):
     __tablename__ = "review_reports"
 
     id = Column(Integer, primary_key=True, index=True)
-    submission_id = Column(Integer, ForeignKey("content_submissions.id"), nullable=False)
+    submission_id = Column(Integer, ForeignKey("content_submissions.id"), nullable=False, index=True)
     overall_score = Column(Float, nullable=False)  # 0-100
     summary = Column(Text, nullable=False)
     created_at = Column(DateTime, default=_utcnow)
@@ -134,7 +134,7 @@ class ReviewIssue(Base):
     __tablename__ = "review_issues"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, ForeignKey("review_reports.id"), nullable=False)
+    report_id = Column(Integer, ForeignKey("review_reports.id"), nullable=False, index=True)
     severity = Column(SAEnum(IssueSeverity), nullable=False)
     category = Column(SAEnum(IssueCategory), nullable=False)
     title = Column(String(255), nullable=False)
@@ -151,7 +151,7 @@ class ReviewAction(Base):
     __tablename__ = "review_actions"
 
     id = Column(Integer, primary_key=True, index=True)
-    report_id = Column(Integer, ForeignKey("review_reports.id"), nullable=False)
+    report_id = Column(Integer, ForeignKey("review_reports.id"), nullable=False, index=True)
     action = Column(SAEnum(ActionType), nullable=False)
     performed_by = Column(String(120), nullable=False)
     comment = Column(Text, nullable=True)
