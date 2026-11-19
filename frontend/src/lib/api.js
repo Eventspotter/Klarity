@@ -55,6 +55,9 @@ async function request(path, options = {}) {
 export const api = {
   me: () => request('/auth/me'),
   listBrands: () => request('/auth/brands'),
+  brandDirectory: () => request('/auth/brand-directory'),
+  switchBrand: (brand_name) =>
+    request('/auth/switch-brand', { method: 'POST', body: JSON.stringify({ brand_name }) }),
   workspaceSettings: () => request('/auth/workspace-settings'),
   updateWorkspaceSettings: (payload) =>
     request('/auth/workspace-settings', { method: 'PATCH', body: JSON.stringify(payload) }),

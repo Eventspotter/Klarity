@@ -231,6 +231,10 @@ class UpdateWorkspaceRequest(BaseModel):
     brand_code: str | None = Field(default=None, max_length=32)
 
 
+class SwitchBrandRequest(BaseModel):
+    brand_name: str = Field(min_length=1, max_length=120)
+
+
 router = APIRouter(prefix="/api/auth", tags=["accounts"], dependencies=[Depends(check_origin)])
 
 
@@ -243,6 +247,55 @@ def list_brands(db: Session = Depends(get_db)):
             {"id": b.id, "brand_name": b.brand_name, "brand_values": b.brand_values}
             for b in brands
         ]
+    }
+
+
+@router.get("/brand-directory")
+def brand_directory(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    """Return all brands and their brand codes for authenticated workspace members."""
+    brands = db.query(Brand).all()
+    return {
+        "brands": [
+            {
+                "id": b.id,
+                "brand_name": b.brand_name,
+                "brand_code": b.brand_code,
+                "brand_values": b.brand_values,
+            }
+            for b in brands
+        ]
+    }
+
+
+@router.post("/switch-brand")
+def switch_brand(
+    payload: SwitchBrandRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    """Switch active brand workspace."""
+    brand = db.query(Brand).filter(Brand.brand_name == payload.brand_name.strip()).first()
+    if not brand:
+        raise HTTPException(404, "Brand not found")
+    setting = db.get(WorkspaceSettings, 1)
+    if not setting:
+        setting = WorkspaceSettings(
+            id=1,
+            brand_name=brand.brand_name,
+            brand_values=brand.brand_values,
+            brand_code=brand.brand_code,
+        )
+        db.add(setting)
+    else:
+        setting.brand_name = brand.brand_name
+        setting.brand_values = brand.brand_values
+        setting.brand_code = brand.brand_code
+    db.commit()
+    return {
+        "message": f"Switched to {brand.brand_name}",
+        "brand_name": brand.brand_name,
+        "brand_code": brand.brand_code,
+        "brand_values": brand.brand_values,
     }
 
 

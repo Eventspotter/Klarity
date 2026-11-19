@@ -103,6 +103,7 @@ export function BrandControls() {
     visibilitySettings,
     updateRoleVisibility,
     setPendingApprovalsCount,
+    activeBrand,
   } = useApp()
 
   const [settings, setSettings] = useState(defaultSettings)
@@ -113,11 +114,21 @@ export function BrandControls() {
   const [loadingPending, setLoadingPending] = useState(false)
   const [verifyingId, setVerifyingId] = useState(null)
 
-  const [brandMeta, setBrandMeta] = useState({
-    brand_name: 'Aster & Oak',
-    brand_values: 'Authenticity, craft, sustainability, quiet confidence',
-    brand_code: 'KLARITY-2026',
-  })
+  const [brandMeta, setBrandMeta] = useState(() => ({
+    brand_name: activeBrand?.brand_name || 'Aster & Oak',
+    brand_values: activeBrand?.values || activeBrand?.brand_values || 'Authenticity, craft, sustainability, quiet confidence',
+    brand_code: activeBrand?.brand_code || activeBrand?.code || 'KLARITY-2026',
+  }))
+
+  useEffect(() => {
+    if (activeBrand) {
+      setBrandMeta({
+        brand_name: activeBrand.brand_name || activeBrand.name,
+        brand_values: activeBrand.values || activeBrand.brand_values || '',
+        brand_code: activeBrand.brand_code || activeBrand.code || 'KLARITY-2026',
+      })
+    }
+  }, [activeBrand])
 
   // Team Governance Roster State
   const [team, setTeam] = useState(() => {

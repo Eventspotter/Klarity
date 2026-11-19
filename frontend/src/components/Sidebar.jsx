@@ -1,9 +1,12 @@
-import { useLayoutEffect, useRef } from 'react'
+import { useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   BookOpen,
   Calendar,
   ChartNoAxesCombined,
+  Check,
+  ChevronsUpDown,
+  Copy,
   FileClock,
   Images,
   LayoutDashboard,
@@ -30,7 +33,20 @@ const items = [
 ]
 
 export function Sidebar({ open, onClose, onNewReview }) {
-  const { data, toast, isLead, currentUser, canViewModule, isOwner, pendingApprovalsCount } = useApp()
+  const {
+    data,
+    toast,
+    isLead,
+    currentUser,
+    canViewModule,
+    isOwner,
+    pendingApprovalsCount,
+    activeBrand,
+    allBrands = [],
+    switchBrand,
+  } = useApp()
+  const [brandsOpen, setBrandsOpen] = useState(false)
+  const [copiedCode, setCopiedCode] = useState(null)
   const location = useLocation()
   const queue = isLead
     ? (data?.stats?.pending_reviews ?? 0)
@@ -68,6 +84,27 @@ export function Sidebar({ open, onClose, onNewReview }) {
     }
   }, [location.pathname])
 
+  const handleCopyCode = (e, code, brandName) => {
+    e.stopPropagation()
+    try {
+      navigator.clipboard?.writeText(code)
+      setCopiedCode(code)
+      toast(`Copied code: ${code} (${brandName})`, 'good')
+      setTimeout(() => setCopiedCode(null), 2000)
+    } catch {
+      toast(`Code: ${code}`, 'info')
+    }
+  }
+
+  const handleSelectBrand = (brand) => {
+    switchBrand(brand)
+    setBrandsOpen(false)
+  }
+
+  const currentBrandMark = activeBrand?.mark || 'A&O'
+  const currentBrandName = activeBrand?.brand_name || 'Aster & Oak'
+  const currentBrandColor = activeBrand?.color || 'var(--sage)'
+
   return (
     <aside className={cx('sidebar', open && 'is-open')} aria-label="Primary navigation">
       <div className="sidebar__top">
@@ -75,25 +112,94 @@ export function Sidebar({ open, onClose, onNewReview }) {
           <BrandMark size={34} />
           <span className="brand-lockup__word">Klarity</span>
         </NavLink>
-        <button
-          className={cx('workspace-switch', !isLead && 'workspace-switch--readonly')}
-          type="button"
-          onClick={() => {
-            if (!isLead) {
-              toast('Workspace creation and switching is restricted to Brand Owners and Reviewers.', 'warn')
-            } else {
-              toast('Aster & Oak is the primary active workspace.', 'info')
-            }
-          }}
-          title={!isLead ? 'Assigned workspace (Governed by Brand Leads)' : 'Workspace settings'}
-        >
-          <span className="workspace-switch__mark">A&O</span>
-          <span className="workspace-switch__copy">
-            <strong>Aster &amp; Oak</strong>
-            <small>{isLead ? 'Brand workspace' : 'Assigned workspace'}</small>
-          </span>
-          {!isLead ? <Lock size={13} style={{ opacity: 0.6 }} /> : null}
-        </button>
+
+        <div className="workspace-switch-wrap" style={{ position: 'relative' }}>
+          <button
+            className={cx('workspace-switch', brandsOpen && 'is-expanded')}
+            type="button"
+            onClick={() => setBrandsOpen(prev => !prev)}
+            title="Click to check brands and switch workspace"
+            aria-expanded={brandsOpen}
+          >
+            <span
+              className="workspace-switch__mark"
+              style={{ background: currentBrandColor, color: '#ffffff' }}
+            >
+              {currentBrandMark}
+            </span>
+            <span className="workspace-switch__copy">
+              <strong>{currentBrandName}</strong>
+              <small>{isLead ? 'Brand workspace' : 'Assigned workspace'}</small>
+            </span>
+            <ChevronsUpDown
+              size={15}
+              style={{
+                marginLeft: 'auto',
+                opacity: 0.65,
+                transform: brandsOpen ? 'rotate(180deg)' : 'none',
+                transition: 'transform 180ms ease',
+              }}
+            />
+          </button>
+
+          {brandsOpen && (
+            <div className="sidebar-brands-dropdown" role="menu">
+              <div className="sidebar-brands-dropdown__header">
+                <div>
+                  <strong>Brand Directory</strong>
+                  <p>Check codes &amp; switch workspace</p>
+                </div>
+                <span className="sidebar-brands-dropdown__count">{allBrands.length} brands</span>
+              </div>
+
+              <div className="sidebar-brands-dropdown__list">
+                {allBrands.map((brand) => {
+                  const isActive = (brand.brand_name || brand.name) === currentBrandName
+                  const code = brand.brand_code || brand.code || 'KLARITY-2026'
+                  const bName = brand.brand_name || brand.name
+                  const bMark = brand.mark || bName.slice(0, 2).toUpperCase()
+                  const bColor = brand.color || 'var(--sage)'
+                  const isCopied = copiedCode === code
+
+                  return (
+                    <div
+                      key={code}
+                      className={cx('sidebar-brand-item', isActive && 'is-active')}
+                      onClick={() => handleSelectBrand(brand)}
+                      role="menuitem"
+                      tabIndex={0}
+                    >
+                      <span
+                        className="sidebar-brand-item__mark"
+                        style={{ background: bColor }}
+                      >
+                        {bMark}
+                      </span>
+                      <div className="sidebar-brand-item__info">
+                        <div className="sidebar-brand-item__name">
+                          <span>{bName}</span>
+                          {isActive && <Check size={13} className="sidebar-brand-item__check" />}
+                        </div>
+                        <div className="sidebar-brand-item__code-row">
+                          <code className="sidebar-brand-item__code">{code}</code>
+                          <button
+                            type="button"
+                            className="sidebar-brand-item__copy-btn"
+                            title={`Copy code ${code}`}
+                            onClick={(e) => handleCopyCode(e, code, bName)}
+                          >
+                            {isCopied ? <Check size={11} color="#22c55e" /> : <Copy size={11} />}
+                            <span>{isCopied ? 'Copied' : 'Copy'}</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <nav className="sidebar__nav sidebar__nav--animated" ref={navRef}>

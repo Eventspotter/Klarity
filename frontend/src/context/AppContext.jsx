@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api, getStoredToken, setStoredToken } from '../lib/api'
+import { DEFAULT_BRANDS } from '../lib/brands'
 
 const AppContext = createContext(null)
 
@@ -76,6 +77,19 @@ export function AppProvider({ children }) {
   })
   const [toasts, setToasts] = useState([])
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [allBrands, setAllBrands] = useState(DEFAULT_BRANDS)
+  const [activeBrand, setActiveBrand] = useState(() => {
+    try {
+      const stored = localStorage.getItem('klarity_active_brand')
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        const match = DEFAULT_BRANDS.find(b => b.brand_name === parsed.brand_name || b.name === parsed.name)
+        if (match) return match
+        return parsed
+      }
+    } catch {}
+    return DEFAULT_BRANDS[0]
+  })
   const timers = useRef(new Map())
   const toast = useCallback((message, tone = 'good') => {
     const id = `${Date.now()}-${Math.random()}`
@@ -98,6 +112,30 @@ export function AppProvider({ children }) {
       }).catch(() => {})
     }
   }, [])
+
+  useEffect(() => {
+    if (user) {
+      api.brandDirectory().then(res => {
+        if (res?.brands && Array.isArray(res.brands)) {
+          setAllBrands(prev => {
+            return DEFAULT_BRANDS.map(db => {
+              const serverBrand = res.brands.find(sb => sb.brand_name === db.brand_name)
+              return serverBrand ? { ...db, ...serverBrand } : db
+            })
+          })
+        }
+      }).catch(() => {})
+    }
+  }, [user])
+
+  const switchBrand = useCallback((brand) => {
+    setActiveBrand(brand)
+    try {
+      localStorage.setItem('klarity_active_brand', JSON.stringify(brand))
+    } catch {}
+    api.switchBrand(brand.brand_name).catch(() => {})
+    toast(`Active workspace: ${brand.brand_name}`, 'good')
+  }, [toast])
   const refresh = useCallback(async (accountOverride) => {
     try {
       const payload = await api.bootstrap()
@@ -247,6 +285,9 @@ export function AppProvider({ children }) {
     currentUser: user?.username || '',
     currentRole: activeRole,
     switchRole,
+    activeBrand,
+    allBrands,
+    switchBrand,
     isOwner,
     isReviewer,
     isMember,
