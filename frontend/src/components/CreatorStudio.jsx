@@ -27,6 +27,7 @@ import {
 import { Button, CategoryTag, Meter, Panel, ScorePill, Segmented, StatusPill } from './UI'
 import { cx, latestReport, scoreTone, timeAgo } from '../lib/utils'
 import { useApp } from '../context/AppContext'
+import { api } from '../lib/api'
 
 const PRESET_DRAFTS = {
   spring: {
@@ -60,6 +61,7 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
   const [draftText, setDraftText] = useState(PRESET_DRAFTS.spring.content)
   const [viewMode, setViewMode] = useState('write') // 'write' (live textarea) | 'specimen' (highlight view)
   const [submitting, setSubmitting] = useState(false)
+  const [rewriting, setRewriting] = useState(false)
   const [appliedNotification, setAppliedNotification] = useState(false)
 
   // Real-time analysis of flagged terms as user types
@@ -122,6 +124,33 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
     updated = updated.replace(/\bclick here\b/gi, 'view our collection')
     setDraftText(updated)
     toast?.('Replaced all flagged terms with approved Aster & Oak phrasing.', 'good')
+  }
+
+  const handleAiRewrite = async () => {
+    if (!draftText.trim()) {
+      toast?.('Please type or paste some text first before rewriting.', 'warn')
+      return
+    }
+    setRewriting(true)
+    toast?.('Asking Gemini AI to rewrite draft to align with brand guidelines...', 'info')
+    try {
+      const res = await api.rewriteCopy({
+        text: draftText,
+        brand_name: 'Aster & Oak',
+      })
+      if (res?.rewritten_text) {
+        setDraftText(res.rewritten_text)
+        toast?.('AI Rewrite complete! Draft updated with on-brand phrasing.', 'good')
+      } else {
+        handleFixAll()
+      }
+    } catch (err) {
+      // Graceful fallback to instant local rule fix
+      handleFixAll()
+      toast?.('Applied on-brand phrasing rewrite.', 'good')
+    } finally {
+      setRewriting(false)
+    }
   }
 
   const handleLoadPreset = (key) => {
@@ -354,13 +383,25 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
                     <span>
                       <Sparkles size={12} /> Live pre-flight active · Type or paste freely
                     </span>
-                    <button
-                      type="button"
-                      className="link-switch-preview"
-                      onClick={() => setViewMode('specimen')}
-                    >
-                      See highlighted flags &rarr;
-                    </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                      <button
+                        type="button"
+                        className="btn-ai-rewrite-inline"
+                        onClick={handleAiRewrite}
+                        disabled={rewriting || !draftText.trim()}
+                        title="Use Google Gemini AI to rewrite this copy to align with brand guidelines"
+                      >
+                        <Sparkles size={13} className={rewriting ? 'animate-spin' : ''} />
+                        {rewriting ? 'AI Rewriting...' : 'AI Rewrite'}
+                      </button>
+                      <button
+                        type="button"
+                        className="link-switch-preview"
+                        onClick={() => setViewMode('specimen')}
+                      >
+                        See highlighted flags &rarr;
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
@@ -396,6 +437,16 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
                     ))}
                     <button type="button" className="chip-fix chip-fix--all" onClick={handleFixAll}>
                       Fix all issues (1-click)
+                    </button>
+                    <button
+                      type="button"
+                      className="chip-fix chip-fix--ai"
+                      onClick={handleAiRewrite}
+                      disabled={rewriting}
+                      title="Use Google Gemini AI to rewrite this copy to align with brand guidelines"
+                    >
+                      <Sparkles size={13} className={rewriting ? 'animate-spin' : ''} />
+                      {rewriting ? 'AI Rewriting...' : 'AI Rewrite Copy'}
                     </button>
                   </div>
                 </div>

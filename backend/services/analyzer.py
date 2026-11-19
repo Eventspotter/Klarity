@@ -8,7 +8,11 @@ traced back to a guideline. No network calls, no hidden model.
 
 from __future__ import annotations
 
+import json
+import os
 import re
+import urllib.error
+import urllib.request
 from dataclasses import dataclass, field
 from typing import List, Optional
 
@@ -184,6 +188,79 @@ Respond STRICTLY with valid JSON following this exact schema:
     except Exception as err:
         print(f"[LLM Analyzer] Fallback to deterministic rule engine: {err}")
         return None
+
+
+def rewrite_text_with_llm(
+    text: str,
+    brand_name: str = "Aster & Oak",
+    brand_values: str = "Rooted, mindful, natural, thoughtful craftsmanship, certified sustainability.",
+    guidelines_text: str = "",
+) -> str:
+    """Rewrite text copy using Gemini to be on-brand and compliant. Falls back to smart rule replacements."""
+    if not text or not text.strip():
+        return text
+
+    api_key = os.getenv("GEMINI_API_KEY", "").strip()
+    if api_key:
+        model_name = os.getenv("GEMINI_MODEL", "gemini-3.5-flash-lite")
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={api_key}"
+
+        prompt = f"""You are the Lead Brand Editor for {brand_name}.
+Brand Core Values: {brand_values}
+Active Guidelines: {guidelines_text or 'Avoid buzzwords (seamless -> considered, utilize -> use), avoid unverified claims (eco-friendly -> certified organic flax or sustainable standards), maintain quiet confidence without hype or exclamation points.'}
+
+Original Copy:
+'''{text}'''
+
+Task:
+Rewrite this copy so it is 100% on-brand, natural, and compliant with all guidelines while preserving the original intent and core message.
+Respond strictly in JSON:
+{{
+  "rewritten_text": "<Full revised copy>"
+}}"""
+
+        payload = {
+            "contents": [{"parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "responseMimeType": "application/json",
+                "temperature": 0.2,
+            },
+        }
+
+        try:
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST",
+            )
+            timeout_sec = float(os.getenv("GEMINI_TIMEOUT", "12.0"))
+            with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                text_resp = data["candidates"][0]["content"]["parts"][0]["text"]
+                parsed = json.loads(text_resp)
+                if parsed.get("rewritten_text"):
+                    return parsed["rewritten_text"].strip()
+        except Exception as err:
+            print(f"[LLM Rewrite] Fallback to deterministic rule rewrites: {err}")
+
+    # Deterministic fallback replacement
+    revised = text
+    import re
+    replacements = [
+        (r"\bseamless\b", "considered"),
+        (r"\bSeamless\b", "Considered"),
+        (r"\beco-friendly\b", "certified organic flax"),
+        (r"\bEco-friendly\b", "Certified organic flax"),
+        (r"\butilize\b", "use"),
+        (r"\bUtilize\b", "Use"),
+        (r"\bgame-changer\b", "substantive step"),
+        (r"\brevolutionary\b", "grounded"),
+        (r"\bunparalleled\b", "distinctive"),
+    ]
+    for pattern, repl in replacements:
+        revised = re.sub(pattern, repl, revised)
+    return revised
 
 
 def analyse_content(

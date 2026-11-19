@@ -24,7 +24,8 @@ from schemas import (
     ContentSubmissionDetail,
     ContentSubmit,
 )
-from services.analyzer import analyse_content
+from services.analyzer import analyse_content, rewrite_text_with_llm
+from pydantic import BaseModel
 from services.workspace import invalidate_bootstrap_cache
 
 router = APIRouter(prefix="/api/submissions", tags=["submissions"])
@@ -151,3 +152,33 @@ def review_submission(
     db.commit()
     invalidate_bootstrap_cache()
     return _submission(db, submission.id)
+
+
+class RewriteRequest(BaseModel):
+    text: str
+    brand_name: str | None = None
+    brand_values: str | None = None
+    guidelines_text: str | None = None
+
+
+class RewriteResponse(BaseModel):
+    rewritten_text: str
+
+
+@router.post("/rewrite", response_model=RewriteResponse)
+def rewrite_copy(
+    payload: RewriteRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+) -> RewriteResponse:
+    """Use Gemini AI to rewrite draft text copy to align with brand guidelines."""
+    brand = payload.brand_name or getattr(account, "brand", "Aster & Oak")
+    guidelines = db.query(BrandGuideline).order_by(BrandGuideline.priority.desc()).all()
+    gl_summary = payload.guidelines_text or "\n".join([f"- [{g.category.value}] {g.title}: {g.content}" for g in guidelines])
+    rewritten = rewrite_text_with_llm(
+        text=payload.text,
+        brand_name=brand,
+        brand_values=payload.brand_values or "Rooted, mindful, natural, thoughtful craftsmanship, certified sustainability.",
+        guidelines_text=gl_summary,
+    )
+    return RewriteResponse(rewritten_text=rewritten)

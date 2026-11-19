@@ -73,6 +73,8 @@ export const api = {
     request('/submissions', { method: 'POST', body: JSON.stringify(payload) }),
   reviewSubmission: (id, payload) =>
     request(`/submissions/${id}/action`, { method: 'POST', body: JSON.stringify(payload) }),
+  rewriteCopy: (payload) =>
+    request('/submissions/rewrite', { method: 'POST', body: JSON.stringify(payload) }),
   createGuideline: (payload) =>
     request('/guidelines', { method: 'POST', body: JSON.stringify(payload) }),
   updateGuideline: (id, payload) =>

@@ -11598,6 +11598,55 @@ button.calendar-banner-pill:hover {
   background: #3e2b21;
 }
 
+.chip-fix--ai {
+  background: #3b28cc;
+  color: #ffffff;
+  border-color: #3121aa;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-weight: 700;
+  box-shadow: 0 1px 3px rgba(59, 40, 204, 0.25);
+  transition: all 0.15s ease-in-out;
+}
+
+.chip-fix--ai:hover:not(:disabled) {
+  background: #2d1fa3;
+  border-color: #241785;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 6px rgba(59, 40, 204, 0.35);
+}
+
+.chip-fix--ai:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.btn-ai-rewrite-inline {
+  background: #3b28cc;
+  color: #ffffff;
+  border: 1px solid #3121aa;
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.btn-ai-rewrite-inline:hover:not(:disabled) {
+  background: #2d1fa3;
+  transform: translateY(-1px);
+}
+
+.btn-ai-rewrite-inline:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
 /* Specimen Foot */
 .specimen-pane__foot {
   display: flex;
