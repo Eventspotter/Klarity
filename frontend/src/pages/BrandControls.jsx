@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Trash2,
   UserCheck,
   UserPlus,
   Users,
@@ -23,12 +24,25 @@ import {
   X,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
-import { Avatar, Button, Field, Panel, SectionHead, Select } from '../components/UI'
+import { Avatar, Button, Drawer, Field, Panel, SectionHead, Select } from '../components/UI'
 import { api } from '../lib/api'
 import { cx } from '../lib/utils'
 import { animateSlidingPill } from '../lib/animations'
 
 const STORAGE_KEY = 'klarity.settings.v1'
+const TEAM_STORAGE_KEY = 'klarity.team_roster.v1'
+
+const roleOptions = [
+  'Stage 1 · Brand Owner',
+  'Stage 2 · Reviewer',
+  'Stage 3 · Team Member',
+]
+
+const statusOptions = [
+  'Active',
+  'Invited',
+  'Suspended',
+]
 
 const defaultSettings = {
   workspace: 'Aster & Oak',
@@ -104,6 +118,123 @@ export function BrandControls() {
     brand_values: 'Authenticity, craft, sustainability, quiet confidence',
     brand_code: 'KLARITY-2026',
   })
+
+  // Team Governance Roster State
+  const [team, setTeam] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(TEAM_STORAGE_KEY)
+      if (stored) {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed
+      }
+    } catch {}
+    return defaultTeam
+  })
+
+  const persistTeam = (updatedTeam) => {
+    setTeam(updatedTeam)
+    try {
+      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(updatedTeam))
+    } catch {}
+  }
+
+  // Member Audit Drawer State
+  const [auditTarget, setAuditTarget] = useState(null)
+  const [auditForm, setAuditForm] = useState({
+    name: '',
+    email: '',
+    role: 'Stage 3 · Team Member',
+    status: 'Active',
+  })
+
+  const handleOpenAudit = (member, index) => {
+    setAuditTarget({ ...member, index })
+    setAuditForm({
+      name: member.name || '',
+      email: member.email || '',
+      role: member.role || 'Stage 3 · Team Member',
+      status: member.status || 'Active',
+    })
+  }
+
+  const handleSaveAudit = (e) => {
+    e?.preventDefault?.()
+    if (!auditForm.name.trim() || !auditForm.email.trim()) {
+      toast('Name and email are required.', 'warn')
+      return
+    }
+    const updated = [...team]
+    updated[auditTarget.index] = {
+      ...updated[auditTarget.index],
+      name: auditForm.name.trim(),
+      email: auditForm.email.trim(),
+      role: auditForm.role,
+      status: auditForm.status,
+    }
+    persistTeam(updated)
+    toast(`Governance details updated for ${auditForm.name}.`, 'good')
+    setAuditTarget(null)
+  }
+
+  const handleDeleteMember = () => {
+    if (!auditTarget) return
+    const confirmDelete = window.confirm(`Remove ${auditTarget.name} from the workspace governance roster?`)
+    if (!confirmDelete) return
+    const updated = team.filter((_, idx) => idx !== auditTarget.index)
+    persistTeam(updated)
+    toast(`Removed ${auditTarget.name} from roster.`, 'good')
+    setAuditTarget(null)
+  }
+
+  // Invite & Add Member Drawer State
+  const [isInviteOpen, setIsInviteOpen] = useState(false)
+  const [inviteForm, setInviteForm] = useState({
+    name: '',
+    email: '',
+    role: 'Stage 3 · Team Member',
+    status: 'Active',
+  })
+
+  const handleOpenInvite = () => {
+    setInviteForm({
+      name: '',
+      email: '',
+      role: 'Stage 3 · Team Member',
+      status: 'Active',
+    })
+    setIsInviteOpen(true)
+  }
+
+  const handleAddMember = (e) => {
+    e?.preventDefault?.()
+    if (!inviteForm.name.trim()) {
+      toast('Please enter the member name.', 'warn')
+      return
+    }
+    if (!inviteForm.email.trim()) {
+      toast('Please enter a valid email address.', 'warn')
+      return
+    }
+    const existing = team.find(
+      (m) => m.email.toLowerCase() === inviteForm.email.trim().toLowerCase()
+    )
+    if (existing) {
+      toast(`Member with email "${inviteForm.email}" already exists in the roster.`, 'warn')
+      return
+    }
+
+    const newMember = {
+      name: inviteForm.name.trim(),
+      email: inviteForm.email.trim(),
+      role: inviteForm.role,
+      status: inviteForm.status,
+    }
+
+    const updated = [newMember, ...team]
+    persistTeam(updated)
+    toast(`Added ${newMember.name} directly to the brand roster!`, 'good')
+    setIsInviteOpen(false)
+  }
 
   const [activeSection, setActiveSection] = useState('brand-identity')
   const navRef = useRef(null)
@@ -245,6 +376,7 @@ export function BrandControls() {
         }
       }
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(team))
       setSaved(true)
       toast('Brand controls and workspace settings saved successfully.', 'good')
     } catch (err) {
@@ -813,10 +945,7 @@ export function BrandControls() {
                       variant="secondary"
                       size="sm"
                       icon={UserPlus}
-                      onClick={() => {
-                        copyBrandCode()
-                        toast(`Share Brand Code "${brandMeta.brand_code || 'KLARITY-2026'}" with new team members.`, 'info')
-                      }}
+                      onClick={handleOpenInvite}
                     >
                       Invite member
                     </Button>
@@ -831,22 +960,29 @@ export function BrandControls() {
             />
 
             <div className="team-list" style={{ marginTop: '16px' }}>
-              {defaultTeam.map((member) => (
-                <div className="team-row" key={member.email}>
+              {team.map((member, index) => (
+                <div className="team-row" key={`${member.email}-${index}`}>
                   <Avatar name={member.name} />
                   <div className="team-row__identity">
                     <strong>{member.name}</strong>
                     <small>{member.email}</small>
                   </div>
                   <span className="team-row__role">{member.role}</span>
-                  <span className={cx('team-row__status', member.status === 'Invited' && 'is-invited')}>
-                    <span /> {member.status}
+                  <span
+                    className={cx(
+                      'team-row__status',
+                      member.status === 'Invited' && 'is-invited'
+                    )}
+                    style={member.status === 'Suspended' ? { color: '#dc2626' } : undefined}
+                  >
+                    <span style={member.status === 'Suspended' ? { background: '#dc2626' } : undefined} />
+                    {member.status}
                   </span>
                   {isLead && (
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toast(`Role governance audited for ${member.name.split(' ')[0]}.`, 'info')}
+                      onClick={() => handleOpenAudit(member, index)}
                     >
                       Audit
                     </Button>
@@ -1085,6 +1221,177 @@ export function BrandControls() {
           </div>
         </div>
       </div>
+
+      {/* Audit Member Drawer */}
+      <Drawer
+        open={Boolean(auditTarget)}
+        onClose={() => setAuditTarget(null)}
+        title={auditTarget ? `Audit: ${auditTarget.name}` : 'Audit Member'}
+        description="Audit and modify member credentials, governance stage, and account standing."
+        width="540px"
+        footer={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+            <Button
+              type="button"
+              variant="ghost"
+              icon={Trash2}
+              onClick={handleDeleteMember}
+              style={{ color: '#dc2626' }}
+            >
+              Remove member
+            </Button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <Button type="button" variant="ghost" onClick={() => setAuditTarget(null)}>
+                Cancel
+              </Button>
+              <Button type="button" variant="primary" icon={Save} onClick={handleSaveAudit}>
+                Save changes
+              </Button>
+            </div>
+          </div>
+        }
+      >
+        {auditTarget && (
+          <form onSubmit={handleSaveAudit} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px', background: 'var(--cream)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <Avatar name={auditForm.name || auditTarget.name} size="lg" />
+              <div>
+                <strong style={{ fontSize: '15px', color: 'var(--ink)', display: 'block' }}>{auditForm.name || auditTarget.name}</strong>
+                <span style={{ fontSize: '12px', color: 'var(--muted)' }}>{auditForm.email || auditTarget.email}</span>
+              </div>
+            </div>
+
+            <Field label="Full Name" htmlFor="audit-name">
+              <input
+                id="audit-name"
+                value={auditForm.name}
+                onChange={(e) => setAuditForm((prev) => ({ ...prev, name: e.target.value }))}
+                required
+                placeholder="Member full name"
+              />
+            </Field>
+
+            <Field label="Email Address" htmlFor="audit-email">
+              <input
+                id="audit-email"
+                type="email"
+                value={auditForm.email}
+                onChange={(e) => setAuditForm((prev) => ({ ...prev, email: e.target.value }))}
+                required
+                placeholder="member@asterandoak.studio"
+              />
+            </Field>
+
+            <Field
+              label="Governance Role & Stage"
+              htmlFor="audit-role"
+              hint={
+                auditForm.role.includes('Stage 1')
+                  ? 'Full executive authority: can configure brand settings, create guidelines, and approve access.'
+                  : auditForm.role.includes('Stage 2')
+                  ? 'Compliance authority: audits submissions, validates guideline evidence, and clears reviews.'
+                  : 'Authoring authority: uses Creator Studio to draft content and run pre-flight checks.'
+              }
+            >
+              <Select
+                id="audit-role"
+                value={auditForm.role}
+                onChange={(val) => setAuditForm((prev) => ({ ...prev, role: val }))}
+                options={roleOptions}
+              />
+            </Field>
+
+            <Field label="Account Status" htmlFor="audit-status" hint="Active members can access the workspace immediately; Invited requires onboarding.">
+              <Select
+                id="audit-status"
+                value={auditForm.status}
+                onChange={(val) => setAuditForm((prev) => ({ ...prev, status: val }))}
+                options={statusOptions}
+              />
+            </Field>
+          </form>
+        )}
+      </Drawer>
+
+      {/* Invite Member Drawer */}
+      <Drawer
+        open={isInviteOpen}
+        onClose={() => setIsInviteOpen(false)}
+        title="Invite & Add Team Member"
+        description="Directly add a new team member or reviewer to the brand workspace roster."
+        width="540px"
+        footer={
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', width: '100%' }}>
+            <Button type="button" variant="ghost" onClick={() => setIsInviteOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="button" variant="primary" icon={UserPlus} onClick={handleAddMember}>
+              Add member to roster
+            </Button>
+          </div>
+        }
+      >
+        <form onSubmit={handleAddMember} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          <Field label="Full Name" htmlFor="invite-name" hint="Display name across reviews, guidelines, and audit logs.">
+            <input
+              id="invite-name"
+              value={inviteForm.name}
+              onChange={(e) => setInviteForm((prev) => ({ ...prev, name: e.target.value }))}
+              required
+              placeholder="e.g. Priya Sharma"
+              autoFocus
+            />
+          </Field>
+
+          <Field label="Email Address" htmlFor="invite-email" hint="Login email address used to authenticate into Klarity.">
+            <input
+              id="invite-email"
+              type="email"
+              value={inviteForm.email}
+              onChange={(e) => setInviteForm((prev) => ({ ...prev, email: e.target.value }))}
+              required
+              placeholder="e.g. priya@asterandoak.studio"
+            />
+          </Field>
+
+          <Field
+            label="Governance Role"
+            htmlFor="invite-role"
+            hint="Stage 1 owns brand config, Stage 2 reviews & audits, Stage 3 authors in Creator Studio."
+          >
+            <Select
+              id="invite-role"
+              value={inviteForm.role}
+              onChange={(val) => setInviteForm((prev) => ({ ...prev, role: val }))}
+              options={roleOptions}
+            />
+          </Field>
+
+          <Field label="Initial Account Status" htmlFor="invite-status">
+            <Select
+              id="invite-status"
+              value={inviteForm.status}
+              onChange={(val) => setInviteForm((prev) => ({ ...prev, status: val }))}
+              options={statusOptions}
+            />
+          </Field>
+
+          <div style={{ padding: '14px 16px', background: 'var(--cream)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <KeyRound size={15} color="var(--clay)" />
+                <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>Brand Access Code</span>
+              </div>
+              <code style={{ fontSize: '13px', fontWeight: 700, color: 'var(--clay-deep)', background: '#fff', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--line)' }}>
+                {brandMeta.brand_code || 'KLARITY-2026'}
+              </code>
+            </div>
+            <p style={{ margin: 0, fontSize: '11.5px', color: 'var(--muted)', lineHeight: 1.45 }}>
+              Once added, the member can immediately sign in using this email and Brand Access Code.
+            </p>
+          </div>
+        </form>
+      </Drawer>
     </div>
   )
 }
