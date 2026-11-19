@@ -4,7 +4,6 @@ import {
   BookOpen,
   Calendar,
   ChartNoAxesCombined,
-  ChevronDown,
   FileClock,
   HelpCircle,
   Images,
@@ -94,7 +93,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
             <strong>Aster &amp; Oak</strong>
             <small>{isLead ? 'Brand workspace' : 'Assigned workspace'}</small>
           </span>
-          {isLead ? <ChevronDown size={15} /> : <Lock size={13} style={{ opacity: 0.6 }} />}
+          {!isLead ? <Lock size={13} style={{ opacity: 0.6 }} /> : null}
         </button>
       </div>
 
