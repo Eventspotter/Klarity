@@ -163,7 +163,7 @@ Workspace APIs require authentication; submission and review authors come from
 the session. This is email/password login, not Google OAuth.
 
 For local testing, `ENABLE_TEST_ACCOUNT=true` creates `ashwik@topper` (username
-`ashwik`) with password `klarity`. This special test address is not a deliverable
+`ashwik`) with password `clarity`. This special test address is not a deliverable
 email address. The account is created only if absent; startup never resets its
 password. Use a separate database without this test account before deployment,
 set `ENABLE_TEST_ACCOUNT=false`, and use HTTPS with `COOKIE_SECURE=true`.
