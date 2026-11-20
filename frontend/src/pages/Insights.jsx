@@ -185,14 +185,14 @@ export function Insights() {
       <section className="page-head">
         <div>
           <h1>Insights</h1>
-          <p>The patterns behind the scores. What keeps slipping, who is moving fastest, and where the rules need work.</p>
+          <p>The Patterns behind the scores. What keeps slipping, who is moving fastest, and where the rules need work.</p>
         </div>
         <div className="page-head__actions">
           <span className="insight-stat">
             <TrendingUp size={15} /> Quality up 1.6 pts this month
           </span>
           <button type="button" className="btn btn--secondary btn--md" onClick={exportReport}>
-            <Download size={15} /> <span>Export report</span>
+            <Download size={15} /> <span>Export Report</span>
           </button>
         </div>
       </section>
