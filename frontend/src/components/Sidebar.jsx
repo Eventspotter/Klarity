@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
   BookOpen,
@@ -59,6 +59,25 @@ export function Sidebar({ open, onClose, onNewReview }) {
   const navRef = useRef(null)
   const pillRef = useRef(null)
   const initialRef = useRef(false)
+  const brandDropdownRef = useRef(null)
+
+  useEffect(() => {
+    if (!brandsOpen) return
+    const handleClickOutside = (e) => {
+      if (brandDropdownRef.current && !brandDropdownRef.current.contains(e.target)) {
+        setBrandsOpen(false)
+      }
+    }
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setBrandsOpen(false)
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [brandsOpen])
 
   const updatePill = () => {
     animateSlidingPill({
@@ -111,7 +130,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
           <span className="brand-lockup__word">Klarity</span>
         </NavLink>
 
-        <div className="workspace-switch-wrap" style={{ position: 'relative' }}>
+        <div className="workspace-switch-wrap" ref={brandDropdownRef} style={{ position: 'relative' }}>
           <button
             className={cx('workspace-switch', brandsOpen && 'is-expanded')}
             type="button"

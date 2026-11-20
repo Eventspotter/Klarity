@@ -304,6 +304,11 @@ def switch_brand(
     db.commit()
     global _SETTINGS_CACHE
     _SETTINGS_CACHE = None
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
     return {
         "message": f"Switched to {brand.brand_name}",
         "brand_name": brand.brand_name,
@@ -484,6 +489,11 @@ def update_workspace_settings(
     db.commit()
     global _SETTINGS_CACHE
     _SETTINGS_CACHE = None
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
     return {
         "message": "Workspace settings updated successfully.",
         "brand_name": setting.brand_name,

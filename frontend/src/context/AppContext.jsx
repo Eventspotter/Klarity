@@ -128,14 +128,6 @@ export function AppProvider({ children }) {
     }
   }, [user])
 
-  const switchBrand = useCallback((brand) => {
-    setActiveBrand(brand)
-    try {
-      localStorage.setItem('klarity_active_brand', JSON.stringify(brand))
-    } catch {}
-    api.switchBrand(brand.brand_name).catch(() => {})
-    toast(`Active workspace: ${brand.brand_name}`, 'good')
-  }, [toast])
   const refresh = useCallback(async (accountOverride) => {
     try {
       const payload = await api.bootstrap()
@@ -158,6 +150,19 @@ export function AppProvider({ children }) {
       throw error
     }
   }, [user, fetchPendingCount])
+
+  const switchBrand = useCallback(async (brand) => {
+    const fullBrand = DEFAULT_BRANDS.find(b => b.brand_name === brand.brand_name || b.name === brand.name) || brand
+    setActiveBrand(fullBrand)
+    try {
+      localStorage.setItem('klarity_active_brand', JSON.stringify(fullBrand))
+    } catch {}
+    try {
+      await api.switchBrand(brand.brand_name)
+      await refresh()
+    } catch {}
+    toast(`Active workspace: ${fullBrand.brand_name || fullBrand.name}`, 'good')
+  }, [toast, refresh])
   useEffect(() => {
     let alive = true
     Promise.all([api.me(), api.bootstrap()])
