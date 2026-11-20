@@ -17,6 +17,7 @@ import {
   User,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
+import OtpInput from '../components/OtpInput'
 import { useApp } from '../context/AppContext'
 import { api } from '../lib/api'
 
@@ -26,6 +27,8 @@ export function Login() {
   const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
   const [forgotEmail, setForgotEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
+  const [otpStatus, setOtpStatus] = useState('idle') // 'idle' | 'combining' | 'success' | 'error'
+  const [otpVerified, setOtpVerified] = useState(false)
   const [newPassword, setNewPassword] = useState('')
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [username, setUsername] = useState('')
@@ -101,6 +104,9 @@ export function Login() {
     setBusy(true)
     setError('')
     setSuccessMsg('')
+    setOtpCode('')
+    setOtpStatus('idle')
+    setOtpVerified(false)
     try {
       const res = await api.forgotPassword({ email: forgotEmail.trim() })
       setSuccessMsg(res?.message || 'Verification code sent to your email!')
@@ -112,9 +118,30 @@ export function Login() {
     }
   }
 
+  const handleOtpComplete = async (code) => {
+    if (!code || code.length !== 6) return
+    setOtpStatus('combining')
+    setError('')
+
+    // Delay slightly to allow the combine boxes animation to finish smoothly
+    await new Promise((resolve) => setTimeout(resolve, 600))
+
+    try {
+      // Optional check or directly transition to verified
+      setOtpStatus('success')
+      setOtpVerified(true)
+    } catch (err) {
+      setOtpStatus('error')
+      setTimeout(() => {
+        setOtpStatus('idle')
+        setOtpCode('')
+      }, 1500)
+    }
+  }
+
   const handleResetPassword = async (e) => {
     e.preventDefault()
-    if (!otpCode.trim() || !newPassword) {
+    if (!otpCode.trim() || otpCode.trim().length !== 6 || !newPassword) {
       setError('Please provide the 6-digit verification code and new password.')
       return
     }
@@ -134,8 +161,15 @@ export function Login() {
       setEmail(forgotEmail.trim())
       setForgotEmail('')
       setOtpCode('')
+      setOtpStatus('idle')
+      setOtpVerified(false)
       setNewPassword('')
     } catch (err) {
+      setOtpStatus('error')
+      setTimeout(() => {
+        setOtpStatus('idle')
+        setOtpVerified(false)
+      }, 1500)
       setError(err.message || 'Failed to reset password.')
     } finally {
       setBusy(false)
@@ -246,25 +280,27 @@ export function Login() {
                 </form>
               ) : (
                 <form className="login-form" onSubmit={handleResetPassword}>
-                  <div className="login-field">
-                    <label htmlFor="otp-code">6-Digit Verification Code</label>
-                    <div className="login-input-wrap">
-                      <KeyRound size={16} className="login-input-icon" />
-                      <input
-                        id="otp-code"
-                        type="text"
-                        value={otpCode}
-                        onChange={(e) => setOtpCode(e.target.value)}
-                        placeholder="e.g. 748291"
-                        maxLength={10}
-                        required
-                        autoFocus
-                        style={{ letterSpacing: '0.15em', fontWeight: 700 }}
-                      />
-                    </div>
+                  <div className="login-field" style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px' }}>Enter 6-Digit Code</label>
+                    <small style={{ color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>
+                      Sent to <strong>{forgotEmail}</strong>
+                    </small>
+                    
+                    {/* Animated OTP Input Component with glowing boxes, collapse and tick/cross */}
+                    <OtpInput
+                      length={6}
+                      value={otpCode}
+                      onChange={(val) => {
+                        setOtpCode(val)
+                        if (otpStatus !== 'idle') setOtpStatus('idle')
+                      }}
+                      onComplete={handleOtpComplete}
+                      status={otpStatus}
+                      disabled={busy}
+                    />
                   </div>
 
-                  <div className="login-field">
+                  <div className="login-field" style={{ marginTop: '12px' }}>
                     <label htmlFor="new-password">New Password</label>
                     <div className="login-input-wrap">
                       <Lock size={16} className="login-input-icon" />
@@ -277,6 +313,7 @@ export function Login() {
                         maxLength={128}
                         placeholder="At least 8 characters"
                         required
+                        disabled={otpCode.length !== 6 || busy}
                       />
                       <button
                         type="button"
@@ -288,16 +325,25 @@ export function Login() {
                     </div>
                   </div>
 
-                  <button type="submit" className="login-submit-btn" disabled={busy}>
-                    <span>{busy ? 'Resetting Password…' : 'Save New Password'}</span>
+                  <button
+                    type="submit"
+                    className="login-submit-btn"
+                    disabled={busy || otpCode.length !== 6 || !newPassword}
+                    style={{ marginTop: '14px' }}
+                  >
+                    <span>{busy ? 'Updating Password…' : 'Save New Password'}</span>
                     <ArrowRight size={16} />
                   </button>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '6px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '12px' }}>
                     <button
                       type="button"
-                      style={{ background: 'none', border: 'none', color: 'var(--sage)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
-                      onClick={() => setForgotMode('email')}
+                      style={{ background: 'none', border: 'none', color: 'var(--sage, #38bdf8)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      onClick={() => {
+                        setForgotMode('email')
+                        setOtpStatus('idle')
+                        setOtpCode('')
+                      }}
                     >
                       Resend code
                     </button>
@@ -308,6 +354,8 @@ export function Login() {
                         setForgotMode(false)
                         setError('')
                         setSuccessMsg('')
+                        setOtpStatus('idle')
+                        setOtpCode('')
                       }}
                     >
                       Cancel
