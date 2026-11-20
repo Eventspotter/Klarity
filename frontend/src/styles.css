@@ -1036,6 +1036,8 @@ select {
 
 button {
   cursor: pointer;
+  background: transparent;
+  border: 0;
 }
 
 button:disabled,
@@ -1268,12 +1270,40 @@ ol {
 .btn--secondary {
   color: var(--ink);
   background: var(--paper-raised);
-  border-color: var(--line-strong);
+  border: 1px solid var(--line-strong);
 }
 
 .btn--secondary:hover:not(:disabled) {
   background: var(--sage-wash);
   border-color: var(--sage);
+  color: var(--ink);
+}
+
+.btn--outline {
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-xs);
+}
+
+.btn--outline:hover:not(:disabled) {
+  background: var(--cream-deep);
+  border-color: var(--sage);
+  color: var(--sage-deep);
+}
+
+html.dark .btn--outline,
+[data-theme="dark"] .btn--outline {
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+html.dark .btn--outline:hover:not(:disabled),
+[data-theme="dark"] .btn--outline:hover:not(:disabled) {
+  background: var(--paper-raised);
+  border-color: var(--sage);
+  color: var(--sage);
 }
 
 .btn--ghost {
