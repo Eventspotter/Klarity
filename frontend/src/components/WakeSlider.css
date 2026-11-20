@@ -18,6 +18,19 @@
   pointer-events: none;
 }
 
+.wake-slider--readonly .wake-slider__track,
+.wake-slider[aria-readonly='true'] .wake-slider__track {
+  cursor: default !important;
+  pointer-events: none;
+  touch-action: auto;
+}
+
+.wake-slider--readonly .wake-slider__handle,
+.wake-slider[aria-readonly='true'] .wake-slider__handle {
+  cursor: default !important;
+  pointer-events: none;
+}
+
 .wake-slider__track {
   position: relative;
   display: flex;

@@ -43,6 +43,7 @@ export default function WakeSlider({
   showValue = false,
   formatValue,
   disabled = false,
+  readOnly = false,
   ariaLabel = 'Value',
   className = '',
   autoLoop = false, // When true, seamlessly travels in one direction (left-to-right) continuously
@@ -173,7 +174,7 @@ export default function WakeSlider({
     commit(min + ratio * (max - min));
   };
   const onPointerDown = e => {
-    if (disabled || pointerId.current !== null) return;
+    if (disabled || readOnly || pointerId.current !== null) return;
     pointerId.current = e.pointerId;
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -183,6 +184,7 @@ export default function WakeSlider({
     commitFromX(e.clientX);
   };
   const onPointerMove = e => {
+    if (disabled || readOnly) return;
     if (e.pointerId === pointerId.current) commitFromX(e.clientX);
   };
   const endDrag = e => {
@@ -193,7 +195,7 @@ export default function WakeSlider({
     pointerId.current = null;
   };
   const onKeyDown = e => {
-    if (disabled) return;
+    if (disabled || readOnly) return;
     const jumps = {
       ArrowRight: value + step,
       ArrowUp: value + step,
@@ -241,8 +243,9 @@ export default function WakeSlider({
   return (
     <div
       ref={rootRef}
-      className={`wake-slider${className ? ` ${className}` : ''}`}
+      className={`wake-slider${readOnly ? ' wake-slider--readonly' : ''}${className ? ` ${className}` : ''}`}
       aria-disabled={disabled || undefined}
+      aria-readonly={readOnly || undefined}
       style={{
         '--ws-fill': fillColor,
         '--ws-track': trackColor,
@@ -255,11 +258,11 @@ export default function WakeSlider({
       <div
         ref={trackRef}
         className="wake-slider__track"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={endDrag}
-        onPointerCancel={endDrag}
-        onLostPointerCapture={endDrag}
+        onPointerDown={readOnly ? undefined : onPointerDown}
+        onPointerMove={readOnly ? undefined : onPointerMove}
+        onPointerUp={readOnly ? undefined : endDrag}
+        onPointerCancel={readOnly ? undefined : endDrag}
+        onLostPointerCapture={readOnly ? undefined : endDrag}
       >
         {barNodes}
         <button
@@ -267,14 +270,15 @@ export default function WakeSlider({
           type="button"
           role="slider"
           className="wake-slider__handle"
-          tabIndex={disabled ? -1 : 0}
+          tabIndex={disabled || readOnly ? -1 : 0}
           aria-label={ariaLabel}
           aria-valuemin={min}
           aria-valuemax={max}
           aria-valuenow={value}
           aria-valuetext={format(value)}
           aria-disabled={disabled || undefined}
-          onKeyDown={onKeyDown}
+          aria-readonly={readOnly || undefined}
+          onKeyDown={readOnly ? undefined : onKeyDown}
         />
       </div>
       {showValue ? (

@@ -300,7 +300,7 @@ export function Hero() {
                     <small>/100</small>
                   </div>
 
-                  <div className="hero-wake-slider-wrap" style={{ margin: '14px 0 10px', width: '100%' }}>
+                  <div className="hero-wake-slider-wrap" style={{ margin: '14px 0 10px', width: '100%', pointerEvents: 'none' }}>
                     <WakeSlider
                       value={scoreDisplay}
                       min={0}
@@ -317,10 +317,7 @@ export function Hero() {
                       skew={0.6}
                       glide={0.3}
                       smoothing={100}
-                      onChange={(val) => {
-                        setScoreDisplay(val)
-                        scoreObj.current.val = val
-                      }}
+                      readOnly={true}
                     />
                   </div>
 
