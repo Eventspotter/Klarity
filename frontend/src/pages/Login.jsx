@@ -122,20 +122,30 @@ export function Login() {
     if (!code || code.length !== 6) return
     setOtpStatus('combining')
     setError('')
+    setSuccessMsg('')
 
-    // Delay slightly to allow the combine boxes animation to finish smoothly
-    await new Promise((resolve) => setTimeout(resolve, 600))
+    // Allow the combine boxes animation to visually slide into the center
+    await new Promise((resolve) => setTimeout(resolve, 500))
 
     try {
-      // Optional check or directly transition to verified
+      // Validate OTP with backend
+      await api.verifyOtp({
+        email: forgotEmail.trim(),
+        otp: code.trim(),
+      })
+      // OTP is valid! Show success tick in the central combined badge
       setOtpStatus('success')
       setOtpVerified(true)
+      setSuccessMsg('Code verified! Please set your new password below.')
     } catch (err) {
+      // Wrong or expired OTP! Show red cross in central combined badge, shake, then expand back
       setOtpStatus('error')
+      setError(err.message || 'Incorrect verification code. Please check and try again.')
       setTimeout(() => {
         setOtpStatus('idle')
         setOtpCode('')
-      }, 1500)
+        setOtpVerified(false)
+      }, 1600)
     }
   }
 
@@ -300,40 +310,55 @@ export function Login() {
                     />
                   </div>
 
-                  <div className="login-field" style={{ marginTop: '12px' }}>
-                    <label htmlFor="new-password">New Password</label>
-                    <div className="login-input-wrap">
-                      <Lock size={16} className="login-input-icon" />
-                      <input
-                        id="new-password"
-                        type={showNewPassword ? 'text' : 'password'}
-                        value={newPassword}
-                        onChange={(e) => setNewPassword(e.target.value)}
-                        minLength={8}
-                        maxLength={128}
-                        placeholder="At least 8 characters"
-                        required
-                        disabled={otpCode.length !== 6 || busy}
-                      />
-                      <button
-                        type="button"
-                        className="login-pw-toggle"
-                        onClick={() => setShowNewPassword(!showNewPassword)}
-                      >
-                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
+                  {/* Only reveal New Password form AFTER OTP is verified */}
+                  {otpVerified && (
+                    <div className="login-field" style={{ marginTop: '14px', animation: 'fadeIn 0.35s ease-out' }}>
+                      <label htmlFor="new-password">New Password</label>
+                      <div className="login-input-wrap">
+                        <Lock size={16} className="login-input-icon" />
+                        <input
+                          id="new-password"
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          minLength={8}
+                          maxLength={128}
+                          placeholder="At least 8 characters"
+                          required
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="login-pw-toggle"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  <button
-                    type="submit"
-                    className="login-submit-btn"
-                    disabled={busy || otpCode.length !== 6 || !newPassword}
-                    style={{ marginTop: '14px' }}
-                  >
-                    <span>{busy ? 'Updating Password…' : 'Save New Password'}</span>
-                    <ArrowRight size={16} />
-                  </button>
+                  {otpVerified ? (
+                    <button
+                      type="submit"
+                      className="login-submit-btn"
+                      disabled={busy || !newPassword}
+                      style={{ marginTop: '14px' }}
+                    >
+                      <span>{busy ? 'Saving Password…' : 'Save New Password'}</span>
+                      <ArrowRight size={16} />
+                    </button>
+                  ) : (
+                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
+                        {otpStatus === 'combining'
+                          ? 'Verifying code…'
+                          : otpStatus === 'error'
+                          ? 'Invalid code. Resetting boxes…'
+                          : 'Enter the 6-digit code above to proceed.'}
+                      </p>
+                    </div>
+                  )}
 
                   <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '12px' }}>
                     <button

@@ -684,6 +684,11 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class VerifyOtpRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=10)
+
+
 def send_otp_email(to_email: str, otp_code: str) -> bool:
     """Send OTP via goklarity@gmail.com. Falls back cleanly to console log if SMTP credentials aren't set."""
     sender_email = os.getenv("GMAIL_SENDER_EMAIL", "goklarity@gmail.com").strip()
@@ -762,6 +767,31 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
         "email": account.email,
         "dev_code": otp_code if not os.getenv("GMAIL_APP_PASSWORD") else None,
     }
+
+
+@router.post("/verify-otp")
+def verify_otp(payload: VerifyOtpRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    otp_record = (
+        db.query(PasswordResetOTP)
+        .filter(
+            PasswordResetOTP.email == account.email,
+            PasswordResetOTP.otp_code == payload.otp.strip(),
+            PasswordResetOTP.used == False,
+        )
+        .order_by(PasswordResetOTP.id.desc())
+        .first()
+    )
+
+    if not otp_record or otp_record.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Invalid or expired OTP code. Please enter the correct code.")
+
+    return {"valid": True, "message": "Verification code confirmed!"}
 
 
 @router.post("/reset-password")
