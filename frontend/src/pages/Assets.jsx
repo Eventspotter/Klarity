@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowUpRight,
   Check,
@@ -1062,32 +1063,37 @@ export function Assets() {
   return (
     <div className="assets-page">
       {/* Global Drag-and-Drop Overlay */}
-      {isDraggingPage && (
-        <div className="asset-global-overlay" role="dialog" aria-modal="true" aria-label="Drop brand file to upload">
-          <div className="asset-global-overlay__perimeter" />
-          <div className="asset-global-overlay__card">
-            <div className="asset-global-overlay__badge">
-              <Sparkles size={13} />
-              <span>{currentBrand.brand_name || currentBrand.name || 'Brand'} Asset Library</span>
+      {isDraggingPage &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="asset-global-overlay" role="dialog" aria-modal="true" aria-label="Drop brand file to upload">
+            <div className="asset-global-overlay__card">
+              <div className="asset-global-overlay__zone">
+                <div className="asset-global-overlay__badge">
+                  <Sparkles size={12} />
+                  <span>{currentBrand.brand_name || currentBrand.name || 'Brand'} · Asset Library</span>
+                </div>
+                <div className="asset-global-overlay__icon-tile">
+                  <FileUp size={28} strokeWidth={2} />
+                </div>
+                <div className="asset-global-overlay__copy">
+                  <h3>Drop brand file to import</h3>
+                  <p>Release anywhere to stage artwork, extract color palettes, or link guidelines.</p>
+                </div>
+                <div className="asset-global-overlay__formats">
+                  <span>SVG</span>
+                  <span>PNG</span>
+                  <span>JPG</span>
+                  <span>WEBP</span>
+                  <span>PDF</span>
+                  <span>ASE</span>
+                  <span>JSON</span>
+                </div>
+              </div>
             </div>
-            <div className="asset-global-overlay__icon-orb">
-              <FileUp size={32} strokeWidth={2.2} />
-            </div>
-            <div className="asset-global-overlay__copy">
-              <h3>Drop brand file to import</h3>
-              <p>Release anywhere to stage artwork, extract color palettes, or link guidelines.</p>
-            </div>
-            <div className="asset-global-overlay__formats">
-              <span>SVG</span>
-              <span>PNG</span>
-              <span>JPG</span>
-              <span>WEBP</span>
-              <span>PDF</span>
-              <span>ASE</span>
-            </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
 
       {/* Page Header */}
       <section className="page-head">
