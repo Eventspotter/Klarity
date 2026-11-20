@@ -167,6 +167,12 @@ html.dark .topbar,
   border-bottom: 1px solid var(--line);
 }
 
+html.dark .hero-nav,
+[data-theme="dark"] .hero-nav {
+  background: rgba(18, 21, 24, 0.88);
+  border-bottom: 1px solid var(--line);
+}
+
 html.dark .sidebar,
 [data-theme="dark"] .sidebar {
   background: linear-gradient(180deg, #13171c 0%, #0c0f12 100%);
@@ -8256,10 +8262,16 @@ kbd {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(246, 241, 230, 0.88);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
+  background: var(--cream);
   border-bottom: 1px solid var(--line);
+}
+
+@supports (backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px)) {
+  .hero-nav {
+    background: color-mix(in srgb, var(--cream) 88%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+  }
 }
 
 .hero-nav__inner {
