@@ -104,49 +104,49 @@ export function AppProvider({ children }) {
   const toggleTheme = useCallback((event) => {
     const isSwitchingToDark = (theme !== 'dark')
 
-    // If browser supports native View Transitions API, animate directional wavy liquid blob
+    // If browser supports native View Transitions API, animate the undulating S-curve wave curtain
     if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // When switching to dark: flow from top-right down to bottom-left
-      // When switching back to light: flow in the opposite direction (from bottom-left up to top-right)
-      let x, y
-      if (isSwitchingToDark) {
-        x = event?.clientX ?? (window.innerWidth - 30)
-        y = event?.clientY ?? 30
-      } else {
-        // Opposite direction origin: bottom-left corner
-        x = 24
-        y = window.innerHeight - 24
-      }
-
-      // Calculate distance to furthest corner to guarantee 100% full screen coverage
-      const maxRadius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y)
-      ) * 1.35
-
-      // Generate dynamic wavy blob polygon keyframes for organic fluid flow
-      const steps = 12
-      const numPoints = 20
+      // Generate the sweeping S-curve wave boundary exactly matching the reference picture:
+      // A smooth continuous wave curtain with graceful crests and valleys sweeping across the screen.
+      // - When switching to dark: rolls in smoothly with the organic wave curve across to cover the screen.
+      // - When switching to light: rolls in from the opposite direction.
+      const steps = 18
+      const numSamples = 28
       const clipKeyframes = []
 
       for (let s = 0; s <= steps; s++) {
-        const progress = s / steps
-        const currR = maxRadius * progress
-        // Wave amplitude peaks during mid expansion for maximum liquid blobbiness
-        const waveAmp = progress === 0 || progress === 1 ? 0 : 0.22 * Math.sin(progress * Math.PI)
-        const phase = progress * Math.PI * 4
+        const p = s / steps
+        // Wave amplitude peaks gracefully in the middle for maximum fluid definition
+        const amp = 14.0 * Math.sin(p * Math.PI)
 
-        const points = []
-        for (let i = 0; i < numPoints; i++) {
-          const angle = (i / numPoints) * 2 * Math.PI
-          // Dual-frequency sinusoidal wave for organic fluid ripples
-          const blobMod = Math.sin(angle * 3 + phase) * 0.6 + Math.cos(angle * 4 - phase * 0.8) * 0.4
-          const r = Math.max(0, currR * (1 + blobMod * waveAmp))
-          const px = (x + r * Math.cos(angle)).toFixed(1)
-          const py = (y + r * Math.sin(angle)).toFixed(1)
-          points.push(`${px}px ${py}px`)
+        const curve = []
+        if (isSwitchingToDark) {
+          // Dark wave enters from left (-15%) and sweeps across to right (125%)
+          // matching the exact visual curve shown in the reference image
+          const baseX = -18.0 + p * 142.0
+          for (let i = 0; i <= numSamples; i++) {
+            const yPct = (i / numSamples) * 100.0
+            const yNorm = i / numSamples
+            // Smooth harmonic S-curve wave with crests and natural fluid ripple
+            const wave = Math.sin(yNorm * Math.PI * 1.8 - p * Math.PI * 1.4) * 0.72 +
+                         Math.sin(yNorm * Math.PI * 3.6 + p * Math.PI * 0.9) * 0.28
+            const xPct = (baseX + wave * amp).toFixed(2)
+            curve.push(`${xPct}% ${yPct.toFixed(1)}%`)
+          }
+          clipKeyframes.push(`polygon(-25% -15%, ${curve.join(', ')}, -25% 115%)`)
+        } else {
+          // Light wave sweeps back in the opposite direction (from right 125% to left -15%)
+          const baseX = 118.0 - p * 142.0
+          for (let i = 0; i <= numSamples; i++) {
+            const yPct = (i / numSamples) * 100.0
+            const yNorm = i / numSamples
+            const wave = Math.sin(yNorm * Math.PI * 1.8 + p * Math.PI * 1.4) * 0.72 +
+                         Math.sin(yNorm * Math.PI * 3.6 - p * Math.PI * 0.9) * 0.28
+            const xPct = (baseX - wave * amp).toFixed(2)
+            curve.push(`${xPct}% ${yPct.toFixed(1)}%`)
+          }
+          clipKeyframes.push(`polygon(125% -15%, ${curve.join(', ')}, 125% 115%)`)
         }
-        clipKeyframes.push(`polygon(${points.join(', ')})`)
       }
 
       const transition = document.startViewTransition(() => {
@@ -154,16 +154,14 @@ export function AppProvider({ children }) {
       })
 
       transition.ready.then(() => {
-        // Wavy bloby liquid wave animation:
-        // - To Dark: expands with dynamic undulating ripples from top-right down to bottom-left
-        // - To Light: expands in the opposite direction with fluid waves from bottom-left up to top-right
+        // Smooth S-curve wave curtain transition matching reference artwork
         document.documentElement.animate(
           {
             clipPath: clipKeyframes
           },
           {
-            duration: 850,
-            easing: 'cubic-bezier(0.25, 1, 0.35, 1)',
+            duration: 800,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         )
