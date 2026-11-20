@@ -99,13 +99,23 @@ export function AppProvider({ children }) {
   }, [theme])
 
   const toggleTheme = useCallback((event) => {
-    // If browser supports native View Transitions API, animate liquid flow from top-right to bottom-left
-    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // Determine origin point (top right corner or click location)
-      const x = event?.clientX ?? (window.innerWidth - 30)
-      const y = event?.clientY ?? 30
+    const isSwitchingToDark = (theme !== 'dark')
 
-      // Calculate distance to furthest corner (bottom-left corner at 0, innerHeight)
+    // If browser supports native View Transitions API, animate directional liquid wave
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // When switching to dark: flow from top-right down to bottom-left
+      // When switching back to light: flow in the opposite direction (from bottom-left up to top-right)
+      let x, y
+      if (isSwitchingToDark) {
+        x = event?.clientX ?? (window.innerWidth - 30)
+        y = event?.clientY ?? 30
+      } else {
+        // Opposite direction origin: bottom-left corner
+        x = 24
+        y = window.innerHeight - 24
+      }
+
+      // Calculate distance to furthest corner to guarantee 100% full screen coverage
       const maxRadius = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
@@ -116,7 +126,9 @@ export function AppProvider({ children }) {
       })
 
       transition.ready.then(() => {
-        // Organic liquid ripple flow: expanding circular wave from top right across to bottom left
+        // Liquid wave animation:
+        // - To Dark: expands from top-right to bottom-left
+        // - To Light: expands in the opposite direction from bottom-left to top-right
         document.documentElement.animate(
           {
             clipPath: [
@@ -134,7 +146,7 @@ export function AppProvider({ children }) {
     } else {
       setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
     }
-  }, [])
+  }, [theme])
   const [activeBrand, setActiveBrand] = useState(() => {
     try {
       const stored = localStorage.getItem('klarity_active_brand')
