@@ -3165,19 +3165,31 @@ html.dark .sidebar__nav--animated .nav-item.is-active:focus-visible,
 }
 
 .rail-health__track {
-  height: 3px;
-  margin-top: 9px;
+  height: 4px;
+  margin-top: 10px;
   overflow: hidden;
-  background: rgba(246, 241, 230, 0.13);
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 999px;
 }
 
 .rail-health__track span {
   display: block;
   height: 100%;
-  background: var(--sage-soft);
+  background: linear-gradient(90deg, var(--sage, #38bdf8), #60a5fa);
   border-radius: inherit;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
   transition: width 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html.dark .rail-health__track,
+[data-theme="dark"] .rail-health__track {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+html.dark .rail-health__track span,
+[data-theme="dark"] .rail-health__track span {
+  background: linear-gradient(90deg, #38bdf8, #60a5fa);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.75);
 }
 
 .rail-health p {
