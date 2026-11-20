@@ -119,31 +119,32 @@ export function AppProvider({ children }) {
         y = window.innerHeight - 24
       }
 
-      // Calculate distance to furthest corner to guarantee 100% full screen coverage
+      // Calculate distance to furthest corner to guarantee 100% full screen coverage with deep fluid expansion
       const maxRadius = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
-      ) * 1.35
+      ) * 1.45
 
-      // Generate dynamic keyframes with harmonic S-curve front:
-      // wave = 0.72 * sin(1.8 * pi * v - 1.4 * pi * p) + 0.28 * sin(3.6 * pi * v + 0.9 * pi * p)
-      const steps = 18
-      const numPoints = 36
+      // Generate dynamic keyframes with heightened liquid undulation and fluid wave dynamics:
+      // Combines primary S-curve with secondary ripple and fluid surge harmonics
+      const steps = 24
+      const numPoints = 48
       const clipKeyframes = []
 
       for (let s = 0; s <= steps; s++) {
         const p = s / steps
         const currR = maxRadius * p
-        // Wave amplitude peaks during mid expansion for maximum defined liquid crests & valleys
-        const amp = p === 0 || p === 1 ? 0 : 0.26 * Math.sin(p * Math.PI)
+        // Liquid surge amplitude peaks at 0.38 for viscous, organic fluidity
+        const amp = p === 0 || p === 1 ? 0 : 0.38 * Math.sin(p * Math.PI)
 
         const points = []
         for (let i = 0; i < numPoints; i++) {
           const v = i / numPoints
           const angle = v * 2 * Math.PI
-          // Exact harmonic S-curve wave boundary formula from reference
-          const wave = 0.72 * Math.sin(1.8 * Math.PI * v - 1.4 * Math.PI * p) +
-                       0.28 * Math.sin(3.6 * Math.PI * v + 0.9 * Math.PI * p)
+          // Triple-harmonic liquid wave equation: broad S-curve + organic fluid ripples + trailing surge
+          const wave = 0.55 * Math.sin(1.8 * Math.PI * v - 2.2 * Math.PI * p) +
+                       0.30 * Math.sin(3.6 * Math.PI * v + 1.6 * Math.PI * p) +
+                       0.15 * Math.cos(5.4 * Math.PI * v - 3.0 * Math.PI * p)
           const r = Math.max(0, currR * (1 + wave * amp))
           const px = (x + r * Math.cos(angle)).toFixed(1)
           const py = (y + r * Math.sin(angle)).toFixed(1)
@@ -157,16 +158,16 @@ export function AppProvider({ children }) {
       })
 
       transition.ready.then(() => {
-        // Directional wave animation with harmonic S-curve:
-        // - To Dark: expands with S-curve wave boundary from top-right down to bottom-left
-        // - To Light: expands in the opposite direction with fluid wave from bottom-left up to top-right
+        // High-viscosity liquid wave animation with fluid organic easing:
+        // - To Dark: deep liquid wave rolls from top-right down to bottom-left
+        // - To Light: deep liquid wave rolls in reverse from bottom-left up to top-right
         document.documentElement.animate(
           {
             clipPath: clipKeyframes
           },
           {
-            duration: 850,
-            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            duration: 950,
+            easing: 'cubic-bezier(0.2, 0.9, 0.28, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         )
