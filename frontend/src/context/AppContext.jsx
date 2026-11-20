@@ -85,6 +85,10 @@ export function AppProvider({ children }) {
         const parsed = JSON.parse(stored)
         const match = DEFAULT_BRANDS.find(b => b.brand_name === parsed.brand_name || b.name === parsed.name)
         if (match) return match
+        if (parsed.swatches?.length === 6 &&
+            parsed.swatches.every(s => ['#FFFFFF', '#111827', '#298EE4', '#64748B', '#F8FAFC', '#E0F2FE'].includes(s.hex))) {
+          parsed.swatches = []
+        }
         return parsed
       }
     } catch {}

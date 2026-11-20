@@ -105,11 +105,45 @@ function MonogramPlate({ mark = 'A&O', color = '#3B2418', bg = '#FBF8F1' }) {
 
 export function DynamicPalettePlate({ swatches: inputSwatches = [], title = 'COLOUR PALETTE' }) {
   const displaySwatches =
-    inputSwatches && inputSwatches.length > 0 ? inputSwatches.slice(0, 6) : swatches.slice(0, 4)
+    inputSwatches && inputSwatches.length > 0 ? inputSwatches.slice(0, 6) : []
   const count = displaySwatches.length
   const width = 320
   const height = 200
   const padding = 16
+
+  if (count === 0) {
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="asset-svg" role="img" aria-label={title}>
+        <rect width={width} height={height} fill="#FBF8F1" />
+        <rect
+          x={padding}
+          y={28}
+          width={width - padding * 2}
+          height={116}
+          rx={8}
+          fill="none"
+          stroke="rgba(32, 21, 15, 0.12)"
+          strokeDasharray="4 4"
+        />
+        <text x={width / 2} y={82} textAnchor="middle" fill="#8C827A" style={{ fontSize: '11px', fontWeight: 600 }}>
+          No colors configured
+        </text>
+        <text x={width / 2} y={102} textAnchor="middle" fill="#A89F91" style={{ fontSize: '9px' }}>
+          Upload a palette asset to define tokens
+        </text>
+        <text
+          x={padding}
+          y={186}
+          fill="#5F675C"
+          className="asset-svg__caption"
+          style={{ fontSize: '8.5px', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+        >
+          {title.toUpperCase()} · 0 TOKENS
+        </text>
+      </svg>
+    )
+  }
+
   const gap = count > 5 ? 6 : 8
   const availableWidth = width - padding * 2 - (count - 1) * gap
   const chipWidth = Math.max(30, Math.floor(availableWidth / count))
@@ -508,17 +542,26 @@ export function Assets() {
     owner: `${currentBrand.brand_name || 'Brand'} team`,
   })
 
+  const activeSwatches = useMemo(() => {
+    if (isDemo) {
+      return currentBrand.swatches && currentBrand.swatches.length > 0
+        ? currentBrand.swatches
+        : swatches
+    }
+    if (!currentBrand.swatches || currentBrand.swatches.length === 0) return []
+    const isLegacyMock =
+      currentBrand.swatches.length === 6 &&
+      currentBrand.swatches.every((s) =>
+        ['#FFFFFF', '#111827', '#298EE4', '#64748B', '#F8FAFC', '#E0F2FE'].includes(s.hex)
+      )
+    if (isLegacyMock) return []
+    return currentBrand.swatches
+  }, [currentBrand.swatches, isDemo])
+
   // Palette Studio State
   const [paletteTab, setPaletteTab] = useState('builder') // 'builder' | 'paste' | 'extract'
   const [paletteSwatches, setPaletteSwatches] = useState(() => {
-    return currentBrand.swatches && currentBrand.swatches.length > 0
-      ? [...currentBrand.swatches]
-      : [
-          { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
-          { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
-          { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
-          { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
-        ]
+    return isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches]
   })
   const [pasteText, setPasteText] = useState('')
   const [extractedThumb, setExtractedThumb] = useState(null)
@@ -566,7 +609,7 @@ export function Assets() {
             tagline: currentBrand.tagline || '',
             values: currentBrand.values || currentBrand.brand_values || '',
           })
-          if (currentBrand.swatches) setPaletteSwatches([...currentBrand.swatches])
+          setPaletteSwatches(isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches])
           return
         }
       }
@@ -580,8 +623,8 @@ export function Assets() {
       tagline: currentBrand.tagline || '',
       values: currentBrand.values || currentBrand.brand_values || '',
     })
-    if (currentBrand.swatches) setPaletteSwatches([...currentBrand.swatches])
-  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey, isDemo])
+    setPaletteSwatches(isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches])
+  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey, isDemo, activeSwatches])
 
   // Persist assets to brand-scoped localStorage
   useEffect(() => {
@@ -1115,7 +1158,7 @@ export function Assets() {
       )}
 
       {/* Core Palette Section */}
-      {(Boolean(currentBrand.swatches?.length) || isDemo) && (
+      {activeSwatches.length > 0 && (
         <section className="palette-section">
           <div className="palette-section__head">
             <div>
@@ -1123,11 +1166,11 @@ export function Assets() {
               <p>Click any swatch to copy its hex value.</p>
             </div>
             <span>
-              <Palette size={15} /> {(currentBrand.swatches || swatches).length} tokens
+              <Palette size={15} /> {activeSwatches.length} tokens
             </span>
           </div>
           <div className="swatch-grid">
-            {(currentBrand.swatches || swatches).map((swatch) => (
+            {activeSwatches.map((swatch) => (
               <button
                 key={swatch.hex}
                 type="button"
@@ -1166,9 +1209,11 @@ export function Assets() {
           <button type="button" onClick={() => copy(`${currentBrand.displayFont || 'Bricolage Grotesque'} / ${currentBrand.bodyFont || 'Manrope'}`, 'Type pairing')}>
             <Type size={15} /> Copy type pairing
           </button>
-          <button type="button" onClick={() => copy((currentBrand.swatches || swatches).map(s => s.hex).join(', '), 'Palette')}>
-            <Palette size={15} /> Copy palette tokens
-          </button>
+          {activeSwatches.length > 0 && (
+            <button type="button" onClick={() => copy(activeSwatches.map(s => s.hex).join(', '), 'Palette')}>
+              <Palette size={15} /> Copy palette tokens
+            </button>
+          )}
         </div>
       </section>
 
@@ -1840,122 +1885,136 @@ export function Assets() {
               </div>
 
               {/* Palette Interactive Tokens Grid & Export Bar */}
-              {(selected.kind === 'colour' || (selected.swatches && selected.swatches.length > 0)) && (
-                <div style={{ marginTop: '16px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    <span
+              {(() => {
+                const assetDetailSwatches =
+                  selected.swatches && selected.swatches.length > 0
+                    ? selected.swatches
+                    : isDemo
+                    ? swatches
+                    : []
+                if (
+                  assetDetailSwatches.length === 0 ||
+                  (selected.kind !== 'colour' && (!selected.swatches || selected.swatches.length === 0))
+                ) {
+                  return null
+                }
+                return (
+                  <div style={{ marginTop: '16px' }}>
+                    <div
                       style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: 'var(--muted)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px',
                       }}
                     >
-                      Token Swatches (Click to copy)
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                      {(selected.swatches || swatches).length} tokens
-                    </span>
-                  </div>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: 'var(--muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Token Swatches (Click to copy)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        {assetDetailSwatches.length} tokens
+                      </span>
+                    </div>
 
-                  <div className="palette-tokens-grid">
-                    {(selected.swatches || swatches).map((swatch, idx) => {
-                      const rgb = hexToRgb(swatch.hex).str
-                      return (
-                        <div
-                          key={`${swatch.hex}-${idx}`}
-                          className="palette-token-card"
-                          onClick={() => copy(swatch.hex, `${swatch.name} (${swatch.hex})`)}
-                          title="Click to copy hex"
-                        >
-                          <div className="palette-token-chip" style={{ background: swatch.hex }}>
-                            <span
-                              style={{
-                                background: 'rgba(0,0,0,0.5)',
-                                color: '#fff',
-                                fontSize: '10px',
-                                padding: '2px 5px',
-                                borderRadius: '3px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              {swatch.hex}
-                            </span>
+                    <div className="palette-tokens-grid">
+                      {assetDetailSwatches.map((swatch, idx) => {
+                        const rgb = hexToRgb(swatch.hex).str
+                        return (
+                          <div
+                            key={`${swatch.hex}-${idx}`}
+                            className="palette-token-card"
+                            onClick={() => copy(swatch.hex, `${swatch.name} (${swatch.hex})`)}
+                            title="Click to copy hex"
+                          >
+                            <div className="palette-token-chip" style={{ background: swatch.hex }}>
+                              <span
+                                style={{
+                                  background: 'rgba(0,0,0,0.5)',
+                                  color: '#fff',
+                                  fontSize: '10px',
+                                  padding: '2px 5px',
+                                  borderRadius: '3px',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {swatch.hex}
+                              </span>
+                            </div>
+                            <div className="palette-token-body">
+                              <span className="palette-token-name">{swatch.name}</span>
+                              <span className="palette-token-role">{swatch.role || `Token ${idx + 1}`}</span>
+                              <span className="palette-token-copy">
+                                <Copy size={10} /> {rgb}
+                              </span>
+                            </div>
                           </div>
-                          <div className="palette-token-body">
-                            <span className="palette-token-name">{swatch.name}</span>
-                            <span className="palette-token-role">{swatch.role || `Token ${idx + 1}`}</span>
-                            <span className="palette-token-copy">
-                              <Copy size={10} /> {rgb}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                        )
+                      })}
+                    </div>
 
-                  <div className="palette-export-bar" style={{ marginTop: '16px' }}>
-                    <Button
-                      variant="secondary"
-                      icon={Code}
-                      onClick={() =>
-                        copy(generateCssVariables(selected.swatches || swatches), 'CSS variables')
-                      }
-                    >
-                      Copy CSS (:root)
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={FileCode}
-                      onClick={() =>
-                        copy(generateTailwindConfig(selected.swatches || swatches), 'Tailwind config')
-                      }
-                    >
-                      Copy Tailwind
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={Copy}
-                      onClick={() =>
-                        copy(generateTokensJson(selected.swatches || swatches), 'Tokens JSON')
-                      }
-                    >
-                      Copy JSON
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={Download}
-                      onClick={() => {
-                        const cssContent = generateCssVariables(selected.swatches || swatches)
-                        const blob = new Blob([cssContent], { type: 'text/css' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`
-                        a.click()
-                        URL.revokeObjectURL(url)
-                        toast('Downloaded CSS token variables.', 'good')
-                      }}
-                    >
-                      Export .css
-                    </Button>
-                  </div>
+                    <div className="palette-export-bar" style={{ marginTop: '16px' }}>
+                      <Button
+                        variant="secondary"
+                        icon={Code}
+                        onClick={() =>
+                          copy(generateCssVariables(assetDetailSwatches), 'CSS variables')
+                        }
+                      >
+                        Copy CSS (:root)
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={FileCode}
+                        onClick={() =>
+                          copy(generateTailwindConfig(assetDetailSwatches), 'Tailwind config')
+                        }
+                      >
+                        Copy Tailwind
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={Copy}
+                        onClick={() =>
+                          copy(generateTokensJson(assetDetailSwatches), 'Tokens JSON')
+                        }
+                      >
+                        Copy JSON
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={Download}
+                        onClick={() => {
+                          const cssContent = generateCssVariables(assetDetailSwatches)
+                          const blob = new Blob([cssContent], { type: 'text/css' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                          toast('Downloaded CSS token variables.', 'good')
+                        }}
+                      >
+                        Export .css
+                      </Button>
+                    </div>
 
-                  <CodeBlock
-                    filename={`${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`}
-                    language="css"
-                    code={generateCssVariables(selected.swatches || swatches)}
-                  />
-                </div>
-              )}
+                    <CodeBlock
+                      filename={`${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`}
+                      language="css"
+                      code={generateCssVariables(assetDetailSwatches)}
+                    />
+                  </div>
+                )
+              })()}
 
               <div className="asset-drawer__facts" style={{ marginTop: '16px' }}>
                 <div>

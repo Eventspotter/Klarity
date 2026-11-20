@@ -216,14 +216,7 @@ export function createDefaultBrand(name = 'My Brand', values = '', code = '') {
     brand_values: values || 'Authenticity, craft, excellence, quiet confidence',
     displayFont: 'Bricolage Grotesque',
     bodyFont: 'Manrope',
-    swatches: [
-      { name: 'Pure White', hex: '#FFFFFF', role: 'Surface' },
-      { name: 'Core Onyx', hex: '#111827', role: 'Text / Ink' },
-      { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
-      { name: 'Cool Slate', hex: '#64748B', role: 'Secondary' },
-      { name: 'Soft Surface', hex: '#F8FAFC', role: 'Background' },
-      { name: 'Sky Accent', hex: '#E0F2FE', role: 'Highlight' },
-    ],
+    swatches: [],
   }
 }
 
