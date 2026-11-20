@@ -14,6 +14,8 @@ import {
   Mail,
   ShieldAlert,
   Sparkles,
+  Sun,
+  Moon,
   User,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
@@ -22,7 +24,7 @@ import { useApp } from '../context/AppContext'
 import { api } from '../lib/api'
 
 export function Login() {
-  const { user, data, authenticate } = useApp()
+  const { user, data, authenticate, theme, toggleTheme } = useApp()
   const [register, setRegister] = useState(false)
   const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
   const [forgotEmail, setForgotEmail] = useState('')
@@ -193,6 +195,16 @@ export function Login() {
           <ArrowLeft size={16} />
           Back to Product Overview
         </Link>
+        <button
+          type="button"
+          className="hero-theme-toggle"
+          onClick={toggleTheme}
+          aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+          style={{ marginLeft: 'auto' }}
+        >
+          {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+        </button>
       </div>
       <div className="login-container">
         <div className="login-card" style={{ maxWidth: register ? '540px' : '480px' }}>

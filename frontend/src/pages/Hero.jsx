@@ -15,12 +15,16 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
 import WakeSlider from '../components/WakeSlider'
+import { useApp } from '../context/AppContext'
 
 export function Hero() {
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useApp()
   const heroRef = useRef(null)
   const [applied, setApplied] = useState(false)
   const [scoreDisplay, setScoreDisplay] = useState(84)
@@ -138,6 +142,15 @@ export function Hero() {
           </nav>
 
           <div className="hero-nav__actions">
+            <button
+              type="button"
+              className="hero-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <Link to="/reviews" className="hero-btn hero-btn--sm hero-btn--primary">
               <span>Open Workspace</span>
               <ArrowRight size={14} />

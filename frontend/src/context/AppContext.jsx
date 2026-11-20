@@ -78,6 +78,30 @@ export function AppProvider({ children }) {
   const [toasts, setToasts] = useState([])
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [allBrands, setAllBrands] = useState(DEFAULT_BRANDS)
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem('klarity_theme')
+      if (stored === 'dark' || stored === 'light') return stored
+      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'
+    } catch {}
+    return 'light'
+  })
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('klarity_theme', theme)
+      document.documentElement.setAttribute('data-theme', theme)
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+    } catch {}
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+  }, [])
   const [activeBrand, setActiveBrand] = useState(() => {
     try {
       const stored = localStorage.getItem('klarity_active_brand')
@@ -368,6 +392,9 @@ export function AppProvider({ children }) {
 
   return <AppContext.Provider value={{
     user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout, cleanWorkspace,
+    theme,
+    toggleTheme,
+    setTheme,
     currentUser: user?.username || '',
     currentRole: activeRole,
     switchRole,
