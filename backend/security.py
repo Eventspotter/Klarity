@@ -295,12 +295,31 @@ class BotShieldMiddleware(BaseHTTPMiddleware):
                 pass
 
         # 4. CSRF Defense for state-modifying requests
-        # Checks Sec-Fetch-Site and Origin header against cross-site forged submissions
+        # Blocks unauthorized cross-site forged submissions while allowing verified frontend origins
         if method in ("POST", "PUT", "PATCH", "DELETE") and path.startswith("/api/"):
             sec_fetch_site = request.headers.get("sec-fetch-site")
             origin = request.headers.get("origin")
-            # If browser explicitly marks request as cross-site without preflight authorization, drop it
-            if sec_fetch_site == "cross-site":
+
+            if origin:
+                origin_clean = origin.rstrip("/").lower()
+                is_allowed = (
+                    origin_clean.endswith(".onrender.com")
+                    or origin_clean.startswith("http://localhost:")
+                    or origin_clean.startswith("http://127.0.0.1:")
+                    or origin_clean == str(request.base_url).rstrip("/").lower()
+                )
+                if not is_allowed:
+                    try:
+                        from config import CORS_ORIGINS
+                        allowed_set = {o.rstrip("/").lower() for o in CORS_ORIGINS}
+                        if origin_clean in allowed_set:
+                            is_allowed = True
+                    except Exception:
+                        pass
+
+                if not is_allowed and sec_fetch_site == "cross-site":
+                    return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked (CSRF protection)"})
+            elif sec_fetch_site == "cross-site":
                 return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked (CSRF protection)"})
 
         # 5. Rate Limiting for API routes
