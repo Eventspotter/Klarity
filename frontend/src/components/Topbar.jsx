@@ -64,7 +64,7 @@ const kindIcon = {
 }
 
 export function Topbar({ onMenu, onNewReview, currentPath }) {
-  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead, activeBrand, theme, toggleTheme } = useApp()
+  const { data, user, logout, toast, isOwner, isReviewer, isMember, isLead, activeBrand, theme, toggleTheme } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -259,35 +259,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                   </div>
                 </div>
 
-                <div className="popover__role-switch">
-                  <span className="popover__role-label">Governance Role:</span>
-                  <div className="role-switch-pills" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isOwner && 'is-active')}
-                      onClick={() => switchRole('owner')}
-                      title="Stage 1 · Full brand governance & sign-off"
-                    >
-                      Owner
-                    </button>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isReviewer && 'is-active')}
-                      onClick={() => switchRole('reviewer')}
-                      title="Stage 2 · Compliance checking & feedback"
-                    >
-                      Reviewer
-                    </button>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isMember && 'is-active')}
-                      onClick={() => switchRole('member')}
-                      title="Stage 3 · Drafting & pre-flight checks"
-                    >
-                      Member
-                    </button>
-                  </div>
-                </div>
+
 
                 {isMember ? (
                   <button onClick={() => { setOpenMenu(null); navigate('/studio') }}>

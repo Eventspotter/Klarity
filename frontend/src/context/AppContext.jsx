@@ -66,7 +66,7 @@ export function AppProvider({ children }) {
   const [data, setData] = useState(() => initialCache?.data ?? null)
   const [loading, setLoading] = useState(() => !(initialCache?.user && initialCache?.data))
   const [connected, setConnected] = useState(() => Boolean(initialCache?.data))
-  const [currentRole, setCurrentRole] = useState(() => localStorage.getItem('klarity_role') || 'owner')
+  const [currentRole, setCurrentRole] = useState(null)
   const [visibilitySettings, setVisibilitySettings] = useState(() => {
     try {
       const stored = localStorage.getItem(VISIBILITY_STORAGE_KEY)
@@ -382,7 +382,7 @@ export function AppProvider({ children }) {
       setAllBrands(DEFAULT_BRANDS)
       setActiveBrand(DEFAULT_BRANDS[0])
       try {
-        localStorage.removeItem('klarity_active_brand')
+        localStorage.removeItem('klarity_active_brand'); localStorage.removeItem('klarity_role')
       } catch {}
     }
   }
@@ -404,19 +404,10 @@ export function AppProvider({ children }) {
     }
   }
 
-  const switchRole = (newRole) => {
-    setCurrentRole(newRole)
-    localStorage.setItem('klarity_role', newRole)
-    const roleLabels = {
-      owner: 'Stage 1 · Brand Owner (Executive Governance)',
-      reviewer: 'Stage 2 · Reviewer (Compliance Inspector)',
-      member: 'Stage 3 · Team Member (Creator Studio)',
-    }
-    toast(`Active Perspective: ${roleLabels[newRole] || newRole}`, 'good')
-  }
+  const switchRole = () => {}
 
   const userAccountRole = (user?.role || 'owner').toLowerCase()
-  const activeRole = currentRole || userAccountRole
+  const activeRole = userAccountRole
 
   const isOwner = activeRole === 'owner' || activeRole === 'admin'
   const isReviewer = activeRole === 'reviewer'
