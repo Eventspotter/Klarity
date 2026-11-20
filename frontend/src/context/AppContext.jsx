@@ -219,6 +219,30 @@ export function AppProvider({ children }) {
     }
   }, [user])
 
+  const updateActiveBrand = useCallback((updates) => {
+    setActiveBrand(prev => {
+      const next = { ...prev, ...updates }
+      try {
+        localStorage.setItem('klarity_active_brand', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+    setUser(prev => prev ? {
+      ...prev,
+      brand_name: updates.brand_name || updates.name || prev.brand_name,
+      brand_code: updates.brand_code || updates.code || prev.brand_code,
+      brand_values: updates.brand_values !== undefined ? updates.brand_values : prev.brand_values,
+    } : prev)
+    setAllBrands(prev => {
+      return prev.map(b => {
+        if ((b.brand_name || b.name) === (updates.old_brand_name || updates.brand_name || updates.name)) {
+          return { ...b, ...updates }
+        }
+        return b
+      })
+    })
+  }, [])
+
   const switchBrand = useCallback((brand) => {
     setActiveBrand(brand)
     try {
@@ -434,6 +458,7 @@ export function AppProvider({ children }) {
     activeBrand,
     allBrands,
     switchBrand,
+    updateActiveBrand,
     isOwner,
     isReviewer,
     isMember,

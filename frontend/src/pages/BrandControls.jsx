@@ -11,10 +11,12 @@ import {
   Lock,
   Mail,
   Plus,
+  RotateCcw,
   Save,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   UserCheck,
   UserPlus,
@@ -29,8 +31,8 @@ import { api } from '../lib/api'
 import { cx } from '../lib/utils'
 import { animateSlidingPill } from '../lib/animations'
 
-const STORAGE_KEY = 'klarity.settings.v1'
-const TEAM_STORAGE_KEY = 'klarity.team_roster.v1'
+const getSettingsKey = (name) => `klarity.settings.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+const getTeamKey = (name) => `klarity.team_roster.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
 
 const roleOptions = [
   'Stage 1 · Brand Owner',
@@ -103,14 +105,27 @@ export function BrandControls() {
     visibilitySettings,
     setPendingApprovalsCount,
     activeBrand,
+    updateActiveBrand,
     cleanWorkspace,
   } = useApp()
 
-  const [settings, setSettings] = useState(() => ({
-    ...defaultSettings,
-    workspace: activeBrand?.brand_name || activeBrand?.name || 'Workspace',
-    website: `${(activeBrand?.brand_name || activeBrand?.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
-  }))
+  const currentBrandName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || 'Aster & Oak'
+  const currentBrandCode = activeBrand?.brand_code || activeBrand?.code || user?.brand_code || 'KLARITY-2026'
+  const currentBrandValues = activeBrand?.values || activeBrand?.brand_values || user?.brand_values || ''
+
+  const [settings, setSettings] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(getSettingsKey(currentBrandName))
+      if (stored) {
+        return { ...defaultSettings, ...JSON.parse(stored), workspace: currentBrandName }
+      }
+    } catch {}
+    return {
+      ...defaultSettings,
+      workspace: currentBrandName,
+      website: `${currentBrandName.toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+    }
+  })
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
   const [clearingWorkspace, setClearingWorkspace] = useState(false)
@@ -120,25 +135,35 @@ export function BrandControls() {
   const [verifyingId, setVerifyingId] = useState(null)
 
   const [brandMeta, setBrandMeta] = useState(() => ({
-    brand_name: activeBrand?.brand_name || activeBrand?.name || '',
-    brand_values: activeBrand?.values || activeBrand?.brand_values || '',
-    brand_code: activeBrand?.brand_code || activeBrand?.code || '',
+    brand_name: currentBrandName,
+    brand_values: currentBrandValues,
+    brand_code: currentBrandCode,
   }))
 
   useEffect(() => {
     if (activeBrand) {
+      const bName = activeBrand.brand_name || activeBrand.name || currentBrandName
+      const bCode = activeBrand.brand_code || activeBrand.code || brandMeta.brand_code || ''
+      const bValues = activeBrand.values || activeBrand.brand_values || brandMeta.brand_values || ''
       setBrandMeta({
-        brand_name: activeBrand.brand_name || activeBrand.name || '',
-        brand_values: activeBrand.values || activeBrand.brand_values || '',
-        brand_code: activeBrand.brand_code || activeBrand.code || '',
+        brand_name: bName,
+        brand_values: bValues,
+        brand_code: bCode,
       })
+      try {
+        const stored = window.localStorage.getItem(getSettingsKey(bName))
+        if (stored) {
+          setSettings(prev => ({ ...prev, ...JSON.parse(stored), workspace: bName }))
+          return
+        }
+      } catch {}
       setSettings(prev => ({
         ...prev,
-        workspace: activeBrand.brand_name || activeBrand.name || prev.workspace,
-        website: `${(activeBrand.brand_name || activeBrand.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+        workspace: bName || prev.workspace,
+        website: `${bName.toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
       }))
     }
-  }, [activeBrand])
+  }, [activeBrand?.brand_name, activeBrand?.name, activeBrand?.brand_code])
 
   const handleClearWorkspace = async () => {
     if (!window.confirm('Are you sure you want to clear all sample/demo review submissions? This will give you a completely clean review desk.')) {
@@ -155,7 +180,7 @@ export function BrandControls() {
   // Team Governance Roster State
   const [team, setTeam] = useState(() => {
     try {
-      const stored = window.localStorage.getItem(TEAM_STORAGE_KEY)
+      const stored = window.localStorage.getItem(getTeamKey(currentBrandName))
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
@@ -167,7 +192,8 @@ export function BrandControls() {
   const persistTeam = (updatedTeam) => {
     setTeam(updatedTeam)
     try {
-      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(updatedTeam))
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      window.localStorage.setItem(getTeamKey(targetBrand), JSON.stringify(updatedTeam))
     } catch {}
   }
 
@@ -335,33 +361,45 @@ export function BrandControls() {
 
   const fetchWorkspaceMeta = async () => {
     try {
-      const res = await api.workspaceSettings()
-      if (res?.brand_code) {
-        setBrandMeta(res)
+      const bName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+      const res = await api.workspaceSettings(bName)
+      if (res && res.brand_code) {
+        setBrandMeta({
+          brand_name: res.brand_name || bName,
+          brand_values: res.brand_values !== undefined ? res.brand_values : '',
+          brand_code: res.brand_code,
+        })
         setSettings((prev) => ({
           ...prev,
-          workspace: res.brand_name || prev.workspace,
+          workspace: res.brand_name || bName,
         }))
+        if (typeof updateActiveBrand === 'function') {
+          updateActiveBrand({
+            name: res.brand_name || bName,
+            brand_name: res.brand_name || bName,
+            code: res.brand_code,
+            brand_code: res.brand_code,
+            values: res.brand_values,
+            brand_values: res.brand_values,
+          })
+        }
       }
     } catch {
-      api.brandCodeHint().then((res) => {
-        if (res?.brand_code) {
-          setBrandMeta((prev) => ({ ...prev, ...res }))
-        }
-      }).catch(() => {})
+      // offline / demo fallback: keep current brandMeta
     }
   }
 
   useEffect(() => {
+    const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (stored) setSettings((prev) => ({ ...prev, ...JSON.parse(stored) }))
+      const stored = window.localStorage.getItem(getSettingsKey(targetBrand))
+      if (stored) setSettings((prev) => ({ ...prev, ...JSON.parse(stored), workspace: targetBrand }))
     } catch {
       // ignore malformed local settings
     }
     fetchPending()
     fetchWorkspaceMeta()
-  }, [])
+  }, [activeBrand?.brand_name, activeBrand?.name])
 
   const handleVerify = async (accountId, approve) => {
     try {
@@ -389,8 +427,19 @@ export function BrandControls() {
     setSaved(false)
   }
 
+  const generateNewCode = () => {
+    const slug = (brandMeta.brand_name || activeBrand?.brand_name || 'BRAND')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 6)
+      .toUpperCase() || 'BRAND'
+    const rand = Math.floor(1000 + Math.random() * 9000)
+    const newCode = `${slug}-${rand}`
+    updateBrandMeta('brand_code', newCode)
+    toast(`Generated unique brand code "${newCode}". Click "Save changes" to apply.`, 'good')
+  }
+
   const copyBrandCode = () => {
-    const code = brandMeta.brand_code || 'KLARITY-2026'
+    const code = brandMeta.brand_code || currentBrandCode || 'KLARITY-2026'
     navigator.clipboard.writeText(code)
     toast(`Brand Code "${code}" copied to clipboard!`, 'good')
   }
@@ -398,20 +447,42 @@ export function BrandControls() {
   const saveAll = async () => {
     try {
       setSaving(true)
+      const targetBrandName = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      let savedMeta = { ...brandMeta }
       if (isOwner) {
         const res = await api.updateWorkspaceSettings({
-          brand_name: brandMeta.brand_name,
-          brand_code: brandMeta.brand_code,
-          brand_values: brandMeta.brand_values,
+          old_brand_name: targetBrandName,
+          brand_name: brandMeta.brand_name.trim(),
+          brand_code: brandMeta.brand_code.trim().toUpperCase(),
+          brand_values: brandMeta.brand_values.trim(),
         })
         if (res?.brand_code) {
-          setBrandMeta(res)
+          savedMeta = {
+            brand_name: res.brand_name || brandMeta.brand_name,
+            brand_code: res.brand_code,
+            brand_values: res.brand_values !== undefined ? res.brand_values : brandMeta.brand_values,
+          }
+          setBrandMeta(savedMeta)
         }
       }
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(team))
+      const savedKey = (savedMeta.brand_name || targetBrandName).toLowerCase().replace(/[^a-z0-9]/g, '_')
+      window.localStorage.setItem(getSettingsKey(savedKey), JSON.stringify(settings))
+      window.localStorage.setItem(getTeamKey(savedKey), JSON.stringify(team))
+
+      if (typeof updateActiveBrand === 'function') {
+        updateActiveBrand({
+          old_brand_name: targetBrandName,
+          name: savedMeta.brand_name,
+          brand_name: savedMeta.brand_name,
+          code: savedMeta.brand_code,
+          brand_code: savedMeta.brand_code,
+          values: savedMeta.brand_values,
+          brand_values: savedMeta.brand_values,
+        })
+      }
+
       setSaved(true)
-      toast('Brand controls and workspace settings saved successfully.', 'good')
+      toast(`Brand controls and unique code (${savedMeta.brand_code}) saved successfully.`, 'good')
     } catch (err) {
       toast(err.message || 'Failed to save settings.', 'warn')
     } finally {
@@ -504,7 +575,7 @@ export function BrandControls() {
                 icon={Save}
                 onClick={() => {
                   try {
-                    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+                    window.localStorage.setItem(getSettingsKey(brandMeta.brand_name || currentBrandName), JSON.stringify(settings))
                   } catch {}
                   setSaved(true)
                   toast('Personal notification preferences saved.', 'good')
@@ -629,7 +700,7 @@ export function BrandControls() {
                 <Field
                   label="Brand Access Code (Required for Sign-up)"
                   htmlFor="ctrl-brand-code"
-                  hint="Shared with incoming team members and reviewers upon registration."
+                  hint="Unique workspace code shared with incoming team members and reviewers upon registration. Fully editable."
                 >
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input
@@ -644,7 +715,7 @@ export function BrandControls() {
                         color: 'var(--clay-deep)',
                         ...(!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : {}),
                       }}
-                      placeholder="e.g. KLARITY-2026"
+                      placeholder="e.g. GNR-2026"
                     />
                     <Button
                       type="button"
@@ -656,6 +727,18 @@ export function BrandControls() {
                     >
                       Copy
                     </Button>
+                    {isOwner && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        icon={Sparkles}
+                        onClick={generateNewCode}
+                        title="Generate a new unique brand code"
+                      >
+                        Generate
+                      </Button>
+                    )}
                   </div>
                 </Field>
               </div>

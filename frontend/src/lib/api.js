@@ -58,7 +58,8 @@ export const api = {
   brandDirectory: () => request('/auth/brand-directory'),
   switchBrand: (brand_name) =>
     request('/auth/switch-brand', { method: 'POST', body: JSON.stringify({ brand_name }) }),
-  workspaceSettings: () => request('/auth/workspace-settings'),
+  workspaceSettings: (brand_name) =>
+    request(`/auth/workspace-settings${brand_name ? `?brand_name=${encodeURIComponent(brand_name)}` : ''}`),
   cleanWorkspace: () => request('/auth/clean-workspace', { method: 'POST' }),
   updateWorkspaceSettings: (payload) =>
     request('/auth/workspace-settings', { method: 'PATCH', body: JSON.stringify(payload) }),

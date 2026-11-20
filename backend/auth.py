@@ -208,10 +208,20 @@ def public_account(account, db=None):
     }
     try:
         if db:
-            brand_rec = db.query(Brand).filter(Brand.brand_name == brand_name).first()
+            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(brand_name)).first()
             if brand_rec:
                 res["brand_code"] = brand_rec.brand_code
                 res["brand_values"] = brand_rec.brand_values
+            elif not is_demo and brand_name:
+                clean_slug = re.sub(r"[^A-Za-z0-9]", "", brand_name).upper()[:6] or "BRAND"
+                new_c = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+                new_b = Brand(brand_name=brand_name, brand_code=new_c, brand_values="")
+                try:
+                    db.add(new_b)
+                    db.commit()
+                    res["brand_code"] = new_c
+                except Exception:
+                    db.rollback()
         elif is_demo:
             with SessionLocal() as session:
                 setting = session.get(WorkspaceSettings, 1)
@@ -278,6 +288,7 @@ class ApproveAccountRequest(BaseModel):
 
 
 class UpdateWorkspaceRequest(BaseModel):
+    old_brand_name: str | None = Field(default=None, max_length=120)
     brand_name: str | None = Field(default=None, max_length=120)
     brand_values: str | None = Field(default=None, max_length=500)
     brand_code: str | None = Field(default=None, max_length=32)
@@ -332,7 +343,17 @@ def brand_directory(account: Account = Depends(current_account), db: Session = D
         return {"brands": _get_cached_brands(db)}
 
     user_brand = getattr(account, "brand_name", None) or "Brand"
-    brand_rec = db.query(Brand).filter(Brand.brand_name == user_brand).first()
+    brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
+    if not brand_rec and user_brand:
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", user_brand).upper()[:6] or "BRAND"
+        b_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand_rec = Brand(brand_name=user_brand, brand_values="", brand_code=b_code)
+        try:
+            db.add(brand_rec)
+            db.commit()
+        except Exception:
+            db.rollback()
+            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
     return {
         "brands": [
             {
@@ -355,11 +376,12 @@ def switch_brand(
     is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
     if not is_demo:
         user_brand = getattr(account, "brand_name", "Brand")
+        brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
         return {
             "message": f"Workspace locked to {user_brand}",
             "brand_name": user_brand,
-            "brand_code": "BRAND-1000",
-            "brand_values": "",
+            "brand_code": brand_rec.brand_code if brand_rec else "BRAND-1000",
+            "brand_values": brand_rec.brand_values if brand_rec else "",
         }
     brand = db.query(Brand).filter(Brand.brand_name == payload.brand_name.strip()).first()
     if not brand:
@@ -575,7 +597,47 @@ def _get_cached_settings(db: Session) -> dict:
 
 
 @router.get("/workspace-settings")
-def get_workspace_settings(db: Session = Depends(get_db)):
+def get_workspace_settings(
+    request: Request,
+    brand_name: str | None = None,
+    db: Session = Depends(get_db),
+):
+    target_brand = (brand_name or "").strip()
+    if not target_brand:
+        try:
+            acc = current_account(request, db)
+            if acc and getattr(acc, "brand_name", None):
+                target_brand = acc.brand_name.strip()
+        except Exception:
+            pass
+
+    if target_brand:
+        brand = db.query(Brand).filter(Brand.brand_name.ilike(target_brand)).first()
+        if brand:
+            return {
+                "brand_name": brand.brand_name,
+                "brand_values": brand.brand_values,
+                "brand_code": brand.brand_code,
+            }
+        # If not present yet, auto-provision Brand with unique code
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", target_brand).upper()[:6] or "BRAND"
+        rand_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand = Brand(
+            brand_name=target_brand,
+            brand_values="Authenticity, craft, excellence, quiet confidence",
+            brand_code=rand_code,
+        )
+        try:
+            db.add(brand)
+            db.commit()
+            return {
+                "brand_name": brand.brand_name,
+                "brand_values": brand.brand_values,
+                "brand_code": brand.brand_code,
+            }
+        except Exception:
+            db.rollback()
+
     return _get_cached_settings(db)
 
 
@@ -587,43 +649,85 @@ def update_workspace_settings(
 ):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only the Brand Owner can modify workspace settings.")
-    setting = db.get(WorkspaceSettings, 1)
-    if not setting:
-        setting = WorkspaceSettings(
-            id=1,
-            brand_name="Aster & Oak",
-            brand_values="Authenticity, craft, sustainability, quiet confidence",
-            brand_code="KLARITY-2026",
+
+    current_brand_name = (
+        payload.old_brand_name
+        or getattr(account, "brand_name", None)
+        or "Aster & Oak"
+    ).strip()
+
+    new_brand_name = (payload.brand_name.strip() if payload.brand_name and payload.brand_name.strip() else current_brand_name)
+    new_code = (payload.brand_code.strip().upper() if payload.brand_code and payload.brand_code.strip() else None)
+    new_values = (payload.brand_values.strip() if payload.brand_values is not None else None)
+
+    # Find brand
+    brand = db.query(Brand).filter(Brand.brand_name.ilike(current_brand_name)).first()
+    if not brand and new_brand_name:
+        brand = db.query(Brand).filter(Brand.brand_name.ilike(new_brand_name)).first()
+
+    if new_code:
+        # Check collision with other brands
+        existing_with_code = db.query(Brand).filter(
+            Brand.brand_code == new_code,
+            Brand.id != (brand.id if brand else -1)
+        ).first()
+        if existing_with_code:
+            raise HTTPException(400, f"Brand code '{new_code}' is already used by brand '{existing_with_code.brand_name}'. Please choose a unique code.")
+
+    if not brand:
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", new_brand_name).upper()[:6] or "BRAND"
+        final_code = new_code or f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand = Brand(
+            brand_name=new_brand_name,
+            brand_values=new_values or "Authenticity, craft, excellence, quiet confidence",
+            brand_code=final_code,
         )
-        db.add(setting)
-    if payload.brand_name is not None and payload.brand_name.strip():
-        setting.brand_name = payload.brand_name.strip()
-        b_name = setting.brand_name
-        existing_brand = db.query(Brand).filter(Brand.brand_name.ilike(b_name)).first()
-        if not existing_brand:
-            clean_slug = re.sub(r"[^A-Za-z0-9]", "", b_name).upper()[:6] or "BRAND"
-            b_code = payload.brand_code or f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
-            db.add(Brand(brand_name=b_name, brand_values=setting.brand_values, brand_code=b_code))
-        else:
-            existing_brand.brand_values = setting.brand_values
-    if payload.brand_values is not None:
-        setting.brand_values = payload.brand_values.strip()
-    if payload.brand_code is not None and payload.brand_code.strip():
-        setting.brand_code = payload.brand_code.strip().upper()
+        db.add(brand)
+    else:
+        if new_brand_name:
+            brand.brand_name = new_brand_name
+        if new_code:
+            brand.brand_code = new_code
+        if new_values is not None:
+            brand.brand_values = new_values
+
+    # Update account's brand_name
+    account_obj = db.get(Account, account.id)
+    if account_obj:
+        account_obj.brand_name = brand.brand_name
+
+    # Update other accounts belonging to this brand if renamed
+    if current_brand_name.lower() != brand.brand_name.lower():
+        db.query(Account).filter(Account.brand_name.ilike(current_brand_name)).update(
+            {"brand_name": brand.brand_name},
+            synchronize_session=False,
+        )
+
+    # Sync default WorkspaceSettings row if demo or Aster & Oak
+    setting = db.get(WorkspaceSettings, 1)
+    if setting and (setting.brand_name.lower() == current_brand_name.lower() or getattr(account, "is_demo", False)):
+        setting.brand_name = brand.brand_name
+        setting.brand_code = brand.brand_code
+        setting.brand_values = brand.brand_values
+
     db.commit()
-    global _SETTINGS_CACHE, _BRANDS_CACHE
+
+    global _SETTINGS_CACHE, _BRANDS_CACHE, _SESSION_CACHE
     _SETTINGS_CACHE = None
     _BRANDS_CACHE = None
+    _SESSION_CACHE.clear()
+
     try:
         from services.workspace import invalidate_bootstrap_cache
         invalidate_bootstrap_cache()
     except Exception:
         pass
+
     return {
         "message": "Workspace settings updated successfully.",
-        "brand_name": setting.brand_name,
-        "brand_values": setting.brand_values,
-        "brand_code": setting.brand_code,
+        "brand_name": brand.brand_name,
+        "brand_values": brand.brand_values,
+        "brand_code": brand.brand_code,
     }
 
 
