@@ -3473,6 +3473,114 @@ kbd {
   border-radius: 50%;
 }
 
+/* Bell Ringing & Notification Dot Pulse Animations */
+.topbar__notifications-btn .bell-icon {
+  display: inline-block;
+  transform-origin: top center;
+  transition: transform 180ms ease, color 150ms ease;
+}
+
+/* Periodic realistic ringing chime animation */
+.topbar__notifications-btn:not(:hover) .bell-icon {
+  animation: bellRing 5.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
+}
+
+/* Vivid fast ring on hover */
+.topbar__notifications-btn:hover .bell-icon {
+  animation: bellRingFast 0.8s ease-in-out infinite;
+  color: var(--ink);
+}
+
+.topbar__notifications-btn .indicator--pulse {
+  background: #f59e0b; /* Golden amber dot matching reference image */
+  border-color: var(--cream);
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  animation: indicatorGlow 2.5s infinite;
+}
+
+html.dark .topbar__notifications-btn .indicator--pulse,
+[data-theme="dark"] .topbar__notifications-btn .indicator--pulse {
+  background: #f59e0b;
+  border-color: #1a1f26;
+  box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.85);
+}
+
+@keyframes bellRing {
+  0%, 72%, 100% {
+    transform: rotate(0deg);
+  }
+  74% {
+    transform: rotate(16deg);
+  }
+  77% {
+    transform: rotate(-14deg);
+  }
+  80% {
+    transform: rotate(12deg);
+  }
+  83% {
+    transform: rotate(-9deg);
+  }
+  86% {
+    transform: rotate(6deg);
+  }
+  89% {
+    transform: rotate(-3deg);
+  }
+  92% {
+    transform: rotate(1deg);
+  }
+  95% {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes bellRingFast {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  15% {
+    transform: rotate(18deg);
+  }
+  30% {
+    transform: rotate(-16deg);
+  }
+  45% {
+    transform: rotate(13deg);
+  }
+  60% {
+    transform: rotate(-10deg);
+  }
+  75% {
+    transform: rotate(6deg);
+  }
+  90% {
+    transform: rotate(-2deg);
+  }
+}
+
+@keyframes indicatorGlow {
+  0% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+  }
+  50% {
+    transform: scale(1.15);
+    box-shadow: 0 0 0 4px rgba(245, 158, 11, 0);
+  }
+  100% {
+    transform: scale(0.95);
+    box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topbar__notifications-btn .bell-icon,
+  .topbar__notifications-btn .indicator--pulse {
+    animation: none !important;
+  }
+}
+
 .user-chip {
   display: flex;
   align-items: center;

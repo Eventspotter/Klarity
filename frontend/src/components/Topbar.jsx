@@ -185,11 +185,11 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
           <div className="topbar__popover-wrap">
             <IconButton
               label="Notifications"
-              className={cx('has-indicator', openMenu === 'notifications' && 'is-active')}
+              className={cx('has-indicator topbar__notifications-btn', openMenu === 'notifications' && 'is-active')}
               onClick={() => setOpenMenu(openMenu === 'notifications' ? null : 'notifications')}
             >
-              <Bell size={18} />
-              <span className="indicator" />
+              <Bell size={18} className="bell-icon" />
+              <span className="indicator indicator--pulse" />
             </IconButton>
             {openMenu === 'notifications' ? (
               <AnimatedPopover className="popover popover--notifications">
