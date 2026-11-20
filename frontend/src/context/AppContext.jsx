@@ -75,6 +75,33 @@ export function AppProvider({ children }) {
       return DEFAULT_VISIBILITY
     }
   })
+  const [theme, setTheme] = useState(() => {
+    try {
+      const stored = localStorage.getItem('klarity_theme')
+      if (stored) return stored
+      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        return 'dark'
+      }
+    } catch {}
+    return 'dark'
+  })
+
+  useEffect(() => {
+    try {
+      document.documentElement.setAttribute('data-theme', theme)
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark')
+      } else {
+        document.documentElement.classList.remove('dark')
+      }
+      localStorage.setItem('klarity_theme', theme)
+    } catch {}
+  }, [theme])
+
+  const toggleTheme = useCallback(() => {
+    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
+  }, [])
+
   const [toasts, setToasts] = useState([])
   const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
   const [allBrands, setAllBrands] = useState(DEFAULT_BRANDS)
@@ -287,6 +314,7 @@ export function AppProvider({ children }) {
 
   return <AppContext.Provider value={{
     user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout,
+    theme, isDark: theme === 'dark', toggleTheme,
     currentUser: user?.username || '',
     currentRole: activeRole,
     switchRole,

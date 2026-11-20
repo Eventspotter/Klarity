@@ -11,10 +11,12 @@ import {
   LogOut,
   Mail,
   Menu,
+  Moon,
   Plus,
   Search,
   ShieldCheck,
   Sparkles,
+  Sun,
   X,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
@@ -62,7 +64,7 @@ const kindIcon = {
 }
 
 export function Topbar({ onMenu, onNewReview, currentPath }) {
-  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead } = useApp()
+  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead, isDark, toggleTheme } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -163,6 +165,13 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
         </div>
 
         <div className="topbar__right">
+          <IconButton
+            label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            onClick={toggleTheme}
+            className="theme-toggle-btn"
+          >
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </IconButton>
 
           <IconButton
             label="Messages & Editorial Mail"

@@ -393,7 +393,7 @@ export function TopPerformersCard({
           </div>
 
           <div className="forge-compare-vs-divider">
-            <span className="forge-vs-badge">VS</span>
+            <span className="forge-vs-badge">/</span>
           </div>
 
           <div className="forge-compare-card is-right">
