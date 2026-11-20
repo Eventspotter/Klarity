@@ -124,13 +124,13 @@ html.dark,
   --brown-noir: #0c0f12;
 
   --sage: #38bdf8;
-  --sage-deep: #0284c7;
-  --sage-strong: #0ea5e9;
+  --sage-deep: #0ea5e9;
+  --sage-strong: #38bdf8;
   --sage-soft: rgba(56, 189, 248, 0.15);
   --sage-wash: rgba(56, 189, 248, 0.08);
 
-  --clay: #f59e0b;
-  --clay-deep: #d97706;
+  --clay: #fbbf24;
+  --clay-deep: #f59e0b;
   --warn-soft: rgba(245, 158, 11, 0.15);
   --warn-text: #fbbf24;
 
@@ -142,7 +142,7 @@ html.dark,
   --info-soft: rgba(56, 189, 248, 0.15);
 
   --good: #34d399;
-  --good-deep: #059669;
+  --good-deep: #10b981;
   --good-text: #6ee7b7;
   --good-soft: rgba(16, 185, 129, 0.15);
 
@@ -1258,13 +1258,27 @@ ol {
 }
 
 .btn--primary {
-  color: var(--paper);
+  color: #ffffff;
   background: var(--sage-strong);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.14) inset, 0 8px 18px -12px rgba(68, 84, 63, 0.7);
 }
 
 .btn--primary:hover:not(:disabled) {
   background: var(--sage-deep);
+}
+
+html.dark .btn--primary,
+[data-theme="dark"] .btn--primary {
+  color: #ffffff;
+  background: var(--sage);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+html.dark .btn--primary:hover:not(:disabled),
+[data-theme="dark"] .btn--primary:hover:not(:disabled) {
+  background: var(--sage-strong);
+  box-shadow: 0 0 22px rgba(56, 189, 248, 0.38), 0 4px 8px rgba(0, 0, 0, 0.5);
+  color: #ffffff;
 }
 
 .btn--secondary {
@@ -1277,6 +1291,21 @@ ol {
   background: var(--sage-wash);
   border-color: var(--sage);
   color: var(--ink);
+}
+
+html.dark .btn--secondary,
+[data-theme="dark"] .btn--secondary {
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-xs);
+}
+
+html.dark .btn--secondary:hover:not(:disabled),
+[data-theme="dark"] .btn--secondary:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--sage);
+  color: #ffffff;
 }
 
 .btn--outline {
@@ -1315,6 +1344,12 @@ html.dark .btn--outline:hover:not(:disabled),
   background: rgba(59, 36, 24, 0.06);
 }
 
+html.dark .btn--ghost:hover:not(:disabled),
+[data-theme="dark"] .btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
 .btn--light {
   color: var(--ink);
   background: var(--cream);
@@ -1323,6 +1358,20 @@ html.dark .btn--outline:hover:not(:disabled),
 
 .btn--light:hover:not(:disabled) {
   background: #fffdf8;
+}
+
+html.dark .btn--light,
+[data-theme="dark"] .btn--light {
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+}
+
+html.dark .btn--light:hover:not(:disabled),
+[data-theme="dark"] .btn--light:hover:not(:disabled) {
+  background: var(--paper);
+  border-color: var(--line-strong);
+  color: #ffffff;
 }
 
 .btn--danger-text {
@@ -1357,6 +1406,11 @@ html.dark .btn--outline:hover:not(:disabled),
 
 .icon-btn:hover {
   background: rgba(59, 36, 24, 0.06);
+}
+
+html.dark .icon-btn:hover,
+[data-theme="dark"] .icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .icon-btn.is-active {
@@ -11935,7 +11989,7 @@ button.calendar-day-number:hover {
 button.calendar-day-number.calendar-day-number--today {
   padding: 0;
   background: var(--sage, #298ee4);
-  color: var(--paper-raised, #fffdf8) !important;
+  color: #ffffff !important;
 }
 
 button.calendar-day-number.calendar-day-number--today:hover {
@@ -14985,4 +15039,395 @@ html.dark .login-alert-success,
   background: rgba(16, 185, 129, 0.12);
   border: 1px solid rgba(52, 211, 153, 0.35);
   color: #6ee7b7;
+}
+
+/* =========================================================
+   COMPREHENSIVE DARK THEME VISIBILITY & COMPONENT HARMONY
+   Eliminates black-on-black text, white-on-white buttons,
+   and muddy hover artifacts across the entire Klarity suite.
+   ========================================================= */
+
+/* 1. Permanent Dark Ground Surfaces (Sidebar, Workspace Switcher) */
+html.dark .sidebar,
+[data-theme="dark"] .sidebar {
+  background: linear-gradient(180deg, #13171c 0%, #0c0f12 100%);
+  border-right: 1px solid var(--line);
+  color: #f3f6f9;
+}
+
+html.dark .brand-lockup,
+[data-theme="dark"] .brand-lockup {
+  color: #f3f6f9;
+}
+
+html.dark .workspace-switch,
+[data-theme="dark"] .workspace-switch {
+  color: #f3f6f9;
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+html.dark .workspace-switch:hover:not(.workspace-switch--readonly),
+[data-theme="dark"] .workspace-switch:hover:not(.workspace-switch--readonly) {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+html.dark .workspace-switch__mark,
+[data-theme="dark"] .workspace-switch__mark {
+  color: #ffffff;
+  background: var(--sage);
+}
+
+html.dark .sidebar-brands-dropdown,
+[data-theme="dark"] .sidebar-brands-dropdown {
+  background: #181d22;
+  border-color: var(--line-strong);
+}
+
+html.dark .sidebar-brands-dropdown__header strong,
+[data-theme="dark"] .sidebar-brands-dropdown__header strong {
+  color: #f3f6f9;
+}
+
+html.dark .sidebar-brand-item__name,
+[data-theme="dark"] .sidebar-brand-item__name {
+  color: #d8e0e8;
+}
+
+html.dark .sidebar-brand-item:hover,
+[data-theme="dark"] .sidebar-brand-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .nav-item,
+[data-theme="dark"] .nav-item {
+  color: rgba(243, 246, 249, 0.72);
+}
+
+html.dark .nav-item:hover,
+[data-theme="dark"] .nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+html.dark .nav-item:focus-visible,
+[data-theme="dark"] .nav-item:focus-visible {
+  color: #ffffff;
+}
+
+html.dark .nav-highlight-pill,
+[data-theme="dark"] .nav-highlight-pill {
+  background: rgba(56, 189, 248, 0.16);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.12);
+}
+
+html.dark .nav-item.is-active,
+[data-theme="dark"] .nav-item.is-active {
+  color: #ffffff;
+  background: rgba(56, 189, 248, 0.16);
+}
+
+html.dark .sidebar__nav--animated .nav-item.is-active,
+[data-theme="dark"] .sidebar__nav--animated .nav-item.is-active {
+  color: #ffffff;
+  background: transparent !important;
+}
+
+/* 2. Full-Dark and Accent Buttons in Studio, Dashboard, & Popovers */
+html.dark .btn-full-dark,
+[data-theme="dark"] .btn-full-dark {
+  background: var(--sage);
+  color: #0c0f12;
+  font-weight: 800;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
+}
+
+html.dark .btn-full-dark:hover,
+[data-theme="dark"] .btn-full-dark:hover {
+  background: var(--sage-deep);
+  color: #ffffff;
+}
+
+html.dark .btn-full-secondary,
+[data-theme="dark"] .btn-full-secondary {
+  background: var(--paper-raised);
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+html.dark .btn-full-secondary:hover:not(:disabled),
+[data-theme="dark"] .btn-full-secondary:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--sage);
+  color: #ffffff;
+}
+
+html.dark .btn-hero-studio,
+[data-theme="dark"] .btn-hero-studio {
+  background: var(--sage);
+  color: #0c0f12;
+  font-weight: 800;
+  box-shadow: 0 2px 10px rgba(56, 189, 248, 0.25);
+}
+
+html.dark .btn-hero-studio:hover,
+[data-theme="dark"] .btn-hero-studio:hover {
+  background: var(--sage-deep);
+  color: #ffffff;
+}
+
+html.dark .role-pill.is-active,
+[data-theme="dark"] .role-pill.is-active {
+  background: var(--sage);
+  color: #0c0f12;
+  border-color: var(--sage);
+}
+
+html.dark .btn-preset.is-active,
+[data-theme="dark"] .btn-preset.is-active {
+  background: var(--sage);
+  color: #0c0f12;
+  border-color: var(--sage);
+}
+
+html.dark .btn-ai-rewrite-inline,
+[data-theme="dark"] .btn-ai-rewrite-inline {
+  background: #4f46e5;
+  border-color: #6366f1;
+  color: #ffffff;
+}
+
+html.dark .btn-ai-generate-score,
+[data-theme="dark"] .btn-ai-generate-score {
+  background: rgba(99, 102, 241, 0.15);
+  border-color: #818cf8;
+  color: #a5b4fc;
+}
+
+html.dark .btn-ai-generate-score:hover:not(:disabled),
+[data-theme="dark"] .btn-ai-generate-score:hover:not(:disabled) {
+  background: #4f46e5;
+  color: #ffffff;
+}
+
+html.dark .chip-fix--all,
+[data-theme="dark"] .chip-fix--all {
+  background: var(--sage);
+  color: #0c0f12;
+  border-color: var(--sage);
+  font-weight: 800;
+}
+
+html.dark .chip-fix--all:hover,
+[data-theme="dark"] .chip-fix--all:hover {
+  background: var(--sage-deep);
+  color: #ffffff;
+}
+
+html.dark .email-btn-cta,
+[data-theme="dark"] .email-btn-cta {
+  background: var(--sage);
+  color: #0c0f12;
+  font-weight: 800;
+}
+
+html.dark .email-btn-cta:hover,
+[data-theme="dark"] .email-btn-cta:hover {
+  background: var(--sage-deep);
+  color: #ffffff;
+}
+
+html.dark .editor-mode-toggle,
+[data-theme="dark"] .editor-mode-toggle {
+  background: var(--paper);
+  border-color: var(--line);
+}
+
+html.dark .btn-mode-tab.is-active,
+[data-theme="dark"] .btn-mode-tab.is-active {
+  background: var(--paper-raised);
+  color: var(--sage);
+  box-shadow: var(--shadow-xs);
+}
+
+html.dark .creator-role-tag,
+[data-theme="dark"] .creator-role-tag,
+html.dark .lead-governed-badge,
+[data-theme="dark"] .lead-governed-badge {
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  border-color: var(--line);
+}
+
+html.dark .compliance-meter-track,
+[data-theme="dark"] .compliance-meter-track {
+  background: var(--line-strong);
+}
+
+html.dark .forge-rank-pill,
+[data-theme="dark"] .forge-rank-pill {
+  border-color: var(--paper-raised);
+}
+
+/* 3. Hero CTA & Tooltip */
+html.dark .hero-plate__cta,
+[data-theme="dark"] .hero-plate__cta {
+  background: var(--sage);
+  color: #0c0f12;
+}
+
+html.dark .hero-plate__cta:hover,
+[data-theme="dark"] .hero-plate__cta:hover {
+  background: var(--sage-deep);
+  color: #ffffff;
+}
+
+html.dark .hero-btn--secondary:hover,
+[data-theme="dark"] .hero-btn--secondary:hover {
+  background: var(--paper);
+  border-color: var(--sage);
+  color: var(--sage);
+}
+
+html.dark .hero-btn--ghost:hover,
+[data-theme="dark"] .hero-btn--ghost:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .hero-tooltip,
+[data-theme="dark"] .hero-tooltip {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+}
+
+/* 4. Toasts & Interactive Tooltips */
+html.dark .toast,
+[data-theme="dark"] .toast {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+}
+
+html.dark .toast button,
+[data-theme="dark"] .toast button {
+  color: var(--muted);
+}
+
+html.dark .toast button:hover,
+[data-theme="dark"] .toast button:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .chart-tooltip,
+[data-theme="dark"] .chart-tooltip {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+html.dark .chart-tooltip span,
+[data-theme="dark"] .chart-tooltip span {
+  color: var(--muted);
+}
+
+/* 5. Toggles, Forms, & Controls */
+html.dark .switch,
+[data-theme="dark"] .switch {
+  background: var(--line-strong);
+}
+
+html.dark .switch > span,
+[data-theme="dark"] .switch > span {
+  background: #ffffff;
+}
+
+html.dark .switch.is-on,
+[data-theme="dark"] .switch.is-on {
+  background: var(--sage);
+}
+
+html.dark .queue-panel__foot,
+[data-theme="dark"] .queue-panel__foot {
+  color: var(--muted);
+}
+
+html.dark .queue-panel__foot a,
+[data-theme="dark"] .queue-panel__foot a {
+  color: var(--sage);
+}
+
+html.dark .gap-callout,
+[data-theme="dark"] .gap-callout {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+}
+
+html.dark .gap-callout p,
+[data-theme="dark"] .gap-callout p {
+  color: var(--muted);
+}
+
+html.dark .gap-callout p strong,
+[data-theme="dark"] .gap-callout p strong {
+  color: var(--ink);
+}
+
+html.dark .visual-preview__frame,
+[data-theme="dark"] .visual-preview__frame {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+html.dark .asset-brand-chip:hover,
+[data-theme="dark"] .asset-brand-chip:hover {
+  background: var(--paper-raised);
+}
+
+html.dark .asset-brand-chip.is-active,
+[data-theme="dark"] .asset-brand-chip.is-active {
+  background: var(--paper-raised);
+  border-color: var(--sage);
+}
+
+/* 6. Calendar Controls Dark Theme */
+html.dark .calendar-nav-btn:hover,
+[data-theme="dark"] .calendar-nav-btn:hover,
+html.dark .calendar-today-btn:hover,
+[data-theme="dark"] .calendar-today-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+html.dark .calendar-mini-today-btn,
+[data-theme="dark"] .calendar-mini-today-btn {
+  background: var(--paper);
+  border-color: var(--line);
+  color: var(--sage);
+}
+
+html.dark .calendar-mini-today-btn:hover,
+[data-theme="dark"] .calendar-mini-today-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--sage);
+  color: #ffffff;
+}
+
+html.dark .calendar-day-number--selected,
+[data-theme="dark"] .calendar-day-number--selected {
+  background: rgba(56, 189, 248, 0.16) !important;
+  color: var(--sage) !important;
+}
+
+html.dark .calendar-day-add-btn:hover,
+[data-theme="dark"] .calendar-day-add-btn:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: var(--sage);
+  border-color: rgba(56, 189, 248, 0.3);
 }
