@@ -5,7 +5,7 @@ import { Button } from '../components/UI'
 import { Sparkles, Upload } from 'lucide-react'
 
 export function CreatorStudioPage({ onNewReview }) {
-  const { data, toast, isMember } = useApp()
+  const { data, toast, isMember, activeBrand } = useApp()
 
   if (!isMember) {
     return <Navigate to="/reviews" replace />

@@ -109,7 +109,7 @@ function ActivityIcon({ kind }) {
 
 export function Dashboard({ onNewReview }) {
   const { data, currentUser, isLead, toast, activeBrand } = useApp()
-  const { stats, submissions, trends, issue_breakdown: breakdown, coverage, activity } = data
+  const { stats, submissions, trends, issue_breakdown: breakdown, coverage, activity, guidelines = [] } = data
   const [period, setPeriod] = useState('30d')
 
   const days = period === '7d' ? 7 : period === '14d' ? 14 : 30
@@ -682,7 +682,7 @@ export function Dashboard({ onNewReview }) {
                     </span>
                     <div>
                       <p>
-                        <strong>{item.actor.split(' ')[0]}</strong>{' '}
+                        <strong>{(item.actor || 'Reviewer').split(' ')[0]}</strong>{' '}
                         {item.kind === 'submitted' ? 'submitted' : (actionLabel[item.kind] || 'updated').toLowerCase()}{' '}
                         <Link to={`/reviews/${item.submission_id}`}>{item.title}</Link>
                       </p>
@@ -926,7 +926,7 @@ export function Dashboard({ onNewReview }) {
                     </span>
                     <div>
                       <p>
-                        <strong>{item.actor.split(' ')[0]} (Reviewer)</strong>{' '}
+                        <strong>{(item.actor || 'Reviewer').split(' ')[0]} (Reviewer)</strong>{' '}
                         {item.kind === 'submitted' ? 'logged' : (actionLabel[item.kind] || 'updated').toLowerCase()}{' '}
                         <Link to={`/reviews/${item.submission_id}`}>{item.title}</Link>
                       </p>
