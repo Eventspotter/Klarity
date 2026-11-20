@@ -157,6 +157,9 @@ export function Reviews({ onNewReview }) {
                 }}
                 placeholder="Search title or owner"
                 aria-label="Search reviews"
+                autoCapitalize="none"
+                autoCorrect="off"
+                enterKeyHint="search"
               />
               {query ? (
                 <button type="button" onClick={() => setQuery('')} aria-label="Clear search">

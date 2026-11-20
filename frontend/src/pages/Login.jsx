@@ -265,6 +265,9 @@ export function Login() {
                         value={forgotEmail}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         placeholder="you@company.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        enterKeyHint="send"
                         required
                         autoFocus
                       />
@@ -477,6 +480,9 @@ export function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="next"
                     minLength={3}
                     maxLength={80}
                     pattern="[a-zA-Z0-9_.-]+"
@@ -497,6 +503,9 @@ export function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete={register ? 'email' : 'username'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  enterKeyHint="next"
                   maxLength={254}
                   placeholder={register ? 'you@company.com' : 'username or email'}
                   required

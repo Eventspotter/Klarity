@@ -382,6 +382,9 @@ export function Guidelines() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search guidelines"
                 aria-label="Search guidelines"
+                autoCapitalize="none"
+                autoCorrect="off"
+                enterKeyHint="search"
               />
             </label>
             <Tabs

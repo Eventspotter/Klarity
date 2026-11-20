@@ -111,6 +111,9 @@ export function CommandPalette({ open, onClose }) {
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search reviews, guidelines, pages…"
             aria-label="Search"
+            autoCapitalize="none"
+            autoCorrect="off"
+            enterKeyHint="search"
             onKeyDown={(event) => {
               if (event.isComposing || event.keyCode === 229) return
               if (event.key === 'Enter' && results[0]) {
