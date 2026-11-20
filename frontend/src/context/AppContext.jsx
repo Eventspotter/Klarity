@@ -106,46 +106,51 @@ export function AppProvider({ children }) {
 
     // If browser supports native View Transitions API, animate the undulating S-curve wave curtain
     if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // Generate the sweeping S-curve wave boundary exactly matching the reference picture:
-      // A smooth continuous wave curtain with graceful crests and valleys sweeping across the screen.
-      // - When switching to dark: rolls in smoothly with the organic wave curve across to cover the screen.
-      // - When switching to light: rolls in from the opposite direction.
+      // Diagonal S-curve wave curtain:
+      // - To Dark: rolls from Top-Right corner to Bottom-Left corner
+      // - To Light: rolls in the opposite direction from Bottom-Left up to Top-Right
       const steps = 18
       const numSamples = 28
       const clipKeyframes = []
 
       for (let s = 0; s <= steps; s++) {
         const p = s / steps
-        // Wave amplitude peaks gracefully in the middle for maximum fluid definition
-        const amp = 14.0 * Math.sin(p * Math.PI)
+        // Wave amplitude peaks gracefully in the middle for maximum fluid curve definition
+        const amp = 18.0 * Math.sin(p * Math.PI)
 
         const curve = []
         if (isSwitchingToDark) {
-          // Dark wave enters from left (-15%) and sweeps across to right (125%)
-          // matching the exact visual curve shown in the reference image
-          const baseX = -18.0 + p * 142.0
+          // Travel axis: (u = x - y) from +135% (top-right) down to -135% (bottom-left)
+          // Transverse axis: (v = x + y) from -60% to 260%
+          const uCenter = 135.0 - p * 270.0
           for (let i = 0; i <= numSamples; i++) {
-            const yPct = (i / numSamples) * 100.0
-            const yNorm = i / numSamples
-            // Smooth harmonic S-curve wave with crests and natural fluid ripple
-            const wave = Math.sin(yNorm * Math.PI * 1.8 - p * Math.PI * 1.4) * 0.72 +
-                         Math.sin(yNorm * Math.PI * 3.6 + p * Math.PI * 0.9) * 0.28
-            const xPct = (baseX + wave * amp).toFixed(2)
-            curve.push(`${xPct}% ${yPct.toFixed(1)}%`)
+            const vNorm = i / numSamples
+            const v = -60.0 + vNorm * 320.0
+            // Dual-frequency harmonic S-curve wave matching the reference picture
+            const wave = Math.sin(vNorm * Math.PI * 1.8 - p * Math.PI * 1.4) * 0.72 +
+                         Math.sin(vNorm * Math.PI * 3.6 + p * Math.PI * 0.9) * 0.28
+            const u = uCenter - wave * amp
+            const x = ((v + u) / 2.0).toFixed(2)
+            const y = ((v - u) / 2.0).toFixed(2)
+            curve.push(`${x}% ${y}%`)
           }
-          clipKeyframes.push(`polygon(-25% -15%, ${curve.join(', ')}, -25% 115%)`)
+          // Enclose top-right corner region behind the wave
+          clipKeyframes.push(`polygon(${curve.join(', ')}, 160% 160%, 160% -60%, -60% -60%)`)
         } else {
-          // Light wave sweeps back in the opposite direction (from right 125% to left -15%)
-          const baseX = 118.0 - p * 142.0
+          // Opposite direction: from bottom-left (u = -135%) up to top-right (u = +135%)
+          const uCenter = -135.0 + p * 270.0
           for (let i = 0; i <= numSamples; i++) {
-            const yPct = (i / numSamples) * 100.0
-            const yNorm = i / numSamples
-            const wave = Math.sin(yNorm * Math.PI * 1.8 + p * Math.PI * 1.4) * 0.72 +
-                         Math.sin(yNorm * Math.PI * 3.6 - p * Math.PI * 0.9) * 0.28
-            const xPct = (baseX - wave * amp).toFixed(2)
-            curve.push(`${xPct}% ${yPct.toFixed(1)}%`)
+            const vNorm = i / numSamples
+            const v = -60.0 + vNorm * 320.0
+            const wave = Math.sin(vNorm * Math.PI * 1.8 + p * Math.PI * 1.4) * 0.72 +
+                         Math.sin(vNorm * Math.PI * 3.6 - p * Math.PI * 0.9) * 0.28
+            const u = uCenter + wave * amp
+            const x = ((v + u) / 2.0).toFixed(2)
+            const y = ((v - u) / 2.0).toFixed(2)
+            curve.push(`${x}% ${y}%`)
           }
-          clipKeyframes.push(`polygon(125% -15%, ${curve.join(', ')}, 125% 115%)`)
+          // Enclose bottom-left corner region behind the wave
+          clipKeyframes.push(`polygon(${curve.join(', ')}, -60% -60%, -60% 160%, 160% 160%)`)
         }
       }
 
