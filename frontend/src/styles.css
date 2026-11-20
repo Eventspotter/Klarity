@@ -9449,16 +9449,19 @@ html.dark .hero-nav,
   justify-content: center;
   gap: 6px;
   padding: 10px;
-  background: var(--ink);
-  color: var(--cream);
+  background: var(--ink, #20150f);
+  color: #ffffff;
   border-radius: var(--radius-sm);
   font-size: 13px;
   font-weight: 700;
-  transition: background 150ms var(--ease-out);
+  transition: all 180ms var(--ease-out);
 }
 
 .hero-plate__cta:hover {
-  background: var(--brown-brand);
+  background: #000000;
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
 }
 
 /* Three Pillars Section */
@@ -9918,12 +9921,14 @@ html.dark .hero-nav,
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
-  transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out);
+  transition: background 150ms var(--ease-out), border-color 150ms var(--ease-out), color 150ms var(--ease-out), transform 150ms var(--ease-out);
 }
 
 .login-sso-btn:hover {
-  background: var(--cream-deep);
-  border-color: var(--line-strong);
+  background: var(--sage-wash, #eef6fd);
+  border-color: var(--sage, #298ee4);
+  color: var(--ink);
+  transform: translateY(-1px);
 }
 
 .login-quick-demo {
@@ -13057,10 +13062,15 @@ button.calendar-banner-pill:hover {
   background: var(--ink, #20150f);
   color: white;
   border-color: var(--ink);
+  transition: all 180ms var(--ease-out);
 }
 
 .chip-fix--all:hover {
-  background: #3e2b21;
+  background: #000000;
+  color: #ffffff;
+  border-color: #000000;
+  transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.25);
 }
 
 .chip-fix--ai {
@@ -13427,13 +13437,16 @@ html.dark .btn-ai-generate-score:hover:not(:disabled),
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition: all 180ms var(--ease-out);
 }
 
 .btn-full-dark:hover {
-  opacity: 0.92;
+  background: #000000;
+  color: #ffffff;
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 .btn-full-secondary {
@@ -14020,11 +14033,15 @@ html.dark .btn-full-secondary:hover:not(:disabled),
   font-weight: 700;
   padding: 12px 28px;
   border-radius: 8px;
-  transition: opacity 0.15s;
+  transition: all 180ms var(--ease-out);
 }
 
 .email-btn-cta:hover {
-  opacity: 0.92;
+  background: #000000;
+  color: #ffffff;
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 html.dark .email-btn-cta,
@@ -14172,11 +14189,15 @@ html.dark .email-btn-cta:hover,
   font-weight: 700;
   padding: 8px 16px;
   border-radius: 999px;
-  transition: opacity 0.15s ease;
+  transition: all 180ms var(--ease-out);
 }
 
 .btn-hero-studio:hover {
-  opacity: 0.9;
+  background: #000000;
+  color: #ffffff;
+  opacity: 1;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
 }
 
 html.dark .btn-hero-studio,
@@ -14310,6 +14331,11 @@ html.dark .btn-hero-studio:hover,
   border-color: var(--ink);
 }
 
+.role-pill.is-active:hover {
+  background: #000000;
+  color: #ffffff;
+}
+
 html.dark .role-pill,
 [data-theme="dark"] .role-pill {
   background: var(--paper-raised);
@@ -14438,6 +14464,11 @@ html.dark .creator-review-note,
   background: var(--ink, #20150f);
   color: white;
   border-color: var(--ink);
+}
+
+.btn-preset.is-active:hover {
+  background: #000000;
+  color: #ffffff;
 }
 
 html.dark .btn-preset,
@@ -16108,4 +16139,49 @@ html.dark code,
   border-color: var(--line-strong);
   color: #fbbf24;
 }
+
+/* 9. Universal Black Button Standards: Guarantee black buttons never hover to washed-out grey */
+.btn-dark,
+.btn--dark,
+.btn-black,
+button.btn--dark,
+a.btn--dark {
+  background: var(--ink, #20150f);
+  color: #ffffff;
+  border: 1px solid transparent;
+  transition: all 180ms var(--ease-out);
+}
+
+.btn-dark:hover,
+.btn--dark:hover,
+.btn-black:hover,
+button.btn--dark:hover,
+a.btn--dark:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+  opacity: 1 !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+html.dark .login-sso-btn,
+[data-theme="dark"] .login-sso-btn {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+  color: #f3f6f9;
+}
+
+html.dark .login-sso-btn:hover,
+[data-theme="dark"] .login-sso-btn:hover {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: var(--sage);
+  color: #ffffff;
+}
+
+html.dark .hero-plate__cta:hover,
+[data-theme="dark"] .hero-plate__cta:hover {
+  background: var(--sage-deep) !important;
+  color: #ffffff !important;
+}
+
 
