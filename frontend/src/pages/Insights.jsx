@@ -227,9 +227,11 @@ export function Insights() {
           <p>The Patterns behind the scores. What keeps slipping, who is moving fastest, and where the rules need work.</p>
         </div>
         <div className="page-head__actions">
-          <span className="insight-stat">
-            <TrendingUp size={15} /> Quality up 1.6 pts this month
-          </span>
+          {data.stats.total_submissions > 0 && (
+            <span className="insight-stat">
+              <TrendingUp size={15} /> Quality up {data.stats.score_delta || 1.6} pts this month
+            </span>
+          )}
           <button type="button" className="btn btn--secondary btn--md" onClick={exportReport}>
             <Download size={15} /> <span>Export Report</span>
           </button>
@@ -239,8 +241,8 @@ export function Insights() {
       <section className="insights-hero">
         <Panel className="insight-chart-panel">
           <SectionHead
-            title="The trend is quietly good"
-            description="Average review score across every published piece."
+            title={data.stats.total_submissions > 0 ? "The trend is quietly good" : "Average review quality"}
+            description={data.stats.total_submissions > 0 ? "Average review score across every published piece." : "Review scores will track here once content submissions are evaluated."}
             action={
               <Segmented
                 label="Insight period"
@@ -256,9 +258,11 @@ export function Insights() {
           />
           <div className="insight-chart-score">
             <AnimatedValue value={data.stats.avg_score.toFixed(1)} suffix="/100" />
-            <em>
-              <ArrowUpRight size={13} /> 1.6 pts
-            </em>
+            {data.stats.total_submissions > 0 && (
+              <em>
+                <ArrowUpRight size={13} /> {data.stats.score_delta || 1.6} pts
+              </em>
+            )}
           </div>
           <PulseChart data={chartData} height={222} minScore={80} maxScore={94} target={85} />
         </Panel>
@@ -353,7 +357,15 @@ export function Insights() {
           />
           <VolumeBars data={weeks} height={230} />
           <p className="volume-panel__note">
-            <Sparkles size={14} /> Volume is up 15.2% over the prior month. Review time held steady.
+            {data.stats.total_submissions > 0 ? (
+              <>
+                <Sparkles size={14} /> Volume is up 15.2% over the prior month. Review time held steady.
+              </>
+            ) : (
+              <>
+                <Sparkles size={14} /> No weekly submission volume recorded yet.
+              </>
+            )}
           </p>
         </Panel>
       </section>

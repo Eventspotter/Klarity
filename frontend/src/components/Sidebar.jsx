@@ -305,7 +305,11 @@ export function Sidebar({ open, onClose, onNewReview }) {
           <div className="rail-health__track">
             <span style={{ width: `${score}%` }} />
           </div>
-          <p>Up 1.6 points over the last 30 days</p>
+          <p>
+            {data?.stats?.total_submissions > 0
+              ? `Up ${data?.stats?.score_delta ?? 1.6} points over the last 30 days`
+              : 'Awaiting first review'}
+          </p>
         </NavLink>
       </div>
     </aside>

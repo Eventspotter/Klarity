@@ -351,10 +351,16 @@ export function Dashboard({ onNewReview }) {
                     <AnimatedValue value={stats.avg_score.toFixed(1)} suffix="/100" />
                   </div>
                   <p>
-                    <span className={cx('delta', 'delta--good')}>
-                      <ArrowUpRight size={13} /> {deltaLabel(stats.score_delta, ' pts')}
-                    </span>{' '}
-                    over the last 30 days
+                    {stats.total_submissions > 0 ? (
+                      <>
+                        <span className={cx('delta', stats.score_delta >= 0 ? 'delta--good' : 'delta--bad')}>
+                          <ArrowUpRight size={13} /> {deltaLabel(stats.score_delta, ' pts')}
+                        </span>{' '}
+                        over the last 30 days
+                      </>
+                    ) : (
+                      <span className="delta delta--neutral">No reviews evaluated yet</span>
+                    )}
                   </p>
                 </div>
                 <div className="health-mix">
@@ -636,10 +642,16 @@ export function Dashboard({ onNewReview }) {
                     <AnimatedValue value={myStats.avgScore.toFixed(1)} suffix="/100" />
                   </div>
                   <p>
-                    <span className={cx('delta', 'delta--good')}>
-                      <ArrowUpRight size={13} /> {deltaLabel(1.8, ' pts')}
-                    </span>{' '}
-                    over the last 30 days
+                    {myStats.total > 0 ? (
+                      <>
+                        <span className={cx('delta', 'delta--good')}>
+                          <ArrowUpRight size={13} /> {deltaLabel(1.8, ' pts')}
+                        </span>{' '}
+                        over the last 30 days
+                      </>
+                    ) : (
+                      <span className="delta delta--neutral">No reviews evaluated yet</span>
+                    )}
                   </p>
                 </div>
                 <div className="health-mix">
