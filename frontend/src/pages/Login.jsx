@@ -211,7 +211,7 @@ export function Login() {
             </p>
           </div>
 
-          {successMsg && (
+          {successMsg && (!forgotMode || forgotMode === 'email') && (
             <div className="login-alert-success" role="status" style={{ marginBottom: '18px' }}>
               {pendingNotice ? (
                 <Clock size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#b45309' }} />
@@ -230,7 +230,7 @@ export function Login() {
             </div>
           )}
 
-          {error && (
+          {error && (!forgotMode || forgotMode === 'email') && (
             <div className="login-alert-error" role="alert" style={{ marginBottom: '18px' }}>
               <ShieldAlert size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>{error}</div>
@@ -303,11 +303,46 @@ export function Login() {
                       onChange={(val) => {
                         setOtpCode(val)
                         if (otpStatus !== 'idle') setOtpStatus('idle')
+                        if (error) setError('')
                       }}
                       onComplete={handleOtpComplete}
                       status={otpStatus}
                       disabled={busy}
                     />
+
+                    {/* Error alert displayed immediately below the OTP boxes */}
+                    {error && (
+                      <div
+                        className="login-alert-error"
+                        role="alert"
+                        style={{
+                          marginTop: '12px',
+                          marginBottom: '4px',
+                          textAlign: 'left',
+                          animation: 'fadeIn 0.25s ease-out'
+                        }}
+                      >
+                        <ShieldAlert size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>{error}</div>
+                      </div>
+                    )}
+
+                    {/* Success notification below the OTP boxes */}
+                    {successMsg && otpVerified && (
+                      <div
+                        className="login-alert-success"
+                        role="status"
+                        style={{
+                          marginTop: '12px',
+                          marginBottom: '4px',
+                          textAlign: 'left',
+                          animation: 'fadeIn 0.25s ease-out'
+                        }}
+                      >
+                        <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#16a34a' }} />
+                        <div>{successMsg}</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Only reveal New Password form AFTER OTP is verified */}
