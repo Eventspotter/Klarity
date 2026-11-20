@@ -1,6 +1,7 @@
 import { Suspense, lazy, useDeferredValue, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { BrandMark } from './components/BrandMark'
+import WakeSlider from './components/WakeSlider'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { ToastRegion } from './components/UI'
@@ -34,14 +35,44 @@ const Login = lazy(() => loadLogin().then((m) => ({ default: m.Login })))
 const NewReviewDrawer = lazy(() => loadNewReviewDrawer().then((m) => ({ default: m.NewReviewDrawer })))
 
 function LoadingScreen() {
+  const [sliderVal, setSliderVal] = useState(35)
+
+  useEffect(() => {
+    let forward = true
+    const interval = setInterval(() => {
+      setSliderVal((prev) => {
+        if (prev >= 92) forward = false
+        if (prev <= 15) forward = true
+        return forward ? prev + 12 : prev - 12
+      })
+    }, 450)
+    return () => clearInterval(interval)
+  }, [])
+
   return (
     <div className="loading-screen">
       <div className="loading-screen__brand">
         <BrandMark size={44} />
         <span>Klarity</span>
       </div>
-      <div className="loading-screen__bar">
-        <span />
+      <div style={{ width: 280, maxWidth: '85vw' }}>
+        <WakeSlider
+          value={sliderVal}
+          min={0}
+          max={100}
+          step={1}
+          bars={28}
+          height={40}
+          restHeight={10}
+          gap={3}
+          fillColor="var(--sage, #298EE4)"
+          trackColor="rgba(32, 21, 15, 0.12)"
+          sensitivity={1.2}
+          reach={5}
+          skew={0.6}
+          glide={0.35}
+          smoothing={120}
+        />
       </div>
       <p>Opening the brand workspace…</p>
     </div>

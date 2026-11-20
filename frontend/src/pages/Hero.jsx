@@ -17,6 +17,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
+import WakeSlider from '../components/WakeSlider'
 
 export function Hero() {
   const navigate = useNavigate()
@@ -277,12 +278,26 @@ export function Hero() {
                     <small>/100</small>
                   </div>
 
-                  <div className="hero-score-bar">
-                    <div
-                      className="hero-score-bar__fill"
-                      style={{
-                        width: `${scoreDisplay}%`,
-                        backgroundColor: applied ? 'var(--good)' : 'var(--clay)',
+                  <div className="hero-wake-slider-wrap" style={{ margin: '14px 0 10px', width: '100%' }}>
+                    <WakeSlider
+                      value={scoreDisplay}
+                      min={0}
+                      max={100}
+                      step={1}
+                      bars={28}
+                      height={44}
+                      restHeight={10}
+                      gap={3}
+                      fillColor={applied ? 'var(--good, #22c55e)' : 'var(--clay, #b85b35)'}
+                      trackColor="rgba(32, 21, 15, 0.12)"
+                      sensitivity={1.1}
+                      reach={5}
+                      skew={0.6}
+                      glide={0.3}
+                      smoothing={100}
+                      onChange={(val) => {
+                        setScoreDisplay(val)
+                        scoreObj.current.val = val
                       }}
                     />
                   </div>
