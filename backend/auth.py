@@ -735,8 +735,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
 
     if not account:
-        # Don't leak account existence, return generic success
-        return {"message": "If an account exists with that email, a 6-digit OTP code has been sent."}
+        raise HTTPException(404, "No registered account found with that email. Please check your email address.")
 
     # Generate cryptographically secure 6-digit OTP
     otp_code = f"{secrets.randbelow(900000) + 100000}"
@@ -759,7 +758,7 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     sent = send_otp_email(account.email, otp_code)
 
     return {
-        "message": "If an account exists with that email, a 6-digit OTP code has been sent.",
+        "message": f"Verification code sent to {account.email}!",
         "email": account.email,
         "dev_code": otp_code if not os.getenv("GMAIL_APP_PASSWORD") else None,
     }
