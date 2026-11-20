@@ -90,6 +90,9 @@ export function AppProvider({ children }) {
     try {
       localStorage.setItem('klarity_theme', theme)
       document.documentElement.setAttribute('data-theme', theme)
+      document.documentElement.style.colorScheme = theme
+      const meta = document.querySelector('meta[name="color-scheme"]')
+      if (meta) meta.content = theme
       if (theme === 'dark') {
         document.documentElement.classList.add('dark')
       } else {
