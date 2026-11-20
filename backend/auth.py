@@ -868,9 +868,10 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     sent = send_otp_email(account.email, otp_code)
 
     return {
-        "message": f"Verification code sent to {account.email}!",
+        "message": f"Verification code sent to {account.email}!" if sent else f"Verification code generated for {account.email}.",
         "email": account.email,
-        "dev_code": otp_code if not os.getenv("GMAIL_APP_PASSWORD") else None,
+        "email_sent": sent,
+        "dev_code": otp_code if not sent else None,
     }
 
 
