@@ -169,8 +169,8 @@ html.dark .topbar,
 
 html.dark .hero-nav,
 [data-theme="dark"] .hero-nav {
-  background: rgba(18, 21, 24, 0.88);
-  border-bottom: 1px solid var(--line);
+  background: var(--cream) !important;
+  border-bottom: 1px solid var(--line) !important;
 }
 
 html.dark .sidebar,
@@ -8257,21 +8257,23 @@ kbd {
   padding: 0 24px;
 }
 
-/* Hero Nav */
+/* Hero Nav: Exactly identical to original in light theme, and seamlessly matching page in dark theme */
 .hero-nav {
   position: sticky;
   top: 0;
   z-index: 100;
-  background: var(--cream);
+  background: rgba(246, 241, 230, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--line);
 }
 
-@supports (backdrop-filter: blur(14px)) or (-webkit-backdrop-filter: blur(14px)) {
-  .hero-nav {
-    background: color-mix(in srgb, var(--cream) 88%, transparent);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-  }
+html.dark .hero-nav,
+[data-theme="dark"] .hero-nav {
+  background: var(--cream) !important;
+  border-bottom: 1px solid var(--line) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 .hero-nav__inner {
