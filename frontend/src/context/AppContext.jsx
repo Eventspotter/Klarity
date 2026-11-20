@@ -98,8 +98,42 @@ export function AppProvider({ children }) {
     } catch {}
   }, [theme])
 
-  const toggleTheme = useCallback(() => {
-    setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+  const toggleTheme = useCallback((event) => {
+    // If browser supports native View Transitions API, animate liquid flow from top-right to bottom-left
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Determine origin point (top right corner or click location)
+      const x = event?.clientX ?? (window.innerWidth - 30)
+      const y = event?.clientY ?? 30
+
+      // Calculate distance to furthest corner (bottom-left corner at 0, innerHeight)
+      const maxRadius = Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      )
+
+      const transition = document.startViewTransition(() => {
+        setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+      })
+
+      transition.ready.then(() => {
+        // Organic liquid ripple flow: expanding circular wave from top right across to bottom left
+        document.documentElement.animate(
+          {
+            clipPath: [
+              `circle(0px at ${x}px ${y}px)`,
+              `circle(${maxRadius * 1.15}px at ${x}px ${y}px)`
+            ]
+          },
+          {
+            duration: 750,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            pseudoElement: '::view-transition-new(root)'
+          }
+        )
+      }).catch(() => {})
+    } else {
+      setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+    }
   }, [])
   const [activeBrand, setActiveBrand] = useState(() => {
     try {
