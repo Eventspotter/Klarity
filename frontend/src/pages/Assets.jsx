@@ -1063,11 +1063,28 @@ export function Assets() {
     <div className="assets-page">
       {/* Global Drag-and-Drop Overlay */}
       {isDraggingPage && (
-        <div className="asset-global-overlay">
-          <div className="asset-global-overlay__box">
-            <UploadCloud size={48} style={{ color: 'var(--sage)' }} />
-            <h3>Drop brand file to upload</h3>
-            <p>Release anywhere to add directly to the {currentBrand.brand_name || currentBrand.name || 'brand'} asset library</p>
+        <div className="asset-global-overlay" role="dialog" aria-modal="true" aria-label="Drop brand file to upload">
+          <div className="asset-global-overlay__perimeter" />
+          <div className="asset-global-overlay__card">
+            <div className="asset-global-overlay__badge">
+              <Sparkles size={13} />
+              <span>{currentBrand.brand_name || currentBrand.name || 'Brand'} Asset Library</span>
+            </div>
+            <div className="asset-global-overlay__icon-orb">
+              <FileUp size={32} strokeWidth={2.2} />
+            </div>
+            <div className="asset-global-overlay__copy">
+              <h3>Drop brand file to import</h3>
+              <p>Release anywhere to stage artwork, extract color palettes, or link guidelines.</p>
+            </div>
+            <div className="asset-global-overlay__formats">
+              <span>SVG</span>
+              <span>PNG</span>
+              <span>JPG</span>
+              <span>WEBP</span>
+              <span>PDF</span>
+              <span>ASE</span>
+            </div>
           </div>
         </div>
       )}
