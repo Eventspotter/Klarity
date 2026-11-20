@@ -4043,7 +4043,7 @@ kbd {
   min-height: 32px;
   padding: 0 11px;
   color: var(--muted);
-  background: rgba(251, 248, 241, 0.72);
+  background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: 999px;
   font-size: 11px;
@@ -4060,6 +4060,38 @@ kbd {
 
 .review-count strong {
   color: var(--clay-deep);
+}
+
+html.dark .review-count,
+html.dark .guideline-stat,
+html.dark .asset-stat,
+html.dark .insight-stat,
+html.dark .settings-saved,
+html.dark .asset-toolbar__note,
+[data-theme="dark"] .review-count,
+[data-theme="dark"] .guideline-stat,
+[data-theme="dark"] .asset-stat,
+[data-theme="dark"] .insight-stat,
+[data-theme="dark"] .settings-saved,
+[data-theme="dark"] .asset-toolbar__note {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+  color: var(--ink-soft);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .review-count strong,
+[data-theme="dark"] .review-count strong {
+  color: #fbbf24;
+}
+
+html.dark .guideline-stat strong,
+html.dark .asset-stat strong,
+html.dark .insight-stat strong,
+[data-theme="dark"] .guideline-stat strong,
+[data-theme="dark"] .asset-stat strong,
+[data-theme="dark"] .insight-stat strong {
+  color: #f3f6f9;
 }
 
 /* ---------- dashboard ---------- */
@@ -6604,6 +6636,184 @@ kbd {
   color: var(--faint);
   font-size: 11px;
   font-weight: 600;
+}
+
+/* Guidelines Workspace Dark Mode */
+html.dark .guideline-workspace,
+[data-theme="dark"] .guideline-workspace {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+}
+
+html.dark .guideline-list,
+[data-theme="dark"] .guideline-list {
+  border-color: var(--line);
+}
+
+html.dark .guideline-list__head,
+[data-theme="dark"] .guideline-list__head {
+  border-color: var(--line);
+}
+
+html.dark .guideline-item:hover,
+[data-theme="dark"] .guideline-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--line);
+}
+
+html.dark .guideline-item.is-active,
+[data-theme="dark"] .guideline-item.is-active {
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
+html.dark .guideline-item.is-active:hover,
+[data-theme="dark"] .guideline-item.is-active:hover {
+  background: rgba(56, 189, 248, 0.16);
+}
+
+html.dark .guideline-item__copy strong,
+[data-theme="dark"] .guideline-item__copy strong {
+  color: #f3f6f9;
+}
+
+html.dark .guideline-item__copy p,
+[data-theme="dark"] .guideline-item__copy p {
+  color: #9aa7b5;
+}
+
+html.dark .guideline-item__copy small,
+[data-theme="dark"] .guideline-item__copy small {
+  color: #6c7987;
+}
+
+html.dark .guideline-item__arrow,
+[data-theme="dark"] .guideline-item__arrow {
+  color: var(--sage);
+}
+
+/* Priority Badges in Guidelines */
+html.dark .guideline-item__prio,
+[data-theme="dark"] .guideline-item__prio {
+  background: var(--paper);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+html.dark .guideline-item__prio.prio-5,
+[data-theme="dark"] .guideline-item__prio.prio-5 {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.35);
+}
+
+html.dark .guideline-item__prio.prio-4,
+[data-theme="dark"] .guideline-item__prio.prio-4 {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.2);
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+html.dark .guideline-item__prio.prio-3,
+[data-theme="dark"] .guideline-item__prio.prio-3 {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.2);
+  border-color: rgba(16, 185, 129, 0.35);
+}
+
+html.dark .guideline-detail__head,
+[data-theme="dark"] .guideline-detail__head {
+  border-color: var(--line);
+}
+
+html.dark .guideline-detail__head h2,
+[data-theme="dark"] .guideline-detail__head h2 {
+  color: #f3f6f9;
+}
+
+html.dark .guideline-detail__head p,
+[data-theme="dark"] .guideline-detail__head p {
+  color: #9aa7b5;
+}
+
+html.dark .guideline-detail__body p,
+[data-theme="dark"] .guideline-detail__body p {
+  color: #d8e0e8;
+}
+
+html.dark .priority-chip.prio-5,
+[data-theme="dark"] .priority-chip.prio-5 {
+  color: #fca5a5;
+  background: rgba(239, 68, 68, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+}
+
+html.dark .priority-chip.prio-4,
+[data-theme="dark"] .priority-chip.prio-4 {
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.2);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+}
+
+html.dark .priority-chip.prio-3,
+[data-theme="dark"] .priority-chip.prio-3 {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.2);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+}
+
+html.dark .guideline-facts,
+[data-theme="dark"] .guideline-facts {
+  background: var(--line-strong);
+  border: 1px solid var(--line-strong);
+}
+
+html.dark .guideline-facts > div,
+[data-theme="dark"] .guideline-facts > div {
+  background: var(--paper);
+}
+
+html.dark .guideline-facts > div > span,
+[data-theme="dark"] .guideline-facts > div > span {
+  color: var(--faint);
+}
+
+html.dark .guideline-facts strong,
+[data-theme="dark"] .guideline-facts strong {
+  color: #f3f6f9;
+}
+
+html.dark .guideline-note,
+[data-theme="dark"] .guideline-note {
+  background: var(--paper);
+  border: 1px solid var(--line);
+}
+
+html.dark .guideline-note__icon,
+[data-theme="dark"] .guideline-note__icon {
+  background: var(--paper-raised);
+  color: var(--sage);
+  border: 1px solid var(--line);
+}
+
+html.dark .guideline-note strong,
+[data-theme="dark"] .guideline-note strong {
+  color: #ffffff;
+}
+
+html.dark .guideline-note p,
+[data-theme="dark"] .guideline-note p {
+  color: #9aa7b5;
+}
+
+html.dark .guideline-detail__foot,
+[data-theme="dark"] .guideline-detail__foot {
+  border-color: var(--line);
+}
+
+html.dark .guideline-detail__foot span,
+[data-theme="dark"] .guideline-detail__foot span {
+  color: var(--faint);
 }
 
 /* ---------- brand assets ---------- */
@@ -14378,6 +14588,61 @@ html.dark .email-btn-cta:hover,
   color: var(--ink-soft);
 }
 
+html.dark .voice-card--approved,
+[data-theme="dark"] .voice-card--approved {
+  background: rgba(34, 197, 94, 0.08);
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(34, 197, 94, 0.15);
+}
+
+html.dark .voice-card--avoid,
+[data-theme="dark"] .voice-card--avoid {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  box-shadow: 0 4px 20px -4px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(245, 158, 11, 0.15);
+}
+
+html.dark .voice-card__pill--good,
+[data-theme="dark"] .voice-card__pill--good {
+  background: rgba(34, 197, 94, 0.18);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+html.dark .voice-card__badge--do,
+[data-theme="dark"] .voice-card__badge--do {
+  background: rgba(34, 197, 94, 0.25);
+  color: #86efac;
+}
+
+html.dark .voice-card__pill--warn,
+[data-theme="dark"] .voice-card__pill--warn {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+html.dark .voice-card__badge--dont,
+[data-theme="dark"] .voice-card__badge--dont {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fde047;
+}
+
+html.dark .voice-card__content blockquote,
+[data-theme="dark"] .voice-card__content blockquote {
+  color: #f3f6f9;
+}
+
+html.dark .voice-card__hint,
+[data-theme="dark"] .voice-card__hint {
+  color: #9aa7b5;
+}
+
+html.dark .voice-card__hint strong,
+[data-theme="dark"] .voice-card__hint strong {
+  color: #e2e8f0;
+}
+
 /* =========================================================
    Creator Studio Page & Role Separation Styles
    ========================================================= */
@@ -14487,6 +14752,30 @@ html.dark .btn-hero-studio:hover,
 
 .guideline-role-notice strong {
   color: var(--ink);
+}
+
+html.dark .author-locked-chip,
+[data-theme="dark"] .author-locked-chip {
+  background: var(--paper-raised);
+  color: var(--muted);
+  border-color: var(--line-strong);
+}
+
+html.dark .guideline-role-notice,
+[data-theme="dark"] .guideline-role-notice {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+}
+
+html.dark .guideline-role-notice svg,
+[data-theme="dark"] .guideline-role-notice svg {
+  color: var(--sage);
+}
+
+html.dark .guideline-role-notice strong,
+[data-theme="dark"] .guideline-role-notice strong {
+  color: #ffffff;
 }
 
 /* Role switch in Topbar popover */
