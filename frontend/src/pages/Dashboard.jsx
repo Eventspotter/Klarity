@@ -147,7 +147,14 @@ export function Dashboard({ onNewReview }) {
   }, [activity, isLead, mySubmissions])
 
   const myChartData = useMemo(() => {
-    const baseline = myStats.avgScore || 88.5
+    if (myStats.total === 0) {
+      return chartData.map((point) => ({
+        ...point,
+        avg_score: 0,
+        value: 0,
+      }))
+    }
+    const baseline = myStats.avgScore
     return chartData.map((point) => {
       const diff = (point.avg_score - 86.4) * 0.8
       const val = Math.min(98, Math.max(72, Number((baseline + diff).toFixed(1))))
@@ -157,7 +164,7 @@ export function Dashboard({ onNewReview }) {
         value: val,
       }
     })
-  }, [chartData, myStats.avgScore])
+  }, [chartData, myStats.avgScore, myStats.total])
 
   const todayLabel = useMemo(() => {
     return new Date().toLocaleDateString('en-GB', {
@@ -208,7 +215,39 @@ export function Dashboard({ onNewReview }) {
 
   const maxCategory = Math.max(...categories.map((item) => item.count), 1)
   const totalIssues = categories.reduce((sum, item) => sum + item.count, 0)
-  const flaggedTerms = 34
+
+  const totalSubmissions = stats.total_submissions || 0
+  const changesCount = useMemo(() => {
+    return (submissions || []).filter((s) => s.status === 'needs_changes').length
+  }, [submissions])
+  const rejectedCount = useMemo(() => {
+    return (submissions || []).filter((s) => s.status === 'rejected').length
+  }, [submissions])
+
+  const changesRate = totalSubmissions > 0 ? ((changesCount / totalSubmissions) * 100).toFixed(1) : '0.0'
+  const rejectedRate = totalSubmissions > 0 ? ((rejectedCount / totalSubmissions) * 100).toFixed(1) : '0.0'
+
+  const topFlagged = useMemo(() => {
+    if (totalSubmissions === 0) return null
+    const isDemo = Boolean(currentUser === 'ashwik' || currentUser === 'sunless')
+    const terms = (submissions || []).flatMap((sub) =>
+      (sub.reports || []).flatMap((rep) =>
+        (rep.issues || []).filter((iss) => iss.category === 'terminology')
+      )
+    )
+    if (terms.length === 0) {
+      return isDemo ? { term: 'seamless', count: 34 } : null
+    }
+    const counts = new Map()
+    terms.forEach((iss) => {
+      const match = (iss.evidence || iss.title || '').match(/["']([^"']+)["']/)
+      const term = (match ? match[1] : iss.title || 'term').toLowerCase().trim()
+      counts.set(term, (counts.get(term) || 0) + 1)
+    })
+    const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1])
+    return sorted.length > 0 ? { term: sorted[0][0], count: sorted[0][1] } : null
+  }, [totalSubmissions, submissions, currentUser])
+
   const issuesPanelRef = useRef(null)
 
   useEffect(() => {
@@ -366,15 +405,15 @@ export function Dashboard({ onNewReview }) {
                 <div className="health-mix">
                   <div>
                     <span>Approved</span>
-                    <AnimatedValue value={`${stats.approval_rate.toFixed(1)}%`} />
+                    <AnimatedValue value={`${totalSubmissions > 0 ? stats.approval_rate.toFixed(1) : '0.0'}%`} />
                   </div>
                   <div>
                     <span>Changes</span>
-                    <AnimatedValue value="6.4%" />
+                    <AnimatedValue value={`${changesRate}%`} />
                   </div>
                   <div>
                     <span>Rejected</span>
-                    <AnimatedValue value="2.5%" />
+                    <AnimatedValue value={`${rejectedRate}%`} />
                   </div>
                 </div>
               </div>
@@ -465,15 +504,15 @@ export function Dashboard({ onNewReview }) {
                   No issues flagged yet. Content pipeline is clean.
                 </div>
               )}
-              {stats.total_submissions > 0 && (
+              {topFlagged && (
                 <div className="signal-callout">
                   <div className="signal-callout__word" aria-hidden="true">
-                    seamless
+                    {topFlagged.term}
                   </div>
                   <div className="signal-callout__copy">
                     <span>Language signal</span>
                     <p>
-                      “Seamless” appeared in <strong>{flaggedTerms} pieces</strong> this quarter, the workspace’s
+                      “{topFlagged.term}” appeared in <strong>{topFlagged.count} {topFlagged.count === 1 ? 'piece' : 'pieces'}</strong> this quarter, the workspace’s
                       most flagged term.
                     </p>
                     <Link to="/guidelines?guideline=2">
