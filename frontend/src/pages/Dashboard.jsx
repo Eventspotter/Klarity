@@ -108,7 +108,7 @@ function ActivityIcon({ kind }) {
 }
 
 export function Dashboard({ onNewReview }) {
-  const { data, currentUser, isLead, toast } = useApp()
+  const { data, currentUser, isLead, toast, activeBrand } = useApp()
   const { stats, submissions, trends, issue_breakdown: breakdown, coverage, activity } = data
   const [period, setPeriod] = useState('30d')
 
@@ -131,12 +131,12 @@ export function Dashboard({ onNewReview }) {
     const reviewing = mySubmissions.filter((s) => s.status === 'reviewing').length
     const pending = mySubmissions.filter((s) => s.status === 'pending').length
     const changes = mySubmissions.filter((s) => s.status === 'needs_changes').length
-    const rate = total > 0 ? (approved / total) * 100 : 100
+    const rate = total > 0 ? (approved / total) * 100 : 0
     const scored = mySubmissions.filter((s) => latestReport(s))
     const avgScore =
       scored.length > 0
         ? scored.reduce((sum, s) => sum + (latestReport(s)?.overall_score ?? 0), 0) / scored.length
-        : 88
+        : 0
     return { total, approved, reviewing, pending, changes, rate, avgScore }
   }, [mySubmissions])
 
@@ -225,8 +225,12 @@ export function Dashboard({ onNewReview }) {
           </h1>
           <p>
             {isLead
-              ? `Aster & Oak is holding at ${Math.round(stats.avg_score)}/100 across 12 channels. Here is where the next decision is waiting.`
-              : `Personal Creator Workspace · You have ${mySubmissions.length} authored pieces. Track your review decisions, inspect feedback, or launch the studio to draft.`}
+              ? stats.total_submissions > 0
+                ? `${activeBrand?.brand_name || 'Workspace'} is holding at ${Math.round(stats.avg_score)}/100 across 12 channels. Here is where the next decision is waiting.`
+                : `${activeBrand?.brand_name || 'Workspace'} is ready. Zero submissions and guidelines have been created yet.`
+              : mySubmissions.length > 0
+                ? `Personal Creator Workspace · You have ${mySubmissions.length} authored pieces. Track your review decisions, inspect feedback, or launch the studio to draft.`
+                : `Personal Creator Workspace · You haven't submitted any content yet. Open the studio to draft your first piece.`}
           </p>
         </div>
         <div className="page-hero__actions">
@@ -245,43 +249,41 @@ export function Dashboard({ onNewReview }) {
         </div>
       </section>
 
-
-
       {isLead ? (
         <section className="metric-strip" aria-label="Workspace metrics">
           <Metric
             label="Content reviewed"
             value={formatCount(stats.total_submissions)}
             delta={stats.volume_delta}
-            detail="vs prior 30 days"
+            detail={stats.total_submissions > 0 ? "vs prior 30 days" : "zero submissions"}
           />
           <Metric
             label="Approval rate"
-            value={`${stats.approval_rate.toFixed(1)}%`}
+            value={stats.total_submissions > 0 ? `${stats.approval_rate.toFixed(1)}%` : "0.0%"}
             delta={stats.approval_delta}
-            detail="points vs prior 30 days"
+            detail={stats.total_submissions > 0 ? "points vs prior 30 days" : "no reviews yet"}
             suffix=""
           />
           <Metric
             label="Average score"
-            value={stats.avg_score.toFixed(1)}
+            value={stats.total_submissions > 0 ? stats.avg_score.toFixed(1) : "0.0"}
             suffix="/100"
             delta={stats.score_delta}
-            detail="points this month"
+            detail={stats.total_submissions > 0 ? "points this month" : "no data"}
             positiveIsGood
           />
           <Metric
             label="Open issues"
             value={stats.open_issues}
-            delta={-12}
-            detail="fewer than last week"
+            delta={stats.total_submissions > 0 ? -12 : 0}
+            detail={stats.total_submissions > 0 ? "fewer than last week" : "clean queue"}
             positiveIsGood={false}
           />
           <Metric
             label="Active guidelines"
             value={stats.active_guidelines}
-            delta={2}
-            detail="published this quarter"
+            delta={stats.active_guidelines > 0 ? 2 : 0}
+            detail={stats.active_guidelines > 0 ? "published this quarter" : "none published"}
           />
         </section>
       ) : (
@@ -401,15 +403,23 @@ export function Dashboard({ onNewReview }) {
                 </span>
               </div>
               <ul className="queue-list">
-                {queue.map((item, index) => (
-                  <QueueRow key={item.id} item={item} index={index} />
-                ))}
+                {queue.length > 0 ? (
+                  queue.map((item, index) => (
+                    <QueueRow key={item.id} item={item} index={index} />
+                  ))
+                ) : (
+                  <li style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px' }}>
+                    Queue is clear. No review decisions waiting.
+                  </li>
+                )}
               </ul>
-              <div className="queue-panel__foot">
-                <Clock3 size={14} />
-                <span>Oldest waiting 3h 20m</span>
-                <Link to="/reviews">Review all</Link>
-              </div>
+              {queue.length > 0 && (
+                <div className="queue-panel__foot">
+                  <Clock3 size={14} />
+                  <span>Oldest waiting {timeAgo(queue[0]?.submitted_at)}</span>
+                  <Link to="/reviews">Review all</Link>
+                </div>
+              )}
             </Panel>
           </section>
 
@@ -426,38 +436,46 @@ export function Dashboard({ onNewReview }) {
                   </Link>
                 }
               />
-              <div className="issue-rows">
-                {categories.map((item) => (
-                  <div className="issue-row" key={item.category}>
-                    <div className="issue-row__head">
-                      <CategoryTag category={item.category} />
-                      <span>{formatCount(item.count)} issues</span>
-                      <strong>{Math.round((item.count / totalIssues) * 100)}%</strong>
+              {categories.length > 0 ? (
+                <div className="issue-rows">
+                  {categories.map((item) => (
+                    <div className="issue-row" key={item.category}>
+                      <div className="issue-row__head">
+                        <CategoryTag category={item.category} />
+                        <span>{formatCount(item.count)} issues</span>
+                        <strong>{Math.round((item.count / totalIssues) * 100)}%</strong>
+                      </div>
+                      <div className="issue-row__track">
+                        <span
+                          className={cx('issue-row__bar', item.critical > 0 ? 'is-critical' : 'is-default')}
+                          style={{ width: `${Math.max(6, (item.count / maxCategory) * 100)}%` }}
+                        />
+                      </div>
                     </div>
-                    <div className="issue-row__track">
-                      <span
-                        className={cx('issue-row__bar', item.critical > 0 ? 'is-critical' : 'is-default')}
-                        style={{ width: `${Math.max(6, (item.count / maxCategory) * 100)}%` }}
-                      />
-                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div style={{ padding: '28px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '13px' }}>
+                  No issues flagged yet. Content pipeline is clean.
+                </div>
+              )}
+              {stats.total_submissions > 0 && (
+                <div className="signal-callout">
+                  <div className="signal-callout__word" aria-hidden="true">
+                    seamless
                   </div>
-                ))}
-              </div>
-              <div className="signal-callout">
-                <div className="signal-callout__word" aria-hidden="true">
-                  seamless
+                  <div className="signal-callout__copy">
+                    <span>Language signal</span>
+                    <p>
+                      “Seamless” appeared in <strong>{flaggedTerms} pieces</strong> this quarter, the workspace’s
+                      most flagged term.
+                    </p>
+                    <Link to="/guidelines?guideline=2">
+                      Review the terminology guideline <ArrowRight size={13} />
+                    </Link>
+                  </div>
                 </div>
-                <div className="signal-callout__copy">
-                  <span>Language signal</span>
-                  <p>
-                    “Seamless” appeared in <strong>{flaggedTerms} pieces</strong> this quarter, the workspace’s
-                    most flagged term.
-                  </p>
-                  <Link to="/guidelines?guideline=2">
-                    Review the terminology guideline <ArrowRight size={13} />
-                  </Link>
-                </div>
-              </div>
+              )}
             </Panel>
 
             <Panel className="recent-panel">

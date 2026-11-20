@@ -66,7 +66,7 @@ const swatches = [
   { name: 'Blue wash', hex: '#D7EAFB', role: 'Highlight' },
 ]
 
-function LogoPlate({ dark = false, brandName = 'Aster & Oak' }) {
+function LogoPlate({ dark = false, brandName = 'Brand' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${brandName} logo lockup`}>
       <rect width="320" height="200" fill={dark ? '#3B2418' : '#F6F1E6'} />
@@ -416,7 +416,7 @@ const defaultAssets = [
 ]
 
 function renderAssetPreview(asset, large = false, brand = null) {
-  const bName = brand?.brand_name || brand?.name || 'Aster & Oak'
+  const bName = brand?.brand_name || brand?.name || 'Brand'
   const bMark = brand?.mark || bName.slice(0, 2).toUpperCase()
   const bColor = brand?.color || '#3B2418'
   const bDisplayFont = brand?.displayFont || 'Bricolage Grotesque'
@@ -475,7 +475,8 @@ const categoryOptions = [
 ]
 
 export function Assets() {
-  const { toast, activeBrand, allBrands = DEFAULT_BRANDS, switchBrand } = useApp()
+  const { user, toast, activeBrand, allBrands = DEFAULT_BRANDS, switchBrand } = useApp()
+  const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
   const currentBrand = activeBrand || DEFAULT_BRANDS[0]
   const brandStorageKey = `klarity_brand_assets_v4_${currentBrand.id || currentBrand.brand_name}`
 
@@ -541,12 +542,12 @@ export function Assets() {
       const saved = localStorage.getItem(brandStorageKey)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           return parsed
         }
       }
     } catch {}
-    return getBrandAssets(currentBrand)
+    return isDemo ? getBrandAssets(currentBrand) : []
   })
 
   // Synchronize when current brand switches
@@ -555,7 +556,7 @@ export function Assets() {
       const saved = localStorage.getItem(brandStorageKey)
       if (saved) {
         const parsed = JSON.parse(saved)
-        if (Array.isArray(parsed) && parsed.length > 0) {
+        if (Array.isArray(parsed)) {
           setAssetsList(parsed)
           setBrandEditForm({
             brand_name: currentBrand.brand_name || currentBrand.name || '',
@@ -570,7 +571,7 @@ export function Assets() {
         }
       }
     } catch {}
-    setAssetsList(getBrandAssets(currentBrand))
+    setAssetsList(isDemo ? getBrandAssets(currentBrand) : [])
     setBrandEditForm({
       brand_name: currentBrand.brand_name || currentBrand.name || '',
       brand_code: currentBrand.brand_code || currentBrand.code || '',
@@ -580,7 +581,7 @@ export function Assets() {
       values: currentBrand.values || currentBrand.brand_values || '',
     })
     if (currentBrand.swatches) setPaletteSwatches([...currentBrand.swatches])
-  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey])
+  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey, isDemo])
 
   // Persist assets to brand-scoped localStorage
   useEffect(() => {
@@ -642,15 +643,19 @@ export function Assets() {
 
   const handleApplyPreset = (presetName) => {
     if (presetName === 'core') {
-      setPaletteSwatches([
-        { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
-        { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
-        { name: 'Klarity Blue', hex: '#298EE4', role: 'Accent / Action' },
-        { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
-        { name: 'Paper', hex: '#FBF8F1', role: 'Surface' },
-        { name: 'Blue wash', hex: '#D7EAFB', role: 'Highlight' },
-      ])
-      toast('Loaded Aster & Oak Core tokens.', 'good')
+      setPaletteSwatches(
+        currentBrand.swatches && currentBrand.swatches.length > 0
+          ? [...currentBrand.swatches]
+          : [
+              { name: 'Pure White', hex: '#FFFFFF', role: 'Surface' },
+              { name: 'Core Onyx', hex: '#111827', role: 'Text / Ink' },
+              { name: 'Primary Accent', hex: currentBrand.color || '#298EE4', role: 'Primary Accent' },
+              { name: 'Cool Slate', hex: '#64748B', role: 'Secondary' },
+              { name: 'Soft Surface', hex: '#F8FAFC', role: 'Background' },
+              { name: 'Highlight Wash', hex: '#E0F2FE', role: 'Highlight' },
+            ]
+      )
+      toast(`Loaded ${currentBrand.brand_name || 'Brand'} Core tokens.`, 'good')
     } else if (presetName === 'earth') {
       setPaletteSwatches([
         { name: 'Warm Linen', hex: '#F7F3E9', role: 'Background' },
@@ -1019,7 +1024,7 @@ export function Assets() {
           <div className="asset-global-overlay__box">
             <UploadCloud size={48} style={{ color: 'var(--sage)' }} />
             <h3>Drop brand file to upload</h3>
-            <p>Release anywhere to add directly to the Aster &amp; Oak asset library</p>
+            <p>Release anywhere to add directly to the {currentBrand.brand_name || currentBrand.name || 'brand'} asset library</p>
           </div>
         </div>
       )}
@@ -1082,36 +1087,38 @@ export function Assets() {
           </div>
         </div>
 
-        <div className="asset-brand-selector-list">
-          {allBrands.map((b) => {
-            const isSelected = (b.brand_name || b.name) === (currentBrand.brand_name || currentBrand.name)
-            const bName = b.brand_name || b.name
-            const bCode = b.brand_code || b.code
-            const bMark = b.mark || bName.slice(0, 2).toUpperCase()
-            const bColor = b.color || 'var(--sage)'
+        {allBrands.length > 1 && (
+          <div className="asset-brand-selector-list">
+            {allBrands.map((b) => {
+              const isSelected = (b.brand_name || b.name) === (currentBrand.brand_name || currentBrand.name)
+              const bName = b.brand_name || b.name
+              const bCode = b.brand_code || b.code
+              const bMark = b.mark || bName.slice(0, 2).toUpperCase()
+              const bColor = b.color || 'var(--sage)'
 
-            return (
-              <button
-                key={bCode}
-                type="button"
-                className={cx('asset-brand-chip', isSelected && 'is-active')}
-                onClick={() => {
-                  switchBrand(b)
-                  toast(`Switched Brand Assets to ${bName} (${bCode})`, 'good')
-                }}
-              >
-                <span className="asset-brand-chip__mark" style={{ background: bColor }}>
-                  {bMark}
-                </span>
-                <span className="asset-brand-chip__text">
-                  <strong>{bName}</strong>
-                  <span className="asset-brand-chip__code">{bCode}</span>
-                </span>
-                {isSelected && <Check size={14} className="asset-brand-chip__check" />}
-              </button>
-            )
-          })}
-        </div>
+              return (
+                <button
+                  key={bCode}
+                  type="button"
+                  className={cx('asset-brand-chip', isSelected && 'is-active')}
+                  onClick={() => {
+                    switchBrand(b)
+                    toast(`Switched Brand Assets to ${bName} (${bCode})`, 'good')
+                  }}
+                >
+                  <span className="asset-brand-chip__mark" style={{ background: bColor }}>
+                    {bMark}
+                  </span>
+                  <span className="asset-brand-chip__text">
+                    <strong>{bName}</strong>
+                    <span className="asset-brand-chip__code">{bCode}</span>
+                  </span>
+                  {isSelected && <Check size={14} className="asset-brand-chip__check" />}
+                </button>
+              )
+            })}
+          </div>
+        )}
       </section>
 
       {/* Category Tabs & Note */}
@@ -1149,6 +1156,17 @@ export function Assets() {
             </button>
           ))}
         </div>
+      ) : assetsList.length === 0 ? (
+        <EmptyState
+          icon={Images}
+          title="No brand assets uploaded yet"
+          description={`Your workspace for ${currentBrand.brand_name || 'your brand'} is clean. Upload your logo lockups, color palettes, fonts, or campaign plates to start governing.`}
+          action={
+            <Button variant="primary" icon={Upload} onClick={() => setUploadOpen(true)}>
+              Upload first asset
+            </Button>
+          }
+        />
       ) : (
         <EmptyState
           icon={Images}
@@ -1163,35 +1181,37 @@ export function Assets() {
       )}
 
       {/* Core Palette Section */}
-      <section className="palette-section">
-        <div className="palette-section__head">
-          <div>
-            <h2>Core palette · {currentBrand.brand_name}</h2>
-            <p>Click any swatch to copy its hex value.</p>
+      {(Boolean(currentBrand.swatches?.length) || isDemo) && (
+        <section className="palette-section">
+          <div className="palette-section__head">
+            <div>
+              <h2>Core palette · {currentBrand.brand_name}</h2>
+              <p>Click any swatch to copy its hex value.</p>
+            </div>
+            <span>
+              <Palette size={15} /> {(currentBrand.swatches || swatches).length} tokens
+            </span>
           </div>
-          <span>
-            <Palette size={15} /> {(currentBrand.swatches || swatches).length} tokens
-          </span>
-        </div>
-        <div className="swatch-grid">
-          {(currentBrand.swatches || swatches).map((swatch) => (
-            <button
-              key={swatch.hex}
-              type="button"
-              className="swatch"
-              onClick={() => copy(swatch.hex, swatch.name)}
-              aria-label={`Copy ${swatch.name} ${swatch.hex}`}
-            >
-              <span className="swatch__chip" style={{ background: swatch.hex }} aria-hidden="true" />
-              <span className="swatch__meta">
-                <strong>{swatch.name}</strong>
-                <span>{swatch.hex}</span>
-                <Copy size={12} aria-hidden="true" />
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
+          <div className="swatch-grid">
+            {(currentBrand.swatches || swatches).map((swatch) => (
+              <button
+                key={swatch.hex}
+                type="button"
+                className="swatch"
+                onClick={() => copy(swatch.hex, swatch.name)}
+                aria-label={`Copy ${swatch.name} ${swatch.hex}`}
+              >
+                <span className="swatch__chip" style={{ background: swatch.hex }} aria-hidden="true" />
+                <span className="swatch__meta">
+                  <strong>{swatch.name}</strong>
+                  <span>{swatch.hex}</span>
+                  <Copy size={12} aria-hidden="true" />
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Asset Guidelines Link Section */}
       <section className="asset-guidelines">
@@ -1206,13 +1226,13 @@ export function Assets() {
           </p>
         </div>
         <div className="asset-guidelines__links">
-          <button type="button" onClick={() => copy('Aster & Oak primary lockup', 'Asset name')}>
+          <button type="button" onClick={() => copy(`${currentBrand.brand_name || currentBrand.name || 'Brand'} primary lockup`, 'Asset name')}>
             <Image size={15} /> Copy asset reference
           </button>
-          <button type="button" onClick={() => copy('Bricolage Grotesque / Manrope', 'Type pairing')}>
+          <button type="button" onClick={() => copy(`${currentBrand.displayFont || 'Bricolage Grotesque'} / ${currentBrand.bodyFont || 'Manrope'}`, 'Type pairing')}>
             <Type size={15} /> Copy type pairing
           </button>
-          <button type="button" onClick={() => copy('#F6F1E6, #3B2418, #298EE4, #A97A32', 'Palette')}>
+          <button type="button" onClick={() => copy((currentBrand.swatches || swatches).map(s => s.hex).join(', '), 'Palette')}>
             <Palette size={15} /> Copy palette tokens
           </button>
         </div>
@@ -1377,7 +1397,7 @@ export function Assets() {
                         className="palette-studio__preset-tag"
                         onClick={() => handleApplyPreset('core')}
                       >
-                        Aster &amp; Oak Core
+                        {currentBrand.brand_name || currentBrand.name || 'Brand'} Core
                       </button>
                       <button
                         type="button"

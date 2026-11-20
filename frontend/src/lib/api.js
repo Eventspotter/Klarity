@@ -59,6 +59,7 @@ export const api = {
   switchBrand: (brand_name) =>
     request('/auth/switch-brand', { method: 'POST', body: JSON.stringify({ brand_name }) }),
   workspaceSettings: () => request('/auth/workspace-settings'),
+  cleanWorkspace: () => request('/auth/clean-workspace', { method: 'POST' }),
   updateWorkspaceSettings: (payload) =>
     request('/auth/workspace-settings', { method: 'PATCH', body: JSON.stringify(payload) }),
   pendingAccounts: () => request('/auth/pending-accounts'),

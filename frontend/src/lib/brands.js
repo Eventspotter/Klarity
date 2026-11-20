@@ -189,3 +189,41 @@ export function getBrandAssets(brand) {
     },
   ]
 }
+
+export function createDefaultBrand(name = 'My Brand', values = '', code = '') {
+  const brandName = (name || 'My Brand').trim()
+  const words = brandName.split(/\s+/).filter(Boolean)
+  const mark =
+    words.length > 1
+      ? words.slice(0, 3).map((w) => w[0]).join('').toUpperCase()
+      : brandName.slice(0, 2).toUpperCase() || 'MB'
+  const brandCode =
+    code ||
+    `${brandName.replace(/[^a-zA-Z0-9]/g, '').slice(0, 6).toUpperCase() || 'BRAND'}-${Math.floor(
+      1000 + Math.random() * 9000,
+    )}`
+
+  return {
+    id: `custom-${brandName.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+    name: brandName,
+    brand_name: brandName,
+    code: brandCode,
+    brand_code: brandCode,
+    mark: mark,
+    color: '#298EE4',
+    tagline: 'Brand Identity & Standards',
+    values: values || 'Authenticity, craft, excellence, quiet confidence',
+    brand_values: values || 'Authenticity, craft, excellence, quiet confidence',
+    displayFont: 'Bricolage Grotesque',
+    bodyFont: 'Manrope',
+    swatches: [
+      { name: 'Pure White', hex: '#FFFFFF', role: 'Surface' },
+      { name: 'Core Onyx', hex: '#111827', role: 'Text / Ink' },
+      { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
+      { name: 'Cool Slate', hex: '#64748B', role: 'Secondary' },
+      { name: 'Soft Surface', hex: '#F8FAFC', role: 'Background' },
+      { name: 'Sky Accent', hex: '#E0F2FE', role: 'Highlight' },
+    ],
+  }
+}
+

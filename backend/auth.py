@@ -27,6 +27,8 @@ class Account(Base):
     password_hash = Column(String(256), nullable=False)
     role = Column(String(30), nullable=False, default="owner")
     is_approved = Column(Boolean, nullable=False, default=True)
+    brand_name = Column(String(120), nullable=True)
+    is_demo = Column(Boolean, nullable=False, default=False)
 
 
 class WorkspaceSettings(Base):
@@ -74,15 +76,21 @@ def seed_test_account():
             or_(Account.username == "ashwik", Account.email == "ashwik@topper.local", Account.email == "ashwik@topper", Account.email == "ashwik@klarity.local")
         ).first()
         if not ashwik:
-            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner"))
+            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner", brand_name="Aster & Oak", is_demo=True))
         else:
             ashwik.username = "ashwik"
             ashwik.email = "ashwik@topper"
             ashwik.password_hash = hash_password("klarity")
             ashwik.role = "owner"
+            ashwik.brand_name = "Aster & Oak"
+            ashwik.is_demo = True
 
-        if not db.query(Account).filter_by(username="sunless").first():
-            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password("klarity"), role="reviewer"))
+        sunless = db.query(Account).filter_by(username="sunless").first()
+        if not sunless:
+            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password("klarity"), role="reviewer", brand_name="Aster & Oak", is_demo=True))
+        else:
+            sunless.brand_name = "Aster & Oak"
+            sunless.is_demo = True
 
         # Seed brands
         default_brands = [
@@ -130,6 +138,8 @@ def _cache_account(token_hash: str, account, session_expires_at: datetime) -> Si
         email=account.email,
         role=getattr(account, "role", "owner") or "owner",
         is_approved=getattr(account, "is_approved", True),
+        brand_name=getattr(account, "brand_name", None),
+        is_demo=getattr(account, "is_demo", False),
     )
     remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
     ttl = min(_SESSION_TTL_SECONDS, remaining)
@@ -172,14 +182,45 @@ def current_account(request: Request, db: Session = Depends(get_db)):
     return _cache_account(token_hash, account, expires_at)
 
 
-def public_account(account):
-    return {
+def optional_account(request: Request, db: Session = Depends(get_db)):
+    try:
+        return current_account(request, db)
+    except Exception:
+        return None
+
+
+def public_account(account, db=None):
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    brand_name = getattr(account, "brand_name", None)
+    if not brand_name:
+        brand_name = "Aster & Oak" if is_demo else "Brand"
+
+    res = {
         "id": account.id,
         "username": account.username,
         "email": account.email,
         "role": getattr(account, "role", "owner") or "owner",
         "is_approved": getattr(account, "is_approved", True),
+        "is_demo": is_demo,
+        "brand_name": brand_name,
+        "brand_code": "KLARITY-2026" if is_demo else "BRAND-1000",
+        "brand_values": "Authenticity, craft, sustainability, quiet confidence" if is_demo else "",
     }
+    try:
+        if db:
+            brand_rec = db.query(Brand).filter(Brand.brand_name == brand_name).first()
+            if brand_rec:
+                res["brand_code"] = brand_rec.brand_code
+                res["brand_values"] = brand_rec.brand_values
+        elif is_demo:
+            with SessionLocal() as session:
+                setting = session.get(WorkspaceSettings, 1)
+                if setting:
+                    res["brand_code"] = setting.brand_code
+                    res["brand_values"] = setting.brand_values
+    except Exception:
+        pass
+    return res
 
 
 def start_session(account, request, response, db):
@@ -210,7 +251,7 @@ def start_session(account, request, response, db):
         max_age=86400,
         path="/",
     )
-    res = public_account(account)
+    res = public_account(account, db)
     res["token"] = token
     return res
 
@@ -223,6 +264,7 @@ class RegisterRequest(BaseModel):
     brand_code: str | None = Field(default=None, max_length=64)
     brand_name: str | None = Field(default=None, max_length=120)
     brand_values: str | None = Field(default=None, max_length=500)
+    clean_workspace: bool | None = Field(default=False)
 
 
 class LoginRequest(BaseModel):
@@ -284,8 +326,23 @@ def list_brands(db: Session = Depends(get_db)):
 
 @router.get("/brand-directory")
 def brand_directory(account: Account = Depends(current_account), db: Session = Depends(get_db)):
-    """Return all brands and their brand codes for authenticated workspace members."""
-    return {"brands": _get_cached_brands(db)}
+    """Return all brands for demo accounts, or only their own brand for newly created brands."""
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if is_demo:
+        return {"brands": _get_cached_brands(db)}
+
+    user_brand = getattr(account, "brand_name", None) or "Brand"
+    brand_rec = db.query(Brand).filter(Brand.brand_name == user_brand).first()
+    return {
+        "brands": [
+            {
+                "id": brand_rec.id if brand_rec else 1,
+                "brand_name": user_brand,
+                "brand_code": brand_rec.brand_code if brand_rec else "BRAND-1000",
+                "brand_values": brand_rec.brand_values if brand_rec else "",
+            }
+        ]
+    }
 
 
 @router.post("/switch-brand")
@@ -294,7 +351,16 @@ def switch_brand(
     account: Account = Depends(current_account),
     db: Session = Depends(get_db),
 ):
-    """Switch active brand workspace."""
+    """Switch active brand workspace (allowed for multi-brand demo accounts)."""
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo:
+        user_brand = getattr(account, "brand_name", "Brand")
+        return {
+            "message": f"Workspace locked to {user_brand}",
+            "brand_name": user_brand,
+            "brand_code": "BRAND-1000",
+            "brand_values": "",
+        }
     brand = db.query(Brand).filter(Brand.brand_name == payload.brand_name.strip()).first()
     if not brand:
         raise HTTPException(404, "Brand not found")
@@ -311,9 +377,15 @@ def switch_brand(
         setting.brand_name = brand.brand_name
         setting.brand_values = brand.brand_values
         setting.brand_code = brand.brand_code
+    account.brand_name = brand.brand_name
     db.commit()
     global _SETTINGS_CACHE
     _SETTINGS_CACHE = None
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
     return {
         "message": f"Switched to {brand.brand_name}",
         "brand_name": brand.brand_name,
@@ -345,9 +417,37 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
 
     if is_admin:
         if payload.brand_name and payload.brand_name.strip():
-            setting.brand_name = payload.brand_name.strip()
-        if payload.brand_values and payload.brand_values.strip():
-            setting.brand_values = payload.brand_values.strip()
+            b_name = payload.brand_name.strip()
+            # Generate brand code
+            clean_slug = re.sub(r"[^A-Za-z0-9]", "", b_name).upper()[:6] or "BRAND"
+            rand_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+            b_values = payload.brand_values.strip() if payload.brand_values and payload.brand_values.strip() else "Authenticity, craft, excellence, quiet confidence"
+
+            # Upsert into Brand table
+            existing_brand = db.query(Brand).filter(Brand.brand_name.ilike(b_name)).first()
+            if not existing_brand:
+                existing_brand = Brand(
+                    brand_name=b_name,
+                    brand_values=b_values,
+                    brand_code=rand_code,
+                )
+                db.add(existing_brand)
+            else:
+                existing_brand.brand_values = b_values
+                rand_code = existing_brand.brand_code
+            assigned_brand = existing_brand.brand_name
+        else:
+            assigned_brand = "My Brand"
+
+        global _SETTINGS_CACHE, _BRANDS_CACHE
+        _SETTINGS_CACHE = None
+        _BRANDS_CACHE = None
+        try:
+            from services.workspace import invalidate_bootstrap_cache
+            invalidate_bootstrap_cache()
+        except Exception:
+            pass
+
         db.commit()
         is_approved = True
     else:
@@ -359,10 +459,21 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
             expected_code = (setting.brand_code or "KLARITY-2026").strip().upper()
             if not provided_code or provided_code != expected_code:
                 raise HTTPException(400, "Invalid brand value code. Please provide the authorized code from your Brand Owner.")
+            assigned_brand = setting.brand_name or "Aster & Oak"
+        else:
+            assigned_brand = matched_brand.brand_name
         # Reviewers and users require admin/owner approval before login
         is_approved = False
 
-    account = Account(username=username, email=email, password_hash=hash_password(payload.password), role=chosen_role, is_approved=is_approved)
+    account = Account(
+        username=username,
+        email=email,
+        password_hash=hash_password(payload.password),
+        role=chosen_role,
+        is_approved=is_approved,
+        brand_name=assigned_brand,
+        is_demo=False,
+    )
     db.add(account)
     try:
         db.flush()
@@ -379,7 +490,7 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
     return {
         "message": msg,
         "is_approved": is_approved,
-        "account": public_account(account),
+        "account": public_account(account, db),
     }
 
 
@@ -487,13 +598,27 @@ def update_workspace_settings(
         db.add(setting)
     if payload.brand_name is not None and payload.brand_name.strip():
         setting.brand_name = payload.brand_name.strip()
+        b_name = setting.brand_name
+        existing_brand = db.query(Brand).filter(Brand.brand_name.ilike(b_name)).first()
+        if not existing_brand:
+            clean_slug = re.sub(r"[^A-Za-z0-9]", "", b_name).upper()[:6] or "BRAND"
+            b_code = payload.brand_code or f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+            db.add(Brand(brand_name=b_name, brand_values=setting.brand_values, brand_code=b_code))
+        else:
+            existing_brand.brand_values = setting.brand_values
     if payload.brand_values is not None:
         setting.brand_values = payload.brand_values.strip()
     if payload.brand_code is not None and payload.brand_code.strip():
         setting.brand_code = payload.brand_code.strip().upper()
     db.commit()
-    global _SETTINGS_CACHE
+    global _SETTINGS_CACHE, _BRANDS_CACHE
     _SETTINGS_CACHE = None
+    _BRANDS_CACHE = None
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
     return {
         "message": "Workspace settings updated successfully.",
         "brand_name": setting.brand_name,
@@ -502,9 +627,28 @@ def update_workspace_settings(
     }
 
 
+@router.post("/clean-workspace")
+def clean_workspace(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can clear workspace submissions.")
+    try:
+        from models import ContentSubmission
+        db.query(ContentSubmission).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(500, "Failed to clear workspace submissions.")
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
+    return {"message": "Workspace submissions cleared. Clean slate initialized."}
+
+
 @router.get("/me")
-def me(account: Account = Depends(current_account)):
-    return public_account(account)
+def me(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    return public_account(account, db)
 
 
 @router.post("/logout", status_code=204)

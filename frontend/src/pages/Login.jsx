@@ -33,8 +33,9 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('owner')
   const [brandCode, setBrandCode] = useState('')
-  const [brandName, setBrandName] = useState('Aster & Oak')
-  const [brandValues, setBrandValues] = useState('Authenticity, craft, sustainability, quiet confidence')
+  const [brandName, setBrandName] = useState('')
+  const [brandValues, setBrandValues] = useState('')
+  const [cleanWorkspace, setCleanWorkspace] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -67,8 +68,9 @@ export function Login() {
           password,
           role,
           brand_code: isAdmin ? undefined : brandCode,
-          brand_name: isAdmin ? brandName : undefined,
-          brand_values: isAdmin ? brandValues : undefined,
+          brand_name: isAdmin ? (brandName.trim() || undefined) : undefined,
+          brand_values: isAdmin ? (brandValues.trim() || undefined) : undefined,
+          clean_workspace: isAdmin ? cleanWorkspace : false,
         })
 
         if (res?.is_approved) {
@@ -484,7 +486,8 @@ export function Login() {
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    placeholder="e.g. Aster & Oak"
+                    placeholder="e.g. Acme Corp, Lumina Studios"
+                    required
                   />
                 </div>
                 <div>
@@ -494,8 +497,32 @@ export function Login() {
                     rows={2}
                     value={brandValues}
                     onChange={(e) => setBrandValues(e.target.value)}
-                    placeholder="e.g. Authenticity, craftsmanship, quiet confidence..."
+                    placeholder="e.g. Authenticity, craft, excellence, quiet confidence..."
                   />
+                </div>
+                <div className={`clean-workspace-toggle-card ${cleanWorkspace ? 'is-active' : ''}`}>
+                  <label htmlFor="clean-workspace-chk" className="clean-workspace-toggle-row">
+                    <div className="clean-workspace-toggle-info">
+                      <div className="clean-workspace-toggle-title">
+                        <Sparkles size={13} className="clean-workspace-sparkle" />
+                        <span>Start with a clean workspace</span>
+                        <span className="clean-workspace-badge">Recommended</span>
+                      </div>
+                      <p className="clean-workspace-toggle-sub">
+                        Empty review queue, zero pre-loaded guidelines, and fresh asset directory right off the bat.
+                      </p>
+                    </div>
+                    <div className="clean-workspace-switch-wrap">
+                      <input
+                        id="clean-workspace-chk"
+                        type="checkbox"
+                        checked={cleanWorkspace}
+                        onChange={(e) => setCleanWorkspace(e.target.checked)}
+                        className="clean-workspace-checkbox"
+                      />
+                      <span className="clean-workspace-slider" />
+                    </div>
+                  </label>
                 </div>
               </div>
             )}

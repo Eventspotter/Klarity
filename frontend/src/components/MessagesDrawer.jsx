@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { Avatar, Button, IconButton, Tabs } from './UI'
 import { BrandMark } from './BrandMark'
+import { useApp } from '../context/AppContext'
 import { cx, timeAgo } from '../lib/utils'
 
 const INITIAL_THREADS = [
@@ -63,6 +64,9 @@ const INITIAL_THREADS = [
 ]
 
 export function MessagesDrawer({ open, onClose, toast }) {
+  const { activeBrand } = useApp()
+  const bName = activeBrand?.brand_name || 'Brand'
+  const bDomain = bName.toLowerCase().replace(/[^a-z0-9]/g, '') || 'brand'
   const [activeTab, setActiveTab] = useState('inbox')
   const [threads, setThreads] = useState(INITIAL_THREADS)
   const [activeThreadId, setActiveThreadId] = useState('msg-1')
@@ -217,17 +221,17 @@ export function MessagesDrawer({ open, onClose, toast }) {
                 <div className="email-card__row">
                   <span className="email-card__key">From:</span>
                   <span className="email-card__val">
-                    Aster &amp; Oak Klarity Desk &lt;governance@klarity.asterandoak.com&gt;
+                    {bName} Klarity Desk &lt;governance@{bDomain}.com&gt;
                   </span>
                 </div>
                 <div className="email-card__row">
                   <span className="email-card__key">To:</span>
-                  <span className="email-card__val">creator@asterandoak.com</span>
+                  <span className="email-card__val">creator@{bDomain}.com</span>
                 </div>
                 <div className="email-card__row">
                   <span className="email-card__key">Subject:</span>
                   <strong className="email-card__val email-card__val--subject">
-                    [Action Required] Review Report: Spring Collection Launch Plate (Score 84/100)
+                    [Action Required] Review Report: Collection Launch Plate (Score 84/100)
                   </strong>
                 </div>
               </div>
@@ -236,7 +240,7 @@ export function MessagesDrawer({ open, onClose, toast }) {
               <div className="email-card__body">
                 <div className="email-brand-strip">
                   <BrandMark size={28} />
-                  <span className="email-brand-name">Aster &amp; Oak · Klarity Desk</span>
+                  <span className="email-brand-name">{bName} · Klarity Desk</span>
                 </div>
 
                 <div className="email-hero-message">
@@ -305,7 +309,7 @@ export function MessagesDrawer({ open, onClose, toast }) {
                 </div>
 
                 <div className="email-footer-legal">
-                  <p>Aster &amp; Oak Brand Governance Desk · 42 Artisan Row, Portland OR</p>
+                  <p>{bName} Brand Governance Desk · Verified Compliance Roster</p>
                   <p>
                     You received this transactional dispatch because your account is assigned to
                     editorial submissions.

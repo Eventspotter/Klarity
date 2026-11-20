@@ -149,6 +149,84 @@ class SecurityBotProtectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("X-RateLimit-Remaining", res.headers)
         self.assertEqual(res.headers.get("Server"), "Klarity-Gateway")
 
+    async def test_admin_registration_with_custom_brand_and_clean_workspace(self):
+        reg = await self.client.post("/api/auth/register", json={
+            "username": "acme_lead",
+            "email": "lead@acme.corp",
+            "password": "securepassword123",
+            "role": "owner",
+            "brand_name": "Acme Innovations",
+            "brand_values": "Pioneering, bold, reliable",
+            "clean_workspace": True,
+        })
+        self.assertEqual(reg.status_code, 201)
+        data = reg.json()
+        self.assertTrue(data["is_approved"])
+        self.assertEqual(data["account"]["brand_name"], "Acme Innovations")
+        self.assertTrue(data["account"]["brand_code"].startswith("ACME"))
+
+        # Verify brand appears in public list_brands
+        brands_res = await self.client.get("/api/auth/brands")
+        brand_names = [b["brand_name"] for b in brands_res.json()["brands"]]
+        self.assertIn("Acme Innovations", brand_names)
+
+        # Login and verify workspace settings
+        login_res = await self.client.post("/api/auth/login", json={
+            "identifier": "lead@acme.corp",
+            "password": "securepassword123",
+        })
+        self.assertEqual(login_res.status_code, 200)
+        self.assertEqual(login_res.json()["brand_name"], "Acme Innovations")
+
+        # Verify bootstrap returns clean state (zero guidelines, zero submissions, zero stats)
+        bootstrap_res = await self.client.get("/api/bootstrap")
+        self.assertEqual(bootstrap_res.status_code, 200)
+        boot_data = bootstrap_res.json()
+        self.assertEqual(boot_data["stats"]["total_submissions"], 0)
+        self.assertEqual(boot_data["stats"]["active_guidelines"], 0)
+        self.assertEqual(len(boot_data["guidelines"]), 0)
+        self.assertEqual(len(boot_data["submissions"]), 0)
+        self.assertEqual(len(boot_data["activity"]), 0)
+        self.assertFalse(boot_data["demo_data"])
+
+        # Verify brand directory contains ONLY their own brand
+        dir_res = await self.client.get("/api/auth/brand-directory")
+        self.assertEqual(dir_res.status_code, 200)
+        dir_brands = dir_res.json()["brands"]
+        self.assertEqual(len(dir_brands), 1)
+        self.assertEqual(dir_brands[0]["brand_name"], "Acme Innovations")
+
+        # Create a guideline for Acme Innovations
+        create_res = await self.client.post("/api/guidelines", json={
+            "title": "Acme Tone",
+            "category": "tone",
+            "content": "Always innovate with precision.",
+            "priority": 3,
+        })
+        self.assertEqual(create_res.status_code, 201)
+
+        # Verify bootstrap now has Acme guideline
+        acme_boot = await self.client.get("/api/bootstrap")
+        self.assertEqual(len(acme_boot.json()["guidelines"]), 1)
+        self.assertEqual(acme_boot.json()["guidelines"][0]["title"], "Acme Tone")
+
+        # Verify demo user ashwik continues to have multi-brand directory and isolated data
+        demo_login = await self.client.post("/api/auth/login", json={
+            "identifier": "ashwik",
+            "password": "klarity",
+        })
+        self.assertEqual(demo_login.status_code, 200)
+        self.assertTrue(demo_login.json()["is_demo"])
+
+        demo_dir = await self.client.get("/api/auth/brand-directory")
+        self.assertEqual(demo_dir.status_code, 200)
+        self.assertGreater(len(demo_dir.json()["brands"]), 1)
+
+        demo_boot = await self.client.get("/api/bootstrap")
+        self.assertEqual(demo_boot.status_code, 200)
+        ashwik_guidelines = [g["title"] for g in demo_boot.json()["guidelines"]]
+        self.assertNotIn("Acme Tone", ashwik_guidelines)
+
 
 def tearDownModule():
     engine.dispose()

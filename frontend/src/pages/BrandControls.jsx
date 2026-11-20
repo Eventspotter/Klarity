@@ -101,34 +101,56 @@ export function BrandControls() {
     isLead,
     isOwner,
     visibilitySettings,
-    updateRoleVisibility,
     setPendingApprovalsCount,
     activeBrand,
+    cleanWorkspace,
   } = useApp()
 
-  const [settings, setSettings] = useState(defaultSettings)
+  const [settings, setSettings] = useState(() => ({
+    ...defaultSettings,
+    workspace: activeBrand?.brand_name || activeBrand?.name || 'Workspace',
+    website: `${(activeBrand?.brand_name || activeBrand?.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+  }))
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [clearingWorkspace, setClearingWorkspace] = useState(false)
 
   const [pendingAccounts, setPendingAccounts] = useState([])
   const [loadingPending, setLoadingPending] = useState(false)
   const [verifyingId, setVerifyingId] = useState(null)
 
   const [brandMeta, setBrandMeta] = useState(() => ({
-    brand_name: activeBrand?.brand_name || 'Aster & Oak',
-    brand_values: activeBrand?.values || activeBrand?.brand_values || 'Authenticity, craft, sustainability, quiet confidence',
-    brand_code: activeBrand?.brand_code || activeBrand?.code || 'KLARITY-2026',
+    brand_name: activeBrand?.brand_name || activeBrand?.name || '',
+    brand_values: activeBrand?.values || activeBrand?.brand_values || '',
+    brand_code: activeBrand?.brand_code || activeBrand?.code || '',
   }))
 
   useEffect(() => {
     if (activeBrand) {
       setBrandMeta({
-        brand_name: activeBrand.brand_name || activeBrand.name,
+        brand_name: activeBrand.brand_name || activeBrand.name || '',
         brand_values: activeBrand.values || activeBrand.brand_values || '',
-        brand_code: activeBrand.brand_code || activeBrand.code || 'KLARITY-2026',
+        brand_code: activeBrand.brand_code || activeBrand.code || '',
       })
+      setSettings(prev => ({
+        ...prev,
+        workspace: activeBrand.brand_name || activeBrand.name || prev.workspace,
+        website: `${(activeBrand.brand_name || activeBrand.name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+      }))
     }
   }, [activeBrand])
+
+  const handleClearWorkspace = async () => {
+    if (!window.confirm('Are you sure you want to clear all sample/demo review submissions? This will give you a completely clean review desk.')) {
+      return
+    }
+    setClearingWorkspace(true)
+    try {
+      await cleanWorkspace()
+    } finally {
+      setClearingWorkspace(false)
+    }
+  }
 
   // Team Governance Roster State
   const [team, setTeam] = useState(() => {
@@ -600,7 +622,7 @@ export function BrandControls() {
                     disabled={!isOwner}
                     onChange={(e) => updateBrandMeta('brand_name', e.target.value)}
                     style={!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : undefined}
-                    placeholder="e.g. Aster & Oak"
+                    placeholder="e.g. Acme Corp, Lumina Studios"
                   />
                 </Field>
 
@@ -1205,6 +1227,33 @@ export function BrandControls() {
               </p>
             </div>
           </Panel>
+
+          {/* Clean Slate & Data Management */}
+          {isOwner && (
+            <Panel
+              title="Workspace Data Management"
+              badge="Owner Only"
+              description="Manage sample submissions and reset to a clean slate."
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0' }}>
+                <div>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Clean Submissions Queue</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    Clear all sample/demo review submissions to start with a fresh, empty workspace for {activeBrand?.brand_name || 'your brand'}.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={clearingWorkspace}
+                  onClick={handleClearWorkspace}
+                  style={{ flexShrink: 0, color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.3)' }}
+                >
+                  {clearingWorkspace ? 'Clearing…' : 'Clear Sample Submissions'}
+                </Button>
+              </div>
+            </Panel>
+          )}
 
           {/* Page Footer */}
           <div className="settings-foot">

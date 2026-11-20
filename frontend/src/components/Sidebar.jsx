@@ -31,6 +31,7 @@ const items = [
 
 export function Sidebar({ open, onClose, onNewReview }) {
   const {
+    user,
     data,
     toast,
     isLead,
@@ -42,6 +43,8 @@ export function Sidebar({ open, onClose, onNewReview }) {
     allBrands = [],
     switchBrand,
   } = useApp()
+  const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+  const canSwitchBrands = isDemo && allBrands.length > 1
   const [brandsOpen, setBrandsOpen] = useState(false)
   const location = useLocation()
   const queue = isLead
@@ -154,11 +157,14 @@ export function Sidebar({ open, onClose, onNewReview }) {
 
         <div ref={switchWrapRef} className="workspace-switch-wrap" style={{ position: 'relative' }}>
           <button
-            className={cx('workspace-switch', brandsOpen && 'is-expanded')}
+            className={cx('workspace-switch', canSwitchBrands && brandsOpen && 'is-expanded')}
             type="button"
-            onClick={() => setBrandsOpen(prev => !prev)}
-            title="Click to check brands and switch workspace"
-            aria-expanded={brandsOpen}
+            onClick={() => {
+              if (canSwitchBrands) setBrandsOpen(prev => !prev)
+            }}
+            title={canSwitchBrands ? "Click to check brands and switch workspace" : `Workspace: ${currentBrandName}`}
+            style={{ cursor: canSwitchBrands ? 'pointer' : 'default' }}
+            aria-expanded={canSwitchBrands ? brandsOpen : undefined}
           >
             <span
               className="workspace-switch__mark"
@@ -170,18 +176,20 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <strong>{currentBrandName}</strong>
               <small>{isLead ? 'Brand workspace' : 'Assigned workspace'}</small>
             </span>
-            <ChevronsUpDown
-              size={15}
-              style={{
-                marginLeft: 'auto',
-                opacity: 0.65,
-                transform: brandsOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 180ms ease',
-              }}
-            />
+            {canSwitchBrands && (
+              <ChevronsUpDown
+                size={15}
+                style={{
+                  marginLeft: 'auto',
+                  opacity: 0.65,
+                  transform: brandsOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 180ms ease',
+                }}
+              />
+            )}
           </button>
 
-          {brandsOpen && (
+          {canSwitchBrands && brandsOpen && (
             <div className="sidebar-brands-dropdown" role="menu">
               <div className="sidebar-brands-dropdown__header">
                 <div>

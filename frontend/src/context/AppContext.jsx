@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api, getStoredToken, setStoredToken } from '../lib/api'
-import { DEFAULT_BRANDS } from '../lib/brands'
+import { DEFAULT_BRANDS, createDefaultBrand } from '../lib/brands'
 
 const AppContext = createContext(null)
 
@@ -115,14 +115,44 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (user) {
+      const isDemo = Boolean(user.is_demo || ['ashwik', 'sunless'].includes(user.username))
+      if (!isDemo) {
+        const brandObj = createDefaultBrand(user.brand_name || 'My Brand', user.brand_values || '', user.brand_code || '')
+        setAllBrands([brandObj])
+        setActiveBrand(brandObj)
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+        return
+      }
+
       api.brandDirectory().then(res => {
         if (res?.brands && Array.isArray(res.brands)) {
-          setAllBrands(prev => {
-            return DEFAULT_BRANDS.map(db => {
-              const serverBrand = res.brands.find(sb => sb.brand_name === db.brand_name)
-              return serverBrand ? { ...db, ...serverBrand } : db
-            })
+          const merged = [...DEFAULT_BRANDS]
+          res.brands.forEach(sb => {
+            const idx = merged.findIndex(
+              b => (b.brand_name || b.name || '').toLowerCase() === (sb.brand_name || '').toLowerCase()
+            )
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...sb }
+            } else {
+              merged.push(createDefaultBrand(sb.brand_name, sb.brand_values, sb.brand_code))
+            }
           })
+          setAllBrands(merged)
+
+          const targetName = user.brand_name
+          if (targetName) {
+            const matched = merged.find(
+              b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+            )
+            if (matched) {
+              setActiveBrand(matched)
+              try {
+                localStorage.setItem('klarity_active_brand', JSON.stringify(matched))
+              } catch {}
+            }
+          }
         }
       }).catch(() => {})
     }
@@ -164,6 +194,19 @@ export function AppProvider({ children }) {
       .then(([account, payload]) => {
         if (!alive) return
         setUser(account)
+        if (account?.brand_name) {
+          const targetName = account.brand_name
+          const existing = DEFAULT_BRANDS.find(
+            b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+          )
+          const brandObj = existing
+            ? { ...existing, brand_name: targetName }
+            : createDefaultBrand(targetName, account.brand_values, account.brand_code)
+          setActiveBrand(brandObj)
+          try {
+            localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+          } catch {}
+        }
         setData(payload)
         setConnected(true)
         writeCachedWorkspace(account, payload)
@@ -193,8 +236,42 @@ export function AppProvider({ children }) {
       setStoredToken(account.token)
     }
     setUser(account)
+    if (account?.brand_name) {
+      const isDemo = Boolean(account.is_demo || ['ashwik', 'sunless'].includes(account.username))
+      const targetName = account.brand_name
+      if (!isDemo) {
+        const brandObj = createDefaultBrand(targetName, account.brand_values, account.brand_code)
+        setActiveBrand(brandObj)
+        setAllBrands([brandObj])
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+      } else {
+        const existing = DEFAULT_BRANDS.find(
+          b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+        )
+        const brandObj = existing
+          ? { ...existing, brand_name: targetName }
+          : createDefaultBrand(targetName, account.brand_values, account.brand_code)
+        setActiveBrand(brandObj)
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+      }
+    }
     const bootstrapPayload = await refresh(account)
     writeCachedWorkspace(account, bootstrapPayload)
+  }
+  const cleanWorkspace = async () => {
+    try {
+      const res = await api.cleanWorkspace()
+      await refresh()
+      toast(res?.message || 'Workspace submissions cleared.', 'good')
+      return res
+    } catch (error) {
+      toast(error.message || 'Failed to clear workspace', 'warn')
+      throw error
+    }
   }
   const logout = async () => {
     try {
@@ -205,6 +282,11 @@ export function AppProvider({ children }) {
       setUser(null)
       setData(null)
       setConnected(false)
+      setAllBrands(DEFAULT_BRANDS)
+      setActiveBrand(DEFAULT_BRANDS[0])
+      try {
+        localStorage.removeItem('klarity_active_brand')
+      } catch {}
     }
   }
   const mutate = async (operation, message) => {
@@ -281,7 +363,7 @@ export function AppProvider({ children }) {
   }
 
   return <AppContext.Provider value={{
-    user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout,
+    user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout, cleanWorkspace,
     currentUser: user?.username || '',
     currentRole: activeRole,
     switchRole,

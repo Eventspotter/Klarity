@@ -62,7 +62,7 @@ const kindIcon = {
 }
 
 export function Topbar({ onMenu, onNewReview, currentPath }) {
-  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead } = useApp()
+  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead, activeBrand } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
@@ -299,7 +299,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                   <LogOut size={15} /> Sign out
                 </button>
                 <div className="popover__meta">
-                  <span>Aster &amp; Oak</span>
+                  <span>{activeBrand?.brand_name || 'Workspace'}</span>
                   <span>{isOwner ? '1. Brand Owner' : isReviewer ? '2. Reviewer' : '3. Team Member'}</span>
                 </div>
               </AnimatedPopover>

@@ -72,9 +72,25 @@ def init_db():
                         conn.execute(text("ALTER TABLE accounts ADD COLUMN role VARCHAR(30) DEFAULT 'owner'"))
                     if "is_approved" not in cols:
                         conn.execute(text("ALTER TABLE accounts ADD COLUMN is_approved BOOLEAN DEFAULT 1"))
+                    if "brand_name" not in cols:
+                        conn.execute(text("ALTER TABLE accounts ADD COLUMN brand_name VARCHAR(120)"))
+                    if "is_demo" not in cols:
+                        conn.execute(text("ALTER TABLE accounts ADD COLUMN is_demo BOOLEAN DEFAULT 0"))
+
+                bg_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(brand_guidelines)")).fetchall()]
+                if bg_cols and "brand_name" not in bg_cols:
+                    conn.execute(text("ALTER TABLE brand_guidelines ADD COLUMN brand_name VARCHAR(120) DEFAULT 'Aster & Oak'"))
+
+                cs_cols = [row[1] for row in conn.execute(text("PRAGMA table_info(content_submissions)")).fetchall()]
+                if cs_cols and "brand_name" not in cs_cols:
+                    conn.execute(text("ALTER TABLE content_submissions ADD COLUMN brand_name VARCHAR(120) DEFAULT 'Aster & Oak'"))
             else:
                 conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS role VARCHAR(30) DEFAULT 'owner'"))
                 conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_approved BOOLEAN DEFAULT TRUE"))
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS brand_name VARCHAR(120)"))
+                conn.execute(text("ALTER TABLE accounts ADD COLUMN IF NOT EXISTS is_demo BOOLEAN DEFAULT FALSE"))
+                conn.execute(text("ALTER TABLE brand_guidelines ADD COLUMN IF NOT EXISTS brand_name VARCHAR(120) DEFAULT 'Aster & Oak'"))
+                conn.execute(text("ALTER TABLE content_submissions ADD COLUMN IF NOT EXISTS brand_name VARCHAR(120) DEFAULT 'Aster & Oak'"))
             for stmt in index_ddl:
                 try:
                     conn.execute(text(stmt))

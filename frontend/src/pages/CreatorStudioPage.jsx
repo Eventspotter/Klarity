@@ -20,7 +20,7 @@ export function CreatorStudioPage({ onNewReview }) {
           </div>
           <h1>Creator Studio</h1>
           <p>
-            Author, pre-flight, and refine draft content against Aster &amp; Oak brand guidelines before
+            Author, pre-flight, and refine draft content against {activeBrand?.brand_name || 'brand'} brand guidelines before
             formal governance review.
           </p>
         </div>

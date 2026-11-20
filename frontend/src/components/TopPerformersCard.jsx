@@ -130,39 +130,12 @@ export function TopPerformersCard({
     return cancel
   }, [mode, performers])
 
-  const champion = performers[0] || {
-    name: 'Top Contributor',
-    initials: 'TC',
-    avgScore: 94.0,
-    complianceRate: 100,
-    total: 8,
-    approved: 8,
-    criticalIssues: 0,
-    chartBars: [
-      { score: 88, title: 'Editorial draft' },
-      { score: 92, title: 'Product copy' },
-      { score: 95, title: 'Brand narrative' },
-      { score: 97, title: 'Lookbook release' },
-      { score: 98, title: 'Press statement' },
-    ],
+  if (!performers.length) {
+    return null
   }
 
-  const runnerUp = performers[1] || {
-    name: 'Second Contributor',
-    initials: 'SC',
-    avgScore: 91.5,
-    complianceRate: 100,
-    total: 7,
-    approved: 7,
-    criticalIssues: 0,
-    chartBars: [
-      { score: 86, title: 'Social series' },
-      { score: 89, title: 'Autumn layer' },
-      { score: 93, title: 'Linen feature' },
-      { score: 95, title: 'Care guidelines' },
-    ],
-  }
-
+  const champion = performers[0]
+  const runnerUp = performers[1] || performers[0]
   const others = performers.slice(1, 5)
 
   // Overall workspace average benchmark

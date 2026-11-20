@@ -8,6 +8,7 @@ import {
   Flame,
   Sparkles,
   TrendingUp,
+  Users,
 } from 'lucide-react'
 import { useApp } from '../context/AppContext'
 import { PulseChart, VolumeBars, Heatmap } from '../components/Charts'
@@ -17,7 +18,7 @@ import { FocusCity } from '../components/ui/focus-city'
 import { categoryLabels, cx, formatCount } from '../lib/utils'
 import { animateHorizontalBars } from '../lib/animations'
 
-function buildReviewDays(submissions = []) {
+function buildReviewDays(submissions = [], isDemo = false) {
   const DAY_MS = 86_400_000
   const now = new Date()
   
@@ -55,7 +56,7 @@ function buildReviewDays(submissions = []) {
         minutes: 45 + ((s.id * 13) % 45),
         startedAt: s.submitted_at ? s.submitted_at.slice(11, 16) : '10:30',
       }))
-    } else {
+    } else if (isDemo && submissions.length > 0) {
       const resting = isWeekend && index % 3 !== 0
       let seed = Math.imul(index + 29, 0x45d9f3b)
       seed = Math.imul(seed ^ (seed >>> 16), 0x45d9f3b)
@@ -93,6 +94,41 @@ const flaggedTerms = [
   { term: 'leverage', count: 9, change: -3 },
 ]
 
+function extractFlaggedTerms(submissions = [], isDemo = false) {
+  if (isDemo && (!submissions || submissions.length === 0)) {
+    return flaggedTerms
+  }
+  if (!submissions || submissions.length === 0) {
+    return []
+  }
+
+  const counts = new Map()
+  submissions.forEach((sub) => {
+    (sub.reports || []).forEach((report) => {
+      (report.issues || []).forEach((issue) => {
+        if (issue.category === 'terminology') {
+          const match = (issue.evidence || issue.title || '').match(/["']([^"']+)["']/)
+          const term = (match ? match[1] : issue.title || 'term').toLowerCase().trim()
+          counts.set(term, (counts.get(term) || 0) + 1)
+        }
+      })
+    })
+  })
+
+  if (counts.size === 0) {
+    return isDemo ? flaggedTerms : []
+  }
+
+  return Array.from(counts.entries())
+    .map(([term, count]) => ({
+      term,
+      count,
+      change: count > 3 ? 1 : -1,
+    }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 6)
+}
+
 const team = [
   { name: 'Kruthik Kamegaonkar', role: 'Admin', reviewed: 32, score: 92, hours: '2.4h', approval: 96 },
   { name: 'Ashwik Saxena', role: 'Reviewer', reviewed: 64, score: 89, hours: '4.2h', approval: 94 },
@@ -108,11 +144,14 @@ const heatValues = [
 const toneFor = (change) => (change > 0 ? 'warn' : 'good')
 
 export function Insights() {
-  const { data, toast } = useApp()
+  const { data, user, toast } = useApp()
+  const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
   const [period, setPeriod] = useState('30d')
   const days = period === '7d' ? 7 : period === '14d' ? 14 : 30
   const chartData = data.trends.slice(-days)
-  const reviewDays = useMemo(() => buildReviewDays(data.submissions), [data.submissions])
+  const reviewDays = useMemo(() => buildReviewDays(data.submissions, isDemo), [data.submissions, isDemo])
+  const activeFlaggedTerms = useMemo(() => extractFlaggedTerms(data.submissions, isDemo), [data.submissions, isDemo])
+  const activeTeam = isDemo && data.submissions?.length > 0 ? team : []
 
   const categories = useMemo(() => {
     const totals = data.issue_breakdown.reduce((result, item) => {
@@ -127,7 +166,7 @@ export function Insights() {
   }, [data.issue_breakdown])
 
   const totalIssues = categories.reduce((sum, item) => sum + item.total, 0)
-  const maxTerm = Math.max(...flaggedTerms.map((item) => item.count))
+  const maxTerm = activeFlaggedTerms.length > 0 ? Math.max(...activeFlaggedTerms.map((item) => item.count)) : 1
   const termListRef = useRef(null)
   const mixPanelRef = useRef(null)
 
@@ -167,7 +206,7 @@ export function Insights() {
       ...categories.map((item) => [categoryLabels[item.category] || item.category, item.total]),
       [],
       ['Flagged term', 'Count'],
-      ...flaggedTerms.map((item) => [item.term, item.count]),
+      ...activeFlaggedTerms.map((item) => [item.term, item.count]),
     ]
     const csv = rows.map((row) => row.map((cell) => `"${cell ?? ''}"`).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
@@ -230,22 +269,33 @@ export function Insights() {
             description="Most flagged terms across the last 90 days."
             action={<Flame size={18} className="term-panel__flame" />}
           />
-          <ul className="term-list" ref={termListRef}>
-            {flaggedTerms.map((item, index) => (
-              <li key={item.term}>
-                <span className="term-list__rank">{String(index + 1).padStart(2, '0')}</span>
-                <span className="term-list__word">{item.term}</span>
-                <span className="term-list__track">
-                  <span className="term-list__bar" style={{ width: `${(item.count / maxTerm) * 100}%` }} />
-                </span>
-                <AnimatedValue value={item.count} duration={600} />
-                <span className={cx('term-list__change', `is-${toneFor(item.change)}`)}>
-                  {item.change > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
-                  {Math.abs(item.change)}
-                </span>
-              </li>
-            ))}
-          </ul>
+          {activeFlaggedTerms.length === 0 ? (
+            <div className="empty-state" style={{ padding: '36px 16px', textAlign: 'center' }}>
+              <p className="empty-state__title" style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text)' }}>
+                No words flagged
+              </p>
+              <p className="empty-state__desc" style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                Zero terminology violations recorded. As content is audited, repeatedly flagged words will appear here.
+              </p>
+            </div>
+          ) : (
+            <ul className="term-list" ref={termListRef}>
+              {activeFlaggedTerms.map((item, index) => (
+                <li key={item.term}>
+                  <span className="term-list__rank">{String(index + 1).padStart(2, '0')}</span>
+                  <span className="term-list__word">{item.term}</span>
+                  <span className="term-list__track">
+                    <span className="term-list__bar" style={{ width: `${(item.count / maxTerm) * 100}%` }} />
+                  </span>
+                  <AnimatedValue value={item.count} duration={600} />
+                  <span className={cx('term-list__change', `is-${toneFor(item.change)}`)}>
+                    {item.change > 0 ? <ArrowUpRight size={12} /> : <ArrowDownRight size={12} />}
+                    {Math.abs(item.change)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
           <Link className="term-panel__link" to="/guidelines?guideline=2">
             <BookOpen size={14} /> Open the terminology guideline <ArrowUpRight size={13} />
           </Link>
@@ -315,11 +365,16 @@ export function Insights() {
             title="When reviews happen"
             description="Interactive 3D skyline & calendar heatmap. Drag to orbit."
             defaultView="city"
+            totalReviews={data.stats.total_submissions}
             totalContent={data.stats.total_submissions}
           />
           <div className="heat-panel__note">
             <span>
-              <strong>Thursday</strong> is the busiest review day. <strong>Monday morning</strong> is the quietest.
+              {data.stats.total_submissions > 0 ? (
+                <><strong>Thursday</strong> is the busiest review day. <strong>Monday morning</strong> is the quietest.</>
+              ) : (
+                <>No review activity recorded yet for this workspace.</>
+              )}
             </span>
             <Link to="/reviews">Open the queue <ArrowUpRight size={13} /></Link>
           </div>
@@ -331,75 +386,88 @@ export function Insights() {
             description="Throughput and quality by reviewer, last 30 days."
             action={<span className="live-tag"><span /> Live</span>}
           />
-          <div className="table-wrap">
-            <table className="data-table data-table--team">
-              <thead>
-                <tr>
-                  <th>Reviewer</th>
-                  <th>Reviewed</th>
-                  <th>Avg. score</th>
-                  <th>Turnaround</th>
-                  <th>Approval</th>
-                </tr>
-              </thead>
-              <tbody>
-                {team.map((member) => (
-                  <tr key={member.name}>
-                    <td>
-                      <span className="team-cell">
-                        <Avatar name={member.name} size="sm" />
-                        <span>
-                          <strong>{member.name.split(' ')[0]}</strong>
-                          <small>{member.role}</small>
-                        </span>
-                      </span>
-                    </td>
-                    <td>{member.reviewed}</td>
-                    <td>
-                      <span className={cx('score-text', member.score >= 85 ? 'is-good' : 'is-warn')}>
-                        {member.score}
-                      </span>
-                    </td>
-                    <td>{member.hours}</td>
-                    <td>{member.approval}%</td>
+          {activeTeam.length === 0 ? (
+            <div className="empty-state" style={{ padding: '36px 16px', textAlign: 'center' }}>
+              <p className="empty-state__title" style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text)' }}>
+                No reviewer activity yet
+              </p>
+              <p className="empty-state__desc" style={{ fontSize: '0.82rem', color: 'var(--text-muted)', margin: '6px 0 0' }}>
+                Reviewer throughput and turnaround times will calculate once content submissions are evaluated.
+              </p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data-table data-table--team">
+                <thead>
+                  <tr>
+                    <th>Reviewer</th>
+                    <th>Reviewed</th>
+                    <th>Avg. score</th>
+                    <th>Turnaround</th>
+                    <th>Approval</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {activeTeam.map((member) => (
+                    <tr key={member.name}>
+                      <td>
+                        <span className="team-cell">
+                          <Avatar name={member.name} size="sm" />
+                          <span>
+                            <strong>{member.name.split(' ')[0]}</strong>
+                            <small>{member.role}</small>
+                          </span>
+                        </span>
+                      </td>
+                      <td>{member.reviewed}</td>
+                      <td>
+                        <span className={cx('score-text', member.score >= 85 ? 'is-good' : 'is-warn')}>
+                          {member.score}
+                        </span>
+                      </td>
+                      <td>{member.hours}</td>
+                      <td>{member.approval}%</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Panel>
       </section>
 
-      <section className="gap-callout">
-        <div className="gap-callout__blob" aria-hidden="true" />
-        <div className="gap-callout__copy">
-          <span className="gap-callout__tag">
-            <BookOpen size={13} /> Guideline gap
-          </span>
-          <h2>The facts library is carrying too much weight.</h2>
-          <p>
-            Facts accounts for <strong>23 issues</strong> but only <strong>two guidelines</strong>. A worked example
-            for sustainability claims would give creators a specific pattern to follow, not another abstract rule.
-          </p>
-          <Link to="/guidelines?guideline=3" className="btn btn--light btn--md">
-            Review the facts library <ArrowUpRight size={14} />
-          </Link>
-        </div>
-        <div className="gap-callout__stats">
-          <div>
-            <strong>23</strong>
-            <span>fact issues</span>
+      {data.stats.total_submissions > 0 && (
+        <section className="gap-callout">
+          <div className="gap-callout__blob" aria-hidden="true" />
+          <div className="gap-callout__copy">
+            <span className="gap-callout__tag">
+              <BookOpen size={13} /> Guideline gap
+            </span>
+            <h2>The facts library is carrying too much weight.</h2>
+            <p>
+              Facts accounts for <strong>23 issues</strong> but only <strong>two guidelines</strong>. A worked example
+              for sustainability claims would give creators a specific pattern to follow, not another abstract rule.
+            </p>
+            <Link to="/guidelines?guideline=3" className="btn btn--light btn--md">
+              Review the facts library <ArrowUpRight size={14} />
+            </Link>
           </div>
-          <div>
-            <strong>2</strong>
-            <span>guidelines</span>
+          <div className="gap-callout__stats">
+            <div>
+              <strong>23</strong>
+              <span>fact issues</span>
+            </div>
+            <div>
+              <strong>2</strong>
+              <span>guidelines</span>
+            </div>
+            <div>
+              <strong>19</strong>
+              <span>blocking</span>
+            </div>
           </div>
-          <div>
-            <strong>19</strong>
-            <span>blocking</span>
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
     </div>
   )
 }

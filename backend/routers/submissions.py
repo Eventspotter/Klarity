@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from auth import Account, current_account
+from auth import Account, current_account, optional_account
 from models import (
     ActionType,
     BrandGuideline,
@@ -57,12 +57,20 @@ def list_submissions(
     status: str | None = Query(default=None),
     search: str | None = Query(default=None),
     limit: int = Query(default=60, ge=1, le=200),
+    account = Depends(optional_account),
     db: Session = Depends(get_db),
 ) -> list[ContentSubmission]:
     query = db.query(ContentSubmission).options(
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.issues),
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
     )
+    from sqlalchemy import or_
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    if is_demo:
+        demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        query = query.filter(or_(ContentSubmission.brand_name == demo_brand, ContentSubmission.brand_name == "Aster & Oak", ContentSubmission.brand_name.is_(None)))
+    elif account and getattr(account, "brand_name", None):
+        query = query.filter(ContentSubmission.brand_name == account.brand_name)
     if status and status != "all":
         try:
             query = query.filter(ContentSubmission.status == SubmissionStatus(status))
@@ -86,11 +94,13 @@ def create_submission(payload: ContentSubmit, db: Session = Depends(get_db), acc
     except ValueError:
         raise HTTPException(status_code=422, detail="Unknown content type")
 
+    brand_name = getattr(account, "brand_name", None) or "Aster & Oak"
     submission = ContentSubmission(
         title=payload.title.strip(),
         content_type=content_type,
         content_text=payload.content_text.strip(),
         submitted_by=account.username,
+        brand_name=brand_name,
         status=SubmissionStatus.reviewing,
         submitted_at=datetime.utcnow(),
     )

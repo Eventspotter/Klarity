@@ -29,20 +29,20 @@ import { cx, latestReport, scoreTone, timeAgo } from '../lib/utils'
 import { useApp } from '../context/AppContext'
 import { api } from '../lib/api'
 
-const PRESET_DRAFTS = {
+const getPresetDrafts = (brandName = 'Brand') => ({
   spring: {
     id: 'spring',
-    title: 'Aster & Oak · Spring Collection Launch Plate',
+    title: `${brandName} · Collection Launch Plate`,
     channel: 'Web Editorial · v1.4',
     content:
-      'Aster & Oak creates thoughtful homeware with an organic sage aesthetic. Our new collection delivers seamless craftsmanship across both digital and physical living environments.\n\nEvery vessel is fired in small batches to maintain eco-friendly integrity without compromise.',
+      `${brandName} creates thoughtful designs with an organic aesthetic. Our new collection delivers seamless craftsmanship across both digital and physical living environments.\n\nEvery piece is crafted in small batches to maintain eco-friendly integrity without compromise.`,
   },
   clean: {
     id: 'clean',
-    title: 'Artisan Stoneware & Flax Care Primer',
+    title: `${brandName} Care & Standards Primer`,
     channel: 'Customer Knowledge · v2.0',
     content:
-      'We craft every Aster & Oak plate in small batches from local clay. Each piece is fired slowly to achieve a durable, tactile finish that deepens with daily rituals.\n\nOur table linens are woven from certified European flax, inspected by hand to ensure longevity.',
+      `We craft every ${brandName} piece in small batches from high-grade materials. Each piece is finished slowly to achieve a durable, tactile finish that deepens with daily rituals.\n\nOur products are inspected by hand to ensure longevity and quality.`,
   },
   blank: {
     id: 'blank',
@@ -50,15 +50,17 @@ const PRESET_DRAFTS = {
     channel: 'Web Editorial · v1.0',
     content: '',
   },
-}
+})
 
 export function CreatorStudio({ submissions = [], onNewReview, toast }) {
   const navigate = useNavigate()
-  const { createSubmission, currentUser, isLead } = useApp()
+  const { createSubmission, currentUser, isLead, activeBrand } = useApp()
+  const bName = activeBrand?.brand_name || activeBrand?.name || 'Brand'
+  const PRESET_DRAFTS = useMemo(() => getPresetDrafts(bName), [bName])
 
-  const [draftTitle, setDraftTitle] = useState(PRESET_DRAFTS.spring.title)
-  const [channel, setChannel] = useState(PRESET_DRAFTS.spring.channel)
-  const [draftText, setDraftText] = useState(PRESET_DRAFTS.spring.content)
+  const [draftTitle, setDraftTitle] = useState('')
+  const [channel, setChannel] = useState('Web Editorial · v1.0')
+  const [draftText, setDraftText] = useState('')
   const [viewMode, setViewMode] = useState('write') // 'write' (live textarea) | 'specimen' (highlight view)
   const [submitting, setSubmitting] = useState(false)
   const [rewriting, setRewriting] = useState(false)
@@ -123,7 +125,7 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
     updated = updated.replace(/\butilize\b/gi, 'use')
     updated = updated.replace(/\bclick here\b/gi, 'view our collection')
     setDraftText(updated)
-    toast?.('Replaced all flagged terms with approved Aster & Oak phrasing.', 'good')
+    toast?.(`Replaced all flagged terms with approved ${bName} phrasing.`, 'good')
   }
 
   const handleAiRewrite = async () => {
@@ -135,7 +137,8 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
     try {
       const res = await api.rewriteCopy({
         text: draftText,
-        brand_name: 'Aster & Oak',
+        brand_name: bName,
+        brand_values: activeBrand?.values || activeBrand?.brand_values || '',
       })
       if (res?.rewritten_text) {
         setDraftText(res.rewritten_text)
