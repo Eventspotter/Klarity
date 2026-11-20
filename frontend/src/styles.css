@@ -169,8 +169,10 @@ html.dark .topbar,
 
 html.dark .hero-nav,
 [data-theme="dark"] .hero-nav {
-  background: var(--cream) !important;
+  background: rgba(18, 21, 24, 0.88) !important;
   border-bottom: 1px solid var(--line) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 
 html.dark .sidebar,
@@ -8382,7 +8384,7 @@ kbd {
 
 html.dark .hero-nav,
 [data-theme="dark"] .hero-nav {
-  background: var(--cream) !important;
+  background: rgba(18, 21, 24, 0.88) !important;
   border-bottom: 1px solid var(--line) !important;
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -14894,3 +14896,63 @@ button.calendar-banner-pill:hover {
   margin-left: 2px;
 }
 
+
+
+/* Tabs and Segmented Controls Dark Theme */
+html.dark .segmented,
+[data-theme="dark"] .segmented,
+html.dark .tabs,
+[data-theme="dark"] .tabs {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+}
+
+html.dark .segmented__pill,
+[data-theme="dark"] .segmented__pill,
+html.dark .tabs__pill,
+[data-theme="dark"] .tabs__pill {
+  background: var(--cream-deep);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+html.dark .tabs__count,
+[data-theme="dark"] .tabs__count {
+  color: var(--ink-soft);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .tabs__item,
+[data-theme="dark"] .tabs__item,
+html.dark .segmented__item,
+[data-theme="dark"] .segmented__item {
+  color: var(--muted);
+}
+
+html.dark .tabs__item:hover,
+[data-theme="dark"] .tabs__item:hover,
+html.dark .segmented__item:hover,
+[data-theme="dark"] .segmented__item:hover {
+  color: var(--ink);
+}
+
+html.dark .tabs__item.is-active,
+[data-theme="dark"] .tabs__item.is-active,
+html.dark .segmented__item.is-active,
+[data-theme="dark"] .segmented__item.is-active {
+  color: var(--ink);
+}
+
+/* Auth / OTP Error & Success Alerts Dark Theme */
+html.dark .login-alert-error,
+[data-theme="dark"] .login-alert-error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #fca5a5;
+}
+
+html.dark .login-alert-success,
+[data-theme="dark"] .login-alert-success {
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.35);
+  color: #6ee7b7;
+}
