@@ -505,37 +505,18 @@ export function BrandControls() {
 
         <div className="page-head__actions">
           {/* Brand Code Quick Pill */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 14px',
-              background: '#ffffff',
-              border: '1px solid var(--line-strong)',
-              borderRadius: '8px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            }}
-          >
-            <KeyRound size={14} color="var(--clay)" />
-            <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Brand Code:</span>
-            <strong style={{ fontFamily: 'monospace', letterSpacing: '0.05em', color: 'var(--clay-deep)', fontSize: '13px' }}>
+          <div className="brand-code-quick-pill">
+            <KeyRound size={14} className="brand-code-quick-pill__icon" />
+            <span className="brand-code-quick-pill__label">Brand Code:</span>
+            <strong className="brand-code-quick-pill__code">
               {brandMeta.brand_code || 'KLARITY-2026'}
             </strong>
             <button
               type="button"
               onClick={copyBrandCode}
               title="Copy Brand Code"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '3px',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'var(--ink-soft)',
-                borderRadius: '4px',
-              }}
+              className="brand-code-quick-pill__btn"
+              aria-label="Copy Brand Code"
             >
               <Copy size={13} />
             </button>
@@ -662,21 +643,7 @@ export function BrandControls() {
             />
 
             {!isLead && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '9px',
-                  padding: '10px 14px',
-                  marginBottom: '16px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(217, 119, 6, 0.08)',
-                  border: '1px solid rgba(217, 119, 6, 0.22)',
-                  color: '#92400e',
-                  fontSize: '12px',
-                  lineHeight: 1.4,
-                }}
-              >
+              <div className="lead-notice-banner">
                 <Lock size={16} style={{ flexShrink: 0 }} />
                 <span>
                   <strong>Read-only access:</strong> Workspace creation, custom domain configuration, and governance defaults are restricted to <strong>Brand Owners and Reviewers</strong>. Team members work within their assigned workspace.
@@ -705,16 +672,11 @@ export function BrandControls() {
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <input
                       id="ctrl-brand-code"
+                      className="brand-code-input"
                       value={brandMeta.brand_code}
                       disabled={!isOwner}
                       onChange={(e) => updateBrandMeta('brand_code', e.target.value.toUpperCase())}
-                      style={{
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        letterSpacing: '0.05em',
-                        color: 'var(--clay-deep)',
-                        ...(!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : {}),
-                      }}
+                      style={!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : undefined}
                       placeholder="e.g. GNR-2026"
                     />
                     <Button
@@ -924,18 +886,7 @@ export function BrandControls() {
                 Checking for incoming registration requests…
               </div>
             ) : pendingAccounts.length === 0 ? (
-              <div
-                style={{
-                  padding: '24px 20px',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '8px',
-                  border: '1px dashed var(--line-strong)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  marginTop: '16px',
-                }}
-              >
+              <div className="empty-approvals-box">
                 <ShieldCheck size={26} color="var(--clay)" />
                 <div>
                   <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>
@@ -951,18 +902,7 @@ export function BrandControls() {
                 {pendingAccounts.map((acc) => (
                   <div
                     key={acc.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '12px',
-                      padding: '14px 18px',
-                      background: '#ffffff',
-                      borderRadius: '8px',
-                      border: '1px solid var(--line-strong)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                    }}
+                    className="pending-account-card"
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div
@@ -989,9 +929,10 @@ export function BrandControls() {
                               fontSize: '10.5px',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: acc.role === 'reviewer' ? 'rgba(41, 142, 228, 0.12)' : 'rgba(169, 122, 50, 0.12)',
-                              color: acc.role === 'reviewer' ? '#1d4ed8' : 'var(--clay-deep)',
-                              fontWeight: 600,
+                              background: acc.role === 'reviewer' ? 'rgba(56, 189, 248, 0.14)' : 'rgba(169, 122, 50, 0.12)',
+                              color: acc.role === 'reviewer' ? 'var(--sage)' : 'var(--clay-deep)',
+                              border: acc.role === 'reviewer' ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(169, 122, 50, 0.22)',
+                              fontWeight: 700,
                               textTransform: 'uppercase',
                             }}
                           >
@@ -1040,7 +981,7 @@ export function BrandControls() {
               action={
                 isLead ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '11.5px', color: 'var(--muted)', background: 'var(--cream)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--line)' }}>
+                    <span className="brand-code-badge">
                       Brand Code: <strong>{brandMeta.brand_code || 'KLARITY-2026'}</strong>
                     </span>
                     <Button
@@ -1123,7 +1064,7 @@ export function BrandControls() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               {/* Reviewer / Admin Visibility */}
-              <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '16px' }}>
+              <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
                     <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 2 · Reviewer (Admin)</strong>
@@ -1179,7 +1120,7 @@ export function BrandControls() {
               </div>
 
               {/* Team Member Visibility */}
-              <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '16px' }}>
+              <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
                     <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 3 · Team Member</strong>
@@ -1505,13 +1446,13 @@ export function BrandControls() {
             />
           </Field>
 
-          <div style={{ padding: '14px 16px', background: 'var(--cream)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <div className="invite-brand-code-box">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <KeyRound size={15} color="var(--clay)" />
+                <KeyRound size={15} className="brand-code-quick-pill__icon" />
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>Brand Access Code</span>
               </div>
-              <code style={{ fontSize: '13px', fontWeight: 700, color: 'var(--clay-deep)', background: '#fff', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--line)' }}>
+              <code className="brand-code-quick-pill__code">
                 {brandMeta.brand_code || 'KLARITY-2026'}
               </code>
             </div>

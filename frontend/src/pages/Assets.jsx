@@ -2093,6 +2093,7 @@ export function Assets() {
           <Field label="Brand Value Code" hint="Used for team onboarding and workspace authorization" required>
             <input
               type="text"
+              className="brand-code-input"
               value={brandEditForm.brand_code}
               onChange={(e) => setBrandEditForm(prev => ({ ...prev, brand_code: e.target.value.toUpperCase() }))}
               placeholder="e.g. NOVA-4821"

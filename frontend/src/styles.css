@@ -7485,12 +7485,13 @@ kbd {
   top: 92px;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 7px;
-  background: rgba(251, 248, 241, 0.55);
+  gap: 3px;
+  padding: 8px;
+  background: var(--paper);
   border: 1px solid var(--line);
-  border-radius: 13px;
+  border-radius: 12px;
   isolation: isolate;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .settings-nav .nav-highlight-pill {
@@ -7512,17 +7513,19 @@ kbd {
   z-index: 2;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 9px;
-  color: var(--muted);
+  gap: 9px;
+  padding: 8px 10px;
+  color: var(--ink-soft);
   border-radius: 8px;
-  font-size: 11px;
-  font-weight: 700;
-  transition: color 180ms var(--ease-out);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  transition: color 180ms var(--ease-out), background 180ms var(--ease-out);
 }
 
 .settings-nav a:hover {
   color: var(--ink);
+  background: rgba(0, 0, 0, 0.04);
 }
 
 .settings-nav a.is-active {
@@ -7536,8 +7539,15 @@ kbd {
 }
 
 .settings-nav a svg {
-  opacity: 0.7;
+  flex-shrink: 0;
+  color: var(--muted);
+  opacity: 0.85;
   transition: color 180ms var(--ease-out), opacity 180ms var(--ease-out);
+}
+
+.settings-nav a:hover svg {
+  color: var(--ink);
+  opacity: 1;
 }
 
 .settings-content {
@@ -7780,6 +7790,142 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 5px;
+}
+
+/* Brand Controls & Brand Code Tokens */
+.brand-code-quick-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 180ms var(--ease-out);
+}
+
+.brand-code-quick-pill:hover {
+  border-color: var(--sage, #298ee4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.brand-code-quick-pill__icon {
+  color: var(--clay);
+  flex-shrink: 0;
+}
+
+.brand-code-quick-pill__label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+
+.brand-code-quick-pill__code {
+  font-family: var(--font-mono, 'JetBrains Mono', 'Fira Code', monospace);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--clay-deep);
+  font-size: 13px;
+  padding: 2px 7px;
+  background: rgba(180, 83, 9, 0.08);
+  border-radius: 4px;
+  border: 1px solid rgba(180, 83, 9, 0.18);
+}
+
+.brand-code-quick-pill__btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-soft);
+  border-radius: 4px;
+  transition: all 150ms ease;
+}
+
+.brand-code-quick-pill__btn:hover {
+  color: var(--ink);
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.brand-code-input {
+  font-family: var(--font-mono, monospace) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.06em !important;
+  color: var(--clay-deep) !important;
+}
+
+.brand-code-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  background: var(--paper-raised);
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
+.brand-code-badge strong {
+  font-family: var(--font-mono, monospace);
+  color: var(--clay-deep);
+  letter-spacing: 0.04em;
+}
+
+.empty-approvals-box {
+  padding: 24px 20px;
+  background: var(--paper-raised);
+  border-radius: 8px;
+  border: 1px dashed var(--line-strong);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.pending-account-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 14px 18px;
+  background: var(--paper-raised);
+  border-radius: 8px;
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.role-perm-card {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.invite-brand-code-box {
+  padding: 14px 16px;
+  background: var(--paper-raised);
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.lead-notice-banner {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  background: rgba(217, 119, 6, 0.08);
+  border: 1px solid rgba(217, 119, 6, 0.22);
+  color: #92400e;
+  font-size: 12px;
+  line-height: 1.4;
 }
 
 /* ---------- responsive ---------- */
@@ -15794,3 +15940,172 @@ html.dark .pager-btn:hover:not(:disabled),
   border-color: var(--sage);
   color: #ffffff;
 }
+
+/* 8. Brand Owner Controls & Secondary Sidebar (.settings-nav) Dark Mode */
+html.dark .settings-nav,
+[data-theme="dark"] .settings-nav {
+  background: var(--paper-raised, #1f252d);
+  border-color: var(--line, #29323d);
+  box-shadow: 0 4px 24px -4px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html.dark .settings-nav .nav-highlight-pill,
+[data-theme="dark"] .settings-nav .nav-highlight-pill {
+  background: rgba(56, 189, 248, 0.14) !important;
+  border: 1px solid rgba(56, 189, 248, 0.38) !important;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .settings-nav a,
+[data-theme="dark"] .settings-nav a {
+  color: #9aa7b5;
+  font-weight: 600;
+}
+
+html.dark .settings-nav a:hover,
+[data-theme="dark"] .settings-nav a:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .settings-nav a.is-active,
+[data-theme="dark"] .settings-nav a.is-active {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+html.dark .settings-nav a.is-active svg,
+[data-theme="dark"] .settings-nav a.is-active svg {
+  color: #38bdf8;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.45));
+}
+
+html.dark .settings-nav a svg,
+[data-theme="dark"] .settings-nav a svg {
+  color: #9aa7b5;
+  opacity: 0.85;
+}
+
+html.dark .settings-nav a:hover svg,
+[data-theme="dark"] .settings-nav a:hover svg {
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Brand Code Quick Pill & Badges Dark Theme */
+html.dark .brand-code-quick-pill,
+[data-theme="dark"] .brand-code-quick-pill {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+html.dark .brand-code-quick-pill:hover,
+[data-theme="dark"] .brand-code-quick-pill:hover {
+  border-color: rgba(56, 189, 248, 0.45);
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+html.dark .brand-code-quick-pill__icon,
+[data-theme="dark"] .brand-code-quick-pill__icon {
+  color: #38bdf8;
+}
+
+html.dark .brand-code-quick-pill__label,
+[data-theme="dark"] .brand-code-quick-pill__label {
+  color: #9aa7b5;
+}
+
+html.dark .brand-code-quick-pill__code,
+[data-theme="dark"] .brand-code-quick-pill__code {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.28);
+}
+
+html.dark .brand-code-quick-pill__btn,
+[data-theme="dark"] .brand-code-quick-pill__btn {
+  color: #9aa7b5;
+}
+
+html.dark .brand-code-quick-pill__btn:hover,
+[data-theme="dark"] .brand-code-quick-pill__btn:hover {
+  color: #f3f6f9;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+html.dark .brand-code-input,
+[data-theme="dark"] .brand-code-input {
+  color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.06) !important;
+  border-color: rgba(251, 191, 36, 0.28) !important;
+}
+
+html.dark .brand-code-input:focus,
+[data-theme="dark"] .brand-code-input:focus {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.15) !important;
+}
+
+html.dark .brand-code-badge,
+[data-theme="dark"] .brand-code-badge {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+  color: #9aa7b5;
+}
+
+html.dark .brand-code-badge strong,
+[data-theme="dark"] .brand-code-badge strong {
+  color: #fbbf24;
+}
+
+html.dark .empty-approvals-box,
+[data-theme="dark"] .empty-approvals-box {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: var(--line-strong);
+}
+
+html.dark .pending-account-card,
+[data-theme="dark"] .pending-account-card {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+html.dark .role-perm-card,
+[data-theme="dark"] .role-perm-card {
+  background: var(--paper-raised);
+  border-color: var(--line-strong);
+}
+
+html.dark .invite-brand-code-box,
+[data-theme="dark"] .invite-brand-code-box {
+  background: var(--paper);
+  border-color: var(--line-strong);
+}
+
+html.dark .lead-notice-banner,
+[data-theme="dark"] .lead-notice-banner {
+  background: rgba(245, 158, 11, 0.12);
+  border-color: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+}
+
+code {
+  font-family: var(--font-mono, 'JetBrains Mono', monospace);
+  font-size: 0.9em;
+  padding: 2px 6px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--clay-deep);
+}
+
+html.dark code,
+[data-theme="dark"] code {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line-strong);
+  color: #fbbf24;
+}
+
