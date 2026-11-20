@@ -9723,11 +9723,12 @@ kbd {
 
 .login-alert-success {
   padding: 12px 14px;
-  background: var(--sage-wash);
-  border: 1px solid var(--sage-soft);
-  color: #1e6238;
-  border-radius: var(--radius-sm);
+  background: var(--good-soft, #e2eedc);
+  border: 1px solid var(--good, #2e6d3c);
+  color: var(--good-text, #1f5029);
+  border-radius: var(--radius-sm, 10px);
   font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: flex-start;
   gap: 10px;
@@ -9736,11 +9737,12 @@ kbd {
 
 .login-alert-error {
   padding: 12px 14px;
-  background: #fdf2f2;
-  border: 1px solid #f8b4b4;
-  color: #9b1c1c;
-  border-radius: var(--radius-sm);
+  background: var(--danger-soft, #fce8e8);
+  border: 1px solid var(--danger, #e04b4b);
+  color: var(--danger-text, #b92929);
+  border-radius: var(--radius-sm, 10px);
   font-size: 13px;
+  font-weight: 500;
   display: flex;
   align-items: flex-start;
   gap: 10px;
