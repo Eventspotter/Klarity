@@ -52,6 +52,16 @@ class LoginSession(Base):
     expires_at = Column(DateTime, nullable=False)
 
 
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp_code = Column(String(10), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def hash_password(password, salt=None):
     salt = salt or secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 600_000).hex()
@@ -514,3 +524,128 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
+
+
+# ---------------------------------------------------------------------------
+# Password Reset & OTP Flow (Supabase Database + goklarity@gmail.com)
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=10)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+def send_otp_email(to_email: str, otp_code: str) -> bool:
+    """Send OTP via goklarity@gmail.com. Falls back cleanly to console log if SMTP credentials aren't set."""
+    sender_email = os.getenv("GMAIL_SENDER_EMAIL", "goklarity@gmail.com").strip()
+    sender_app_password = os.getenv("GMAIL_APP_PASSWORD", "").strip()
+
+    subject = f"Your Klarity Password Reset OTP: {otp_code}"
+    body = f"""Hello,
+
+You requested a password reset for your Klarity account.
+
+Your verification code is: {otp_code}
+
+This code is valid for 10 minutes. If you did not request this, you can safely ignore this email.
+
+Best regards,
+The Klarity Team
+"""
+
+    if sender_app_password:
+        try:
+            import smtplib
+            from email.mime.text import MIMEText
+            msg = MIMEText(body)
+            msg["Subject"] = subject
+            msg["From"] = f"Klarity <{sender_email}>"
+            msg["To"] = to_email
+
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=10) as server:
+                server.starttls()
+                server.login(sender_email, sender_app_password)
+                server.sendmail(sender_email, [to_email], msg.as_string())
+            print(f"[OTP Mailer] Real email sent successfully to {to_email} via {sender_email}")
+            return True
+        except Exception as err:
+            print(f"[OTP Mailer Error] Could not send email: {err}")
+
+    # Development / Fallback mode: Print code prominently in logs
+    print(f"\n=======================================================")
+    print(f"[KLARITY OTP] To: {to_email}")
+    print(f"[KLARITY OTP] Code: {otp_code}")
+    print(f"[KLARITY OTP] Expiry: 10 minutes")
+    print(f"=======================================================\n")
+    return False
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        # Don't leak account existence, return generic success
+        return {"message": "If an account exists with that email, a 6-digit OTP code has been sent."}
+
+    # Generate cryptographically secure 6-digit OTP
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    # Invalidate old OTPs for this email
+    db.query(PasswordResetOTP).filter_by(email=account.email, used=False).update({"used": True})
+
+    # Store new OTP record in Supabase
+    record = PasswordResetOTP(
+        email=account.email,
+        otp_code=otp_code,
+        expires_at=expires_at,
+        used=False,
+    )
+    db.add(record)
+    db.commit()
+
+    # Dispatch email from goklarity@gmail.com
+    sent = send_otp_email(account.email, otp_code)
+
+    return {
+        "message": "If an account exists with that email, a 6-digit OTP code has been sent.",
+        "email": account.email,
+        "dev_code": otp_code if not os.getenv("GMAIL_APP_PASSWORD") else None,
+    }
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    otp_record = (
+        db.query(PasswordResetOTP)
+        .filter(
+            PasswordResetOTP.email == account.email,
+            PasswordResetOTP.otp_code == payload.otp.strip(),
+            PasswordResetOTP.used == False,
+        )
+        .order_by(PasswordResetOTP.id.desc())
+        .first()
+    )
+
+    if not otp_record or otp_record.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Invalid or expired OTP code. Please request a new one.")
+
+    # Update password in Supabase
+    account.password_hash = hash_password(payload.new_password)
+    otp_record.used = True
+    db.commit()
+
+    return {"message": "Password reset successful! You can now sign in with your new password."}

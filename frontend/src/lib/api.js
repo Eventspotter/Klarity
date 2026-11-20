@@ -66,6 +66,8 @@ export const api = {
     request('/auth/verify-account', { method: 'POST', body: JSON.stringify(payload) }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  forgotPassword: (payload) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify(payload) }),
+  resetPassword: (payload) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   bootstrap: () => request('/bootstrap'),
   getSubmission: (id) => request(`/submissions/${id}`),

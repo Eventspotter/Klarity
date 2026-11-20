@@ -23,6 +23,11 @@ import { api } from '../lib/api'
 export function Login() {
   const { user, data, authenticate } = useApp()
   const [register, setRegister] = useState(false)
+  const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -85,6 +90,56 @@ export function Login() {
     }
   }
 
+  const handleSendOtp = async (e) => {
+    e.preventDefault()
+    if (!forgotEmail.trim()) {
+      setError('Please enter your account email.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    setSuccessMsg('')
+    try {
+      const res = await api.forgotPassword({ email: forgotEmail.trim() })
+      setSuccessMsg(res?.message || 'Verification code sent to your email!')
+      setForgotMode('otp')
+    } catch (err) {
+      setError(err.message || 'Failed to send verification code.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (!otpCode.trim() || !newPassword) {
+      setError('Please provide the 6-digit verification code and new password.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    setSuccessMsg('')
+    try {
+      const res = await api.resetPassword({
+        email: forgotEmail.trim(),
+        otp: otpCode.trim(),
+        new_password: newPassword,
+      })
+      setSuccessMsg(res?.message || 'Password reset successful! You can now sign in.')
+      setForgotMode(false)
+      setRegister(false)
+      setPassword('')
+      setEmail(forgotEmail.trim())
+      setForgotEmail('')
+      setOtpCode('')
+      setNewPassword('')
+    } catch (err) {
+      setError(err.message || 'Failed to reset password.')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div className="login-page">
       <div className="login-nav">
@@ -136,7 +191,131 @@ export function Login() {
             </div>
           )}
 
-          <form className="login-form" onSubmit={submit}>
+          {forgotMode ? (
+            <div className="login-forgot-panel">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <KeyRound size={20} color="var(--sage, #298EE4)" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--ink)' }}>
+                    {forgotMode === 'otp' ? 'Enter Verification Code' : 'Reset Your Password'}
+                  </h3>
+                  <small style={{ color: 'var(--muted)' }}>
+                    {forgotMode === 'otp'
+                      ? 'Check your inbox for the 6-digit OTP code sent from goklarity@gmail.com'
+                      : 'We will send a 6-digit verification code to your email address.'}
+                  </small>
+                </div>
+              </div>
+
+              {forgotMode === 'email' ? (
+                <form className="login-form" onSubmit={handleSendOtp}>
+                  <div className="login-field">
+                    <label htmlFor="forgot-email">Account Email</label>
+                    <div className="login-input-wrap">
+                      <Mail size={16} className="login-input-icon" />
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn" disabled={busy}>
+                    <span>{busy ? 'Sending OTP…' : 'Send Verification Code'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="login-sso-btn"
+                    onClick={() => {
+                      setForgotMode(false)
+                      setError('')
+                      setSuccessMsg('')
+                    }}
+                  >
+                    Back to Sign in
+                  </button>
+                </form>
+              ) : (
+                <form className="login-form" onSubmit={handleResetPassword}>
+                  <div className="login-field">
+                    <label htmlFor="otp-code">6-Digit Verification Code</label>
+                    <div className="login-input-wrap">
+                      <KeyRound size={16} className="login-input-icon" />
+                      <input
+                        id="otp-code"
+                        type="text"
+                        value={otpCode}
+                        onChange={(e) => setOtpCode(e.target.value)}
+                        placeholder="e.g. 748291"
+                        maxLength={10}
+                        required
+                        autoFocus
+                        style={{ letterSpacing: '0.15em', fontWeight: 700 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="login-field">
+                    <label htmlFor="new-password">New Password</label>
+                    <div className="login-input-wrap">
+                      <Lock size={16} className="login-input-icon" />
+                      <input
+                        id="new-password"
+                        type={showNewPassword ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        minLength={8}
+                        maxLength={128}
+                        placeholder="At least 8 characters"
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="login-pw-toggle"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+                      >
+                        {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn" disabled={busy}>
+                    <span>{busy ? 'Resetting Password…' : 'Save New Password'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', color: 'var(--sage)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      onClick={() => setForgotMode('email')}
+                    >
+                      Resend code
+                    </button>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      onClick={() => {
+                        setForgotMode(false)
+                        setError('')
+                        setSuccessMsg('')
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <form className="login-form" onSubmit={submit}>
             {register && (
               <div className="login-field">
                 <label>Account Role &amp; Permission Tier</label>
@@ -216,7 +395,23 @@ export function Login() {
             </div>
 
             <div className="login-field">
-              <label htmlFor="login-password">Password</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label htmlFor="login-password" style={{ margin: 0 }}>Password</label>
+                {!register && (
+                  <button
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: 'var(--sage, #298EE4)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    onClick={() => {
+                      setForgotMode('email')
+                      setForgotEmail(email || '')
+                      setError('')
+                      setSuccessMsg('')
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="login-input-wrap">
                 <Lock size={16} className="login-input-icon" />
                 <input
@@ -324,6 +519,7 @@ export function Login() {
               {register ? 'Already have an account? Sign in' : 'Create an account'}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>
