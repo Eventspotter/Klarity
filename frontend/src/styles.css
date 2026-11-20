@@ -201,6 +201,103 @@ html.dark .compliance-card,
   border-color: var(--line);
 }
 
+/* Dark mode for Dashboard queue-panel */
+html.dark .queue-panel,
+[data-theme="dark"] .queue-panel {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+html.dark .queue-panel__head h2,
+[data-theme="dark"] .queue-panel__head h2 {
+  color: var(--ink);
+}
+
+html.dark .queue-panel__head p,
+[data-theme="dark"] .queue-panel__head p {
+  color: var(--muted);
+}
+
+html.dark .dark-link,
+[data-theme="dark"] .dark-link {
+  color: var(--sage);
+}
+
+html.dark .queue-figure strong,
+[data-theme="dark"] .queue-figure strong {
+  color: var(--ink);
+}
+
+html.dark .queue-figure > span:last-child,
+[data-theme="dark"] .queue-figure > span:last-child {
+  color: var(--muted);
+}
+
+html.dark .queue-list,
+[data-theme="dark"] .queue-list {
+  border-top: 1px solid var(--line);
+}
+
+html.dark .queue-row a,
+[data-theme="dark"] .queue-row a {
+  border-bottom: 1px solid var(--line);
+}
+
+html.dark .queue-row__index,
+[data-theme="dark"] .queue-row__index {
+  color: var(--faint);
+}
+
+html.dark .queue-row__copy strong,
+[data-theme="dark"] .queue-row__copy strong {
+  color: var(--ink);
+}
+
+html.dark .queue-row__copy small,
+[data-theme="dark"] .queue-row__copy small {
+  color: var(--muted);
+}
+
+html.dark .queue-row__arrow,
+[data-theme="dark"] .queue-row__arrow {
+  color: var(--faint);
+}
+
+/* Dark mode for Assets asset-guidelines banner */
+html.dark .asset-guidelines,
+[data-theme="dark"] .asset-guidelines {
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+  box-shadow: var(--shadow-md);
+}
+
+html.dark .asset-guidelines h2,
+[data-theme="dark"] .asset-guidelines h2 {
+  color: var(--ink);
+}
+
+html.dark .asset-guidelines p,
+[data-theme="dark"] .asset-guidelines p {
+  color: var(--muted);
+}
+
+html.dark .asset-guidelines__links button,
+[data-theme="dark"] .asset-guidelines__links button {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+html.dark .asset-guidelines__links button:hover,
+[data-theme="dark"] .asset-guidelines__links button:hover {
+  background: var(--cream-deep);
+  border-color: var(--sage);
+  color: var(--sage);
+}
+
 html.dark .email-card,
 [data-theme="dark"] .email-card,
 html.dark .messages-conversation-card,
