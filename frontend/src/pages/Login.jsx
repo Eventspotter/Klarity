@@ -27,6 +27,7 @@ export function Login() {
   const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
   const [forgotEmail, setForgotEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
+  const [devCode, setDevCode] = useState('')
   const [otpStatus, setOtpStatus] = useState('idle') // 'idle' | 'combining' | 'success' | 'error'
   const [otpVerified, setOtpVerified] = useState(false)
   const [newPassword, setNewPassword] = useState('')
@@ -111,6 +112,9 @@ export function Login() {
       const res = await api.forgotPassword({ email: forgotEmail.trim() })
       setSuccessMsg(res?.message || 'Verification code sent to your email!')
       setForgotMode('otp')
+      if (res?.dev_code) {
+        setDevCode(res.dev_code)
+      }
     } catch (err) {
       setError(err.message || 'Failed to send verification code.')
     } finally {
@@ -298,6 +302,48 @@ export function Login() {
                     <small style={{ color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>
                       Sent to <strong>{forgotEmail}</strong>
                     </small>
+
+                    {devCode && (
+                      <div
+                        style={{
+                          background: 'var(--sage-soft)',
+                          border: '1px solid var(--sage)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          marginBottom: '14px',
+                          fontSize: '12.5px',
+                          color: 'var(--ink)',
+                          textAlign: 'left',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: '8px',
+                        }}
+                      >
+                        <div>
+                          <strong>Demo Mode Code:</strong> <span style={{ letterSpacing: '0.15em', fontWeight: '800' }}>{devCode}</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOtpCode(devCode)
+                            handleOtpComplete(devCode)
+                          }}
+                          style={{
+                            background: 'var(--sage)',
+                            color: '#ffffff',
+                            border: 0,
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            fontSize: '11px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Auto-fill
+                        </button>
+                      </div>
+                    )}
                     
                     {/* Animated OTP Input Component with glowing boxes, collapse and tick/cross */}
                     <OtpInput
