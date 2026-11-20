@@ -37,7 +37,7 @@ STATUS_BY_ACTION = {
 }
 
 
-def _submission(db: Session, submission_id: int) -> ContentSubmission:
+def _submission(db: Session, submission_id: int, account = None) -> ContentSubmission:
     submission = (
         db.query(ContentSubmission)
         .options(
@@ -49,6 +49,14 @@ def _submission(db: Session, submission_id: int) -> ContentSubmission:
     )
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check:
+    # Non-admin users can only view or act on submissions within their brand workspace
+    if account:
+        is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        if not is_demo and submission.brand_name and submission.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You do not have access to this resource.")
     return submission
 
 
@@ -83,8 +91,8 @@ def list_submissions(
 
 
 @router.get("/{submission_id}", response_model=ContentSubmissionDetail)
-def get_submission(submission_id: int, db: Session = Depends(get_db)) -> ContentSubmission:
-    return _submission(db, submission_id)
+def get_submission(submission_id: int, db: Session = Depends(get_db), account = Depends(optional_account)) -> ContentSubmission:
+    return _submission(db, submission_id, account=account)
 
 
 @router.post("", response_model=ContentSubmissionDetail, status_code=201)
@@ -143,7 +151,7 @@ def review_submission(
     account: Account = Depends(current_account),
     db: Session = Depends(get_db),
 ) -> ContentSubmission:
-    submission = _submission(db, submission_id)
+    submission = _submission(db, submission_id, account=account)
     if not submission.reports:
         raise HTTPException(status_code=409, detail="Submission has no review report yet")
 

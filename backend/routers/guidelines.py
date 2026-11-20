@@ -67,11 +67,20 @@ def create_guideline(payload: GuidelineCreate, account = Depends(optional_accoun
 def update_guideline(
     guideline_id: int,
     payload: GuidelineUpdate,
+    account = Depends(optional_account),
     db: Session = Depends(get_db),
 ) -> BrandGuideline:
     guideline = db.get(BrandGuideline, guideline_id)
     if not guideline:
         raise HTTPException(status_code=404, detail="Guideline not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check
+    if account and getattr(account, "role", "member") not in ("owner", "admin", "lead"):
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        is_demo = getattr(account, "is_demo", False)
+        if not is_demo and guideline.brand_name and guideline.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You cannot modify guidelines outside your brand.")
+
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(guideline, field, value)
@@ -82,10 +91,18 @@ def update_guideline(
 
 
 @router.delete("/{guideline_id}", status_code=204)
-def delete_guideline(guideline_id: int, db: Session = Depends(get_db)) -> None:
+def delete_guideline(guideline_id: int, account = Depends(optional_account), db: Session = Depends(get_db)) -> None:
     guideline = db.get(BrandGuideline, guideline_id)
     if not guideline:
         raise HTTPException(status_code=404, detail="Guideline not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check
+    if account and getattr(account, "role", "member") not in ("owner", "admin", "lead"):
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        is_demo = getattr(account, "is_demo", False)
+        if not is_demo and guideline.brand_name and guideline.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You cannot delete guidelines outside your brand.")
+
     db.delete(guideline)
     db.commit()
     invalidate_bootstrap_cache()

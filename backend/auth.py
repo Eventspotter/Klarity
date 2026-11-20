@@ -250,7 +250,7 @@ def start_session(account, request, response, db):
     db.add(LoginSession(token_hash=token_hash, account_id=account.id, expires_at=expires_at))
     db.commit()
     _cache_account(token_hash, account, expires_at)
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.set_cookie(
         "klarity_session",
@@ -768,7 +768,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         _SESSION_CACHE.pop(token_hash, None)
         db.query(LoginSession).filter_by(token_hash=token_hash).delete()
         db.commit()
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
