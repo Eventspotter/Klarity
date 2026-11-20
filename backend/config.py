@@ -32,3 +32,12 @@ CORS_ORIGINS = [
     ).split(",")
     if origin.strip()
 ]
+
+# Cryptographically secure secrets
+JWT_SECRET = os.getenv("JWT_SECRET")
+if not JWT_SECRET:
+    # Generate ephemeral high-entropy secret if not provided in environment
+    import secrets
+    JWT_SECRET = secrets.token_hex(32)
+
+WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "")

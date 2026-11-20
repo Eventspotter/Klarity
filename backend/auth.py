@@ -76,18 +76,19 @@ def seed_test_account():
             or_(Account.username == "ashwik", Account.email == "ashwik@topper.local", Account.email == "ashwik@topper", Account.email == "ashwik@klarity.local")
         ).first()
         if not ashwik:
-            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner", brand_name="Aster & Oak", is_demo=True))
+            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="owner", brand_name="Aster & Oak", is_demo=True))
         else:
             ashwik.username = "ashwik"
             ashwik.email = "ashwik@topper"
-            ashwik.password_hash = hash_password("klarity")
+            default_pass = os.getenv("DEMO_ADMIN_PASSWORD", "klarity")
+            ashwik.password_hash = hash_password(default_pass)
             ashwik.role = "owner"
             ashwik.brand_name = "Aster & Oak"
             ashwik.is_demo = True
 
         sunless = db.query(Account).filter_by(username="sunless").first()
         if not sunless:
-            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password("klarity"), role="reviewer", brand_name="Aster & Oak", is_demo=True))
+            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="reviewer", brand_name="Aster & Oak", is_demo=True))
         else:
             sunless.brand_name = "Aster & Oak"
             sunless.is_demo = True
@@ -521,7 +522,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     identifier = payload.identifier.strip().lower()
     account = db.query(Account).filter(or_(Account.username == identifier, Account.email == identifier)).first()
     if not account and identifier in ("ashwik@topper", "ashwik") and payload.password == "klarity":
-        account = Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner", is_approved=True)
+        account = Account(username="ashwik", email="ashwik@topper", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="owner", is_approved=True)
         db.add(account)
         db.commit()
         db.refresh(account)
