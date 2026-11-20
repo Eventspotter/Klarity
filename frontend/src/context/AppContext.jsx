@@ -104,7 +104,7 @@ export function AppProvider({ children }) {
   const toggleTheme = useCallback((event) => {
     const isSwitchingToDark = (theme !== 'dark')
 
-    // If browser supports native View Transitions API, animate directional liquid wave
+    // If browser supports native View Transitions API, animate directional wavy liquid blob
     if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       // When switching to dark: flow from top-right down to bottom-left
       // When switching back to light: flow in the opposite direction (from bottom-left up to top-right)
@@ -122,26 +122,48 @@ export function AppProvider({ children }) {
       const maxRadius = Math.hypot(
         Math.max(x, window.innerWidth - x),
         Math.max(y, window.innerHeight - y)
-      )
+      ) * 1.35
+
+      // Generate dynamic wavy blob polygon keyframes for organic fluid flow
+      const steps = 12
+      const numPoints = 20
+      const clipKeyframes = []
+
+      for (let s = 0; s <= steps; s++) {
+        const progress = s / steps
+        const currR = maxRadius * progress
+        // Wave amplitude peaks during mid expansion for maximum liquid blobbiness
+        const waveAmp = progress === 0 || progress === 1 ? 0 : 0.22 * Math.sin(progress * Math.PI)
+        const phase = progress * Math.PI * 4
+
+        const points = []
+        for (let i = 0; i < numPoints; i++) {
+          const angle = (i / numPoints) * 2 * Math.PI
+          // Dual-frequency sinusoidal wave for organic fluid ripples
+          const blobMod = Math.sin(angle * 3 + phase) * 0.6 + Math.cos(angle * 4 - phase * 0.8) * 0.4
+          const r = Math.max(0, currR * (1 + blobMod * waveAmp))
+          const px = (x + r * Math.cos(angle)).toFixed(1)
+          const py = (y + r * Math.sin(angle)).toFixed(1)
+          points.push(`${px}px ${py}px`)
+        }
+        clipKeyframes.push(`polygon(${points.join(', ')})`)
+      }
 
       const transition = document.startViewTransition(() => {
         setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
       })
 
       transition.ready.then(() => {
-        // Liquid wave animation:
-        // - To Dark: expands from top-right to bottom-left
-        // - To Light: expands in the opposite direction from bottom-left to top-right
+        // Wavy bloby liquid wave animation:
+        // - To Dark: expands with dynamic undulating ripples from top-right down to bottom-left
+        // - To Light: expands in the opposite direction with fluid waves from bottom-left up to top-right
         document.documentElement.animate(
           {
-            clipPath: [
-              `circle(0px at ${x}px ${y}px)`,
-              `circle(${maxRadius * 1.15}px at ${x}px ${y}px)`
-            ]
+            clipPath: clipKeyframes
           },
           {
-            duration: 750,
-            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            duration: 850,
+            easing: 'cubic-bezier(0.25, 1, 0.35, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         )
