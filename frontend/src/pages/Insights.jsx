@@ -300,7 +300,7 @@ export function Insights() {
                   : `Quality steady this month`}
             </span>
           )}
-          <button type="button" className="btn btn--secondary btn--md" onClick={exportReport}>
+          <button type="button" className="btn btn--primary btn--md" onClick={exportReport}>
             <Download size={15} /> <span>Export Report</span>
           </button>
         </div>

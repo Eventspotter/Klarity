@@ -1093,7 +1093,7 @@ export function Assets() {
             </button>
           </div>
           <Button icon={Upload} variant="primary" onClick={() => setUploadOpen(true)}>
-            Upload asset
+            Upload Asset
           </Button>
         </div>
       </section>
