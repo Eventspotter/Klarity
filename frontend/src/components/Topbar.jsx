@@ -245,7 +245,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
               <Avatar name={user.username} />
               <span className="user-chip__copy">
                 <strong>{user.username}</strong>
-                <small>{isOwner ? 'Stage 1 · Brand Owner' : isReviewer ? 'Stage 2 · Reviewer' : 'Stage 3 · Member'}</small>
+                <small>{isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Member'}</small>
               </span>
               <ChevronDown size={14} />
             </button>
@@ -281,7 +281,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                 </button>
                 <div className="popover__meta">
                   <span>{activeBrand?.brand_name || 'Workspace'}</span>
-                  <span>{isOwner ? '1. Brand Owner' : isReviewer ? '2. Reviewer' : '3. Team Member'}</span>
+                  <span>{isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member'}</span>
                 </div>
               </AnimatedPopover>
             ) : null}

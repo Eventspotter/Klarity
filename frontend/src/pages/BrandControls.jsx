@@ -35,9 +35,9 @@ const getSettingsKey = (name) => `klarity.settings.v2_${(name || 'default').toLo
 const getTeamKey = (name) => `klarity.team_roster.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
 
 const roleOptions = [
-  'Stage 1 · Brand Owner',
-  'Stage 2 · Reviewer',
-  'Stage 3 · Team Member',
+  'Brand Owner',
+  'Reviewer',
+  'Team Member',
 ]
 
 const statusOptions = [
@@ -64,12 +64,12 @@ const defaultSettings = {
 }
 
 const defaultTeam = [
-  { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Stage 1 · Brand Owner', status: 'Active' },
-  { name: 'Kruthik Kamegaonkar', email: 'kruthik@localhost5000.dev', role: 'Stage 1 · Brand Owner', status: 'Active' },
-  { name: 'Maddi Abhinav', email: 'abhinav@localhost5000.dev', role: 'Stage 2 · Reviewer', status: 'Active' },
-  { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Stage 2 · Reviewer', status: 'Active' },
-  { name: 'G N Sreekar', email: 'sreekar@localhost5000.dev', role: 'Stage 3 · Team Member', status: 'Active' },
-  { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Stage 3 · Team Member', status: 'Invited' },
+  { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Brand Owner', status: 'Active' },
+  { name: 'Kruthik Kamegaonkar', email: 'kruthik@localhost5000.dev', role: 'Brand Owner', status: 'Active' },
+  { name: 'Maddi Abhinav', email: 'abhinav@localhost5000.dev', role: 'Reviewer', status: 'Active' },
+  { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Reviewer', status: 'Active' },
+  { name: 'G N Sreekar', email: 'sreekar@localhost5000.dev', role: 'Team Member', status: 'Active' },
+  { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Team Member', status: 'Invited' },
 ]
 
 function ToggleRow({ label, description, checked, onChange, disabled = false }) {
@@ -202,7 +202,7 @@ export function BrandControls() {
   const [auditForm, setAuditForm] = useState({
     name: '',
     email: '',
-    role: 'Stage 3 · Team Member',
+    role: 'Team Member',
     status: 'Active',
   })
 
@@ -211,7 +211,7 @@ export function BrandControls() {
     setAuditForm({
       name: member.name || '',
       email: member.email || '',
-      role: member.role || 'Stage 3 · Team Member',
+      role: member.role || 'Team Member',
       status: member.status || 'Active',
     })
   }
@@ -250,7 +250,7 @@ export function BrandControls() {
   const [inviteForm, setInviteForm] = useState({
     name: '',
     email: '',
-    role: 'Stage 3 · Team Member',
+    role: 'Team Member',
     status: 'Active',
   })
 
@@ -258,7 +258,7 @@ export function BrandControls() {
     setInviteForm({
       name: '',
       email: '',
-      role: 'Stage 3 · Team Member',
+      role: 'Team Member',
       status: 'Active',
     })
     setIsInviteOpen(true)
@@ -936,7 +936,7 @@ export function BrandControls() {
                               textTransform: 'uppercase',
                             }}
                           >
-                            Requested: {acc.role === 'reviewer' ? 'Stage 2 · Reviewer' : 'Stage 3 · Team Member'}
+                            Requested: {acc.role === 'reviewer' ? 'Reviewer' : 'Team Member'}
                           </span>
                         </div>
                         <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
@@ -1067,7 +1067,7 @@ export function BrandControls() {
               <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
-                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 2 · Reviewer (Admin)</strong>
+                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Reviewer (Admin)</strong>
                     <small style={{ color: 'var(--muted)', fontSize: '11px' }}>Compliance, audits &amp; approvals</small>
                   </div>
                   <span style={{ fontSize: '11px', background: 'var(--sage-soft)', color: 'var(--sage-deep)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Reviewer Access</span>
@@ -1123,7 +1123,7 @@ export function BrandControls() {
               <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
-                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 3 · Team Member</strong>
+                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Team Member</strong>
                     <small style={{ color: 'var(--muted)', fontSize: '11px' }}>Content authoring &amp; pre-flight checks</small>
                   </div>
                   <span style={{ fontSize: '11px', background: 'var(--cream)', color: 'var(--ink-soft)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Member Access</span>
@@ -1427,7 +1427,7 @@ export function BrandControls() {
           <Field
             label="Governance Role"
             htmlFor="invite-role"
-            hint="Stage 1 owns brand config, Stage 2 reviews & audits, Stage 3 authors in Creator Studio."
+            hint="Brand Owners configure brand specs, Reviewers audit & inspect, Team Members draft in Creator Studio."
           >
             <Select
               id="invite-role"

@@ -488,7 +488,7 @@ export function Login() {
                       <Crown size={14} color={role === 'owner' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>Admin</span>
                     </div>
-                    <small>Stage 1 · Creates Workspace</small>
+                    <small>Brand Owner · Creates Workspace</small>
                   </button>
                   <button
                     type="button"
@@ -499,7 +499,7 @@ export function Login() {
                       <FileCheck2 size={14} color={role === 'reviewer' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>Reviewer</span>
                     </div>
-                    <small>Stage 2 · Editorial Auditor</small>
+                    <small>Reviewer · Editorial Auditor</small>
                   </button>
                   <button
                     type="button"
@@ -510,7 +510,7 @@ export function Login() {
                       <User size={14} color={role === 'member' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>User</span>
                     </div>
-                    <small>Stage 3 · Team Member</small>
+                    <small>Team Member · Content Creator</small>
                   </button>
                 </div>
               </div>
