@@ -35,46 +35,32 @@ const Login = lazy(() => loadLogin().then((m) => ({ default: m.Login })))
 const NewReviewDrawer = lazy(() => loadNewReviewDrawer().then((m) => ({ default: m.NewReviewDrawer })))
 
 function LoadingScreen() {
-  const [sliderVal, setSliderVal] = useState(35)
-
-  useEffect(() => {
-    let forward = true
-    const interval = setInterval(() => {
-      setSliderVal((prev) => {
-        if (prev >= 92) forward = false
-        if (prev <= 15) forward = true
-        return forward ? prev + 12 : prev - 12
-      })
-    }, 450)
-    return () => clearInterval(interval)
-  }, [])
-
   return (
     <div className="loading-screen">
       <div className="loading-screen__brand">
         <BrandMark size={44} />
         <span>Klarity</span>
       </div>
-      <div style={{ width: 280, maxWidth: '85vw' }}>
+      <div style={{ width: 300, maxWidth: '85vw' }}>
         <WakeSlider
-          value={sliderVal}
+          autoLoop={true}
+          loopSpeed={1.3}
           min={0}
           max={100}
-          step={1}
-          bars={28}
-          height={40}
+          bars={30}
+          height={42}
           restHeight={10}
           gap={3}
           fillColor="var(--sage, #298EE4)"
-          trackColor="rgba(32, 21, 15, 0.12)"
-          sensitivity={1.2}
-          reach={5}
-          skew={0.6}
-          glide={0.35}
-          smoothing={120}
+          trackColor="rgba(41, 142, 228, 0.14)"
+          crestColor="var(--sage-soft, #e8f4fc)"
+          reach={6}
+          skew={0.65}
         />
       </div>
-      <p>Opening the brand workspace…</p>
+      <p style={{ letterSpacing: '0.04em', fontSize: '13px', fontWeight: 500 }}>
+        Opening the brand workspace…
+      </p>
     </div>
   )
 }

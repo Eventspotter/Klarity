@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { frame, useMotionValue, useMotionValueEvent, useReducedMotion, useSpring, useVelocity } from 'motion/react';
 
@@ -42,7 +44,9 @@ export default function WakeSlider({
   formatValue,
   disabled = false,
   ariaLabel = 'Value',
-  className = ''
+  className = '',
+  autoLoop = false, // When true, seamlessly travels in one direction (left-to-right) continuously
+  loopSpeed = 1.2
 }) {
   const [inner, setInner] = useState(defaultValue);
   const value = clamp(valueProp ?? inner, min, max);
@@ -69,10 +73,55 @@ export default function WakeSlider({
   const speed = useSpring(rawSpeed, { stiffness: wv * wv, damping: 2.5 * wv, mass: 1 });
 
   useEffect(() => {
-    target.set(pct);
-  }, [pct, target]);
+    if (!autoLoop) {
+      target.set(pct);
+    }
+  }, [pct, target, autoLoop]);
+
+  // Seamless one-direction infinite traveling wave animation loop
+  useEffect(() => {
+    if (!autoLoop) return;
+
+    let animId;
+    let startTime = performance.null || performance.now();
+    const cycleDuration = 2200 / Math.max(0.2, loopSpeed); // ms for full one-way sweep
+
+    const loopFrame = (now) => {
+      const elapsed = now - startTime;
+      const progress = (elapsed % cycleDuration) / cycleDuration; // 0 to 1 continuously
+
+      // Position travels smoothly from left (-reach) to right (bars + reach)
+      const totalSpan = bars + reach * 2;
+      const centerPos = progress * totalSpan - reach;
+      const effectiveReach = reach * 1.1;
+
+      for (let i = 0; i < bars; i++) {
+        const el = barEls.current[i];
+        if (!el) continue;
+
+        const dist = Math.abs(i - centerPos);
+        const inWake = dist < effectiveReach;
+        const lift = inWake ? Math.cos((Math.PI * dist) / (2 * effectiveReach)) ** 2 : 0;
+        
+        // One side going: lit up as pulse passes, then seamlessly resets
+        const isLit = inWake && lift > 0.08;
+        const on = isLit ? 'true' : 'false';
+        if (el.dataset.on !== on) el.dataset.on = on;
+
+        el.style.transform = `scaleY(${rest + lift * (1 - rest)})`;
+        const crest = crestEls.current[i];
+        if (crest) crest.style.opacity = String(lift);
+      }
+
+      animId = requestAnimationFrame(loopFrame);
+    };
+
+    animId = requestAnimationFrame(loopFrame);
+    return () => cancelAnimationFrame(animId);
+  }, [autoLoop, bars, reach, rest, loopSpeed]);
 
   const paint = (force = false) => {
+    if (autoLoop) return; // Handled by seamless RAF loop
     const h = ((reduce ? target.get() : head.get()) / 100) * (bars - 1);
     const v = reduce ? 0 : speed.get();
     const amp = smoothstep(clamp((Math.abs(v) * sensitivity) / FULL_SPEED, 0, 1));

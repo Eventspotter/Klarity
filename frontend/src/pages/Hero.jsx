@@ -174,11 +174,20 @@ export function Hero() {
         {/* Centerpiece: Real Editorial Proof Desk */}
         <div className="hero-container hero-plate-container" id="proof-desk">
           <div className="hero-plate">
+            {/* Seamless one-direction scanning beam */}
+            <div className="hero-plate__scan-track" aria-hidden="true">
+              <div className="hero-plate__scan-beam" />
+            </div>
+
             <div className="hero-plate__topbar">
               <div className="hero-plate__doc-info">
                 <FileText size={15} />
                 <span className="hero-plate__doc-title">Aster &amp; Oak · Spring Collection Launch Plate</span>
                 <span className="hero-plate__doc-channel">Web Editorial · v1.4</span>
+                <span className="hero-plate__scan-status">
+                  <span className="hero-plate__scan-pulse" />
+                  Live Auditing
+                </span>
               </div>
 
               <div className="hero-plate__topbar-right">
