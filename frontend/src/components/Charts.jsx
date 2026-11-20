@@ -31,8 +31,10 @@ export function PulseChart({
   const padBottom = 28
   const innerHeight = height - padTop - padBottom
   const values = data.map((point) => point.avg_score ?? point.value ?? 0)
-  const low = Math.min(minScore, ...values.filter(Boolean)) - 1
-  const high = Math.max(maxScore, ...values.filter(Boolean)) + 1
+  const validValues = values.filter(Boolean)
+  const hasData = validValues.length > 0
+  const low = Math.min(minScore, ...(hasData ? validValues : [minScore])) - 1
+  const high = Math.max(maxScore, ...(hasData ? validValues : [maxScore])) + 1
   const span = Math.max(1, high - low)
 
   const points = useMemo(
@@ -69,7 +71,28 @@ export function PulseChart({
     return cancel
   }, [points])
 
-  if (!points.length) return null
+  if (!points.length || !hasData) {
+    return (
+      <div
+        className="pulse-chart pulse-chart--empty"
+        style={{
+          height: `${height}px`,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'var(--muted)',
+          fontSize: '13px',
+          background: 'rgba(32, 21, 15, 0.02)',
+          borderRadius: '8px',
+          border: '1px dashed rgba(32, 21, 15, 0.08)',
+        }}
+      >
+        <span>No evaluation score trajectory recorded yet.</span>
+        <small style={{ marginTop: '4px', opacity: 0.7 }}>Scored submissions will chart quality over time.</small>
+      </div>
+    )
+  }
 
   return (
     <div className="pulse-chart" style={{ '--chart-height': `${height}px` }}>

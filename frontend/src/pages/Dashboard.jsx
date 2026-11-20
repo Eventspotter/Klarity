@@ -147,24 +147,32 @@ export function Dashboard({ onNewReview }) {
   }, [activity, isLead, mySubmissions])
 
   const myChartData = useMemo(() => {
-    if (myStats.total === 0) {
+    if (myStats.total === 0 || myStats.avgScore === 0) {
       return chartData.map((point) => ({
         ...point,
         avg_score: 0,
         value: 0,
       }))
     }
-    const baseline = myStats.avgScore
-    return chartData.map((point) => {
-      const diff = (point.avg_score - 86.4) * 0.8
-      const val = Math.min(98, Math.max(72, Number((baseline + diff).toFixed(1))))
-      return {
-        ...point,
-        avg_score: val,
-        value: val,
+    const dateScores = new Map()
+    mySubmissions.forEach((sub) => {
+      if (!sub.submitted_at) return
+      const dateKey = sub.submitted_at.slice(0, 10)
+      const report = latestReport(sub)
+      if (report && typeof report.overall_score === 'number') {
+        if (!dateScores.has(dateKey)) dateScores.set(dateKey, [])
+        dateScores.get(dateKey).push(report.overall_score)
       }
     })
-  }, [chartData, myStats.avgScore, myStats.total])
+    return chartData.map((point) => {
+      const dayScores = dateScores.get(point.date)
+      if (dayScores && dayScores.length > 0) {
+        const avg = Number((dayScores.reduce((a, b) => a + b, 0) / dayScores.length).toFixed(1))
+        return { ...point, avg_score: avg, value: avg }
+      }
+      return { ...point, avg_score: myStats.avgScore, value: myStats.avgScore }
+    })
+  }, [chartData, mySubmissions, myStats.total, myStats.avgScore])
 
   const todayLabel = useMemo(() => {
     return new Date().toLocaleDateString('en-GB', {
@@ -217,6 +225,11 @@ export function Dashboard({ onNewReview }) {
   const totalIssues = categories.reduce((sum, item) => sum + item.count, 0)
 
   const totalSubmissions = stats.total_submissions || 0
+  const reviewedSubmissions = useMemo(() => {
+    return (submissions || []).filter((s) => ['approved', 'rejected', 'needs_changes'].includes(s.status))
+  }, [submissions])
+  const reviewedCount = reviewedSubmissions.length
+
   const changesCount = useMemo(() => {
     return (submissions || []).filter((s) => s.status === 'needs_changes').length
   }, [submissions])
@@ -224,8 +237,20 @@ export function Dashboard({ onNewReview }) {
     return (submissions || []).filter((s) => s.status === 'rejected').length
   }, [submissions])
 
-  const changesRate = totalSubmissions > 0 ? ((changesCount / totalSubmissions) * 100).toFixed(1) : '0.0'
-  const rejectedRate = totalSubmissions > 0 ? ((rejectedCount / totalSubmissions) * 100).toFixed(1) : '0.0'
+  const changesRate = reviewedCount > 0 ? ((changesCount / reviewedCount) * 100).toFixed(1) : '0.0'
+  const rejectedRate = reviewedCount > 0 ? ((rejectedCount / reviewedCount) * 100).toFixed(1) : '0.0'
+
+  const channelsCount = useMemo(() => {
+    return new Set((submissions || []).map((s) => s.channel || s.content_type).filter(Boolean)).size
+  }, [submissions])
+
+  const gapCoverage = useMemo(() => {
+    const withIssues = (coverage || []).filter((c) => c.issues > 0)
+    if (withIssues.length === 0) return null
+    return [...withIssues].sort(
+      (a, b) => (b.issues / (b.guidelines || 0.5)) - (a.issues / (a.guidelines || 0.5))
+    )[0]
+  }, [coverage])
 
   const topFlagged = useMemo(() => {
     if (totalSubmissions === 0) return null
@@ -265,10 +290,10 @@ export function Dashboard({ onNewReview }) {
           <p>
             {isLead
               ? stats.total_submissions > 0
-                ? `${activeBrand?.brand_name || 'Workspace'} is holding at ${Math.round(stats.avg_score)}/100 across 12 channels. Here is where the next decision is waiting.`
+                ? `${activeBrand?.brand_name || 'Workspace'} is holding at ${Math.round(stats.avg_score)}/100${channelsCount > 0 ? ` across ${channelsCount} ${channelsCount === 1 ? 'channel' : 'channels'}` : ''}. Here is where the next decision is waiting.`
                 : `${activeBrand?.brand_name || 'Workspace'} is ready. Zero submissions and guidelines have been created yet.`
               : mySubmissions.length > 0
-                ? `Personal Creator Workspace · You have ${mySubmissions.length} authored pieces. Track your review decisions, inspect feedback, or launch the studio to draft.`
+                ? `Personal Creator Workspace · You have ${mySubmissions.length} authored ${mySubmissions.length === 1 ? 'piece' : 'pieces'}. Track your review decisions, inspect feedback, or launch the studio to draft.`
                 : `Personal Creator Workspace · You haven't submitted any content yet. Open the studio to draft your first piece.`}
           </p>
         </div>
@@ -314,15 +339,15 @@ export function Dashboard({ onNewReview }) {
           <Metric
             label="Open issues"
             value={stats.open_issues}
-            delta={stats.total_submissions > 0 ? -12 : 0}
-            detail={stats.total_submissions > 0 ? "fewer than last week" : "clean queue"}
+            delta={null}
+            detail={stats.open_issues > 0 ? `${stats.open_issues} open across all pieces` : "clean pipeline"}
             positiveIsGood={false}
           />
           <Metric
             label="Active guidelines"
             value={stats.active_guidelines}
-            delta={stats.active_guidelines > 0 ? 2 : 0}
-            detail={stats.active_guidelines > 0 ? "published this quarter" : "none published"}
+            delta={null}
+            detail={stats.active_guidelines > 0 ? "governing this workspace" : "none published"}
           />
         </section>
       ) : (
@@ -330,34 +355,34 @@ export function Dashboard({ onNewReview }) {
           <Metric
             label="My authored pieces"
             value={myStats.total}
-            delta={myStats.total > 0 ? 1 : 0}
-            detail="in your workspace"
+            delta={null}
+            detail={myStats.total > 0 ? "in your workspace" : "no drafts created"}
           />
           <Metric
             label="My approval rate"
             value={`${myStats.rate.toFixed(1)}%`}
-            delta={2.4}
+            delta={null}
             detail={`${myStats.approved} of ${myStats.total} approved`}
           />
           <Metric
             label="Average score"
             value={myStats.avgScore.toFixed(1)}
             suffix="/100"
-            delta={1.8}
-            detail="across your drafts"
+            delta={null}
+            detail={myStats.total > 0 ? "across your reviewed drafts" : "no reviews yet"}
             positiveIsGood
           />
           <Metric
             label="Pending review"
             value={myStats.reviewing + myStats.pending}
-            delta={0}
+            delta={null}
             detail="awaiting lead sign-off"
             positiveIsGood={false}
           />
           <Metric
             label="Needs revision"
             value={myStats.changes}
-            delta={myStats.changes > 0 ? -1 : 0}
+            delta={null}
             detail={myStats.changes > 0 ? 'action needed in studio' : 'all drafts clear'}
             positiveIsGood={myStats.changes === 0}
           />
@@ -617,16 +642,30 @@ export function Dashboard({ onNewReview }) {
                   )
                 })}
               </div>
-              <Link className="guideline-nudge" to="/guidelines">
-                <span className="guideline-nudge__icon">
-                  <FileText size={16} />
-                </span>
-                <span>
-                  <strong>One gap worth closing</strong>
-                  <small>Facts has 2 guidelines and 23 issues. A claim-substantiation example would help creators.</small>
-                </span>
-                <ArrowUpRight size={15} />
-              </Link>
+              {gapCoverage ? (
+                <Link className="guideline-nudge" to="/guidelines">
+                  <span className="guideline-nudge__icon">
+                    <FileText size={16} />
+                  </span>
+                  <span>
+                    <strong>One gap worth closing</strong>
+                    <small>
+                      {categoryLabels[gapCoverage.category] || gapCoverage.category} has {gapCoverage.guidelines} {gapCoverage.guidelines === 1 ? 'guideline' : 'guidelines'} and {gapCoverage.issues} {gapCoverage.issues === 1 ? 'issue' : 'issues'}. Adding examples would help creators.
+                    </small>
+                  </span>
+                  <ArrowUpRight size={15} />
+                </Link>
+              ) : (
+                <div className="guideline-nudge" style={{ opacity: 0.85 }}>
+                  <span className="guideline-nudge__icon">
+                    <FileText size={16} />
+                  </span>
+                  <span>
+                    <strong>Coverage balanced</strong>
+                    <small>No recurring issue gaps detected across active guidelines.</small>
+                  </span>
+                </div>
+              )}
             </Panel>
 
             <Panel className="activity-panel">
@@ -682,12 +721,16 @@ export function Dashboard({ onNewReview }) {
                   </div>
                   <p>
                     {myStats.total > 0 ? (
-                      <>
-                        <span className={cx('delta', 'delta--good')}>
-                          <ArrowUpRight size={13} /> {deltaLabel(1.8, ' pts')}
-                        </span>{' '}
-                        over the last 30 days
-                      </>
+                      myStats.avgScore > 0 ? (
+                        <>
+                          <span className={cx('delta', myStats.avgScore >= 85 ? 'delta--good' : 'delta--bad')}>
+                            <ArrowUpRight size={13} /> {myStats.avgScore >= 85 ? 'Above 85 target' : 'Below 85 target'}
+                          </span>{' '}
+                          across evaluated drafts
+                        </>
+                      ) : (
+                        <span className="delta delta--neutral">Awaiting review evaluation</span>
+                      )
                     ) : (
                       <span className="delta delta--neutral">No reviews evaluated yet</span>
                     )}
@@ -912,33 +955,22 @@ export function Dashboard({ onNewReview }) {
                 }
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'rgba(32, 21, 15, 0.03)', borderRadius: '8px' }}>
-                  <CategoryTag category="tone" />
-                  <div>
-                    <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>Warm, Specific, Unhurried</strong>
-                    <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                      Speak like a thoughtful host. Write in the second person. Prefer concrete nouns and active verbs.
-                    </span>
+                {guidelines.slice(0, 3).map((g) => (
+                  <div key={g.id || g.title} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'rgba(32, 21, 15, 0.03)', borderRadius: '8px' }}>
+                    <CategoryTag category={g.category} />
+                    <div>
+                      <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>{g.title}</strong>
+                      <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
+                        {g.summary || g.description}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'rgba(32, 21, 15, 0.03)', borderRadius: '8px' }}>
-                  <CategoryTag category="terminology" />
-                  <div>
-                    <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>Words We Avoid</strong>
-                    <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                      Never use <em>seamless</em>, <em>game-changing</em>, <em>revolutionary</em>, <em>eco-friendly</em>, or <em>best-in-class</em>.
-                    </span>
+                ))}
+                {guidelines.length === 0 && (
+                  <div style={{ padding: '24px 12px', textAlign: 'center', color: 'var(--ink-soft)', fontSize: '13px' }}>
+                    No brand guidelines published yet. Rules authored by Brand Leads will appear here for quick reference.
                   </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'rgba(32, 21, 15, 0.03)', borderRadius: '8px' }}>
-                  <CategoryTag category="facts" />
-                  <div>
-                    <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>Substantiated Claims</strong>
-                    <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>
-                      Every sustainability or performance metric needs a named standard or measured figure on file.
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
               <div className="guideline-nudge" style={{ marginTop: '16px' }}>
                 <span className="guideline-nudge__icon">

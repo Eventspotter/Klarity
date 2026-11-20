@@ -151,7 +151,52 @@ export function Insights() {
   const chartData = data.trends.slice(-days)
   const reviewDays = useMemo(() => buildReviewDays(data.submissions, isDemo), [data.submissions, isDemo])
   const activeFlaggedTerms = useMemo(() => extractFlaggedTerms(data.submissions, isDemo), [data.submissions, isDemo])
-  const activeTeam = isDemo && data.submissions?.length > 0 ? team : []
+  const activeTeam = useMemo(() => {
+    const map = new Map()
+    ;(data.submissions || []).forEach((sub) => {
+      const reviewer = sub.reviewed_by || sub.reports?.[0]?.actions?.[0]?.performed_by
+      if (!reviewer) return
+      if (!map.has(reviewer)) {
+        map.set(reviewer, { name: reviewer, role: 'Reviewer', reviewed: 0, totalScore: 0, scoredCount: 0, approved: 0 })
+      }
+      const rec = map.get(reviewer)
+      rec.reviewed += 1
+      if (sub.status === 'approved') rec.approved += 1
+      const score = sub.reports?.[0]?.overall_score
+      if (typeof score === 'number') {
+        rec.totalScore += score
+        rec.scoredCount += 1
+      }
+    })
+    if (map.size === 0) {
+      return isDemo && (data.submissions || []).length > 0 ? team : []
+    }
+    return Array.from(map.values()).map((r) => ({
+      name: r.name,
+      role: r.role,
+      reviewed: r.reviewed,
+      score: r.scoredCount > 0 ? Math.round(r.totalScore / r.scoredCount) : 0,
+      hours: '—',
+      approval: r.reviewed > 0 ? Math.round((r.approved / r.reviewed) * 100) : 0,
+    }))
+  }, [data.submissions, isDemo])
+
+  const busiestDayInfo = useMemo(() => {
+    if (!data.submissions || data.submissions.length === 0) return null
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0]
+    const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+    data.submissions.forEach((sub) => {
+      if (!sub.submitted_at) return
+      const d = new Date(sub.submitted_at)
+      if (!isNaN(d.getTime())) {
+        dayCounts[d.getUTCDay()] += 1
+      }
+    })
+    const maxVal = Math.max(...dayCounts)
+    if (maxVal === 0) return null
+    const busiestDayIndex = dayCounts.indexOf(maxVal)
+    return dayNames[busiestDayIndex]
+  }, [data.submissions])
 
   const categories = useMemo(() => {
     const totals = data.issue_breakdown.reduce((result, item) => {
@@ -164,6 +209,24 @@ export function Insights() {
       .map(([category, value]) => ({ category, ...value }))
       .sort((a, b) => b.total - a.total)
   }, [data.issue_breakdown])
+
+  const guidelineGap = useMemo(() => {
+    if (!data.coverage || data.coverage.length === 0) return null
+    const withIssues = data.coverage.filter((c) => c.issues > 0)
+    if (withIssues.length === 0) return null
+    const sorted = [...withIssues].sort(
+      (a, b) => (b.issues / (b.guidelines || 0.5)) - (a.issues / (a.guidelines || 0.5))
+    )
+    const gap = sorted[0]
+    const catIssues = categories.find((c) => c.category === gap.category)
+    return {
+      category: gap.category,
+      label: categoryLabels[gap.category] || gap.category,
+      issues: gap.issues,
+      guidelines: gap.guidelines,
+      blocking: catIssues?.critical || 0,
+    }
+  }, [data.coverage, categories])
 
   const totalIssues = categories.reduce((sum, item) => sum + item.total, 0)
   const maxTerm = activeFlaggedTerms.length > 0 ? Math.max(...activeFlaggedTerms.map((item) => item.count)) : 1
@@ -227,9 +290,14 @@ export function Insights() {
           <p>The Patterns behind the scores. What keeps slipping, who is moving fastest, and where the rules need work.</p>
         </div>
         <div className="page-head__actions">
-          {data.stats.total_submissions > 0 && (
+          {data.stats.total_submissions > 0 && typeof data.stats.score_delta === 'number' && (
             <span className="insight-stat">
-              <TrendingUp size={15} /> Quality up {data.stats.score_delta || 1.6} pts this month
+              {data.stats.score_delta >= 0 ? <TrendingUp size={15} /> : <ArrowDownRight size={15} />}
+              {data.stats.score_delta > 0
+                ? `Quality up ${data.stats.score_delta.toFixed(1)} pts this month`
+                : data.stats.score_delta < 0
+                  ? `Quality down ${Math.abs(data.stats.score_delta).toFixed(1)} pts this month`
+                  : `Quality steady this month`}
             </span>
           )}
           <button type="button" className="btn btn--secondary btn--md" onClick={exportReport}>
@@ -260,7 +328,12 @@ export function Insights() {
             <AnimatedValue value={data.stats.avg_score.toFixed(1)} suffix="/100" />
             {data.stats.total_submissions > 0 && (
               <em>
-                <ArrowUpRight size={13} /> {data.stats.score_delta || 1.6} pts
+                {data.stats.score_delta >= 0 ? <ArrowUpRight size={13} /> : <ArrowDownRight size={13} />}
+                {data.stats.score_delta > 0
+                  ? `+${data.stats.score_delta.toFixed(1)} pts`
+                  : data.stats.score_delta < 0
+                    ? `${data.stats.score_delta.toFixed(1)} pts`
+                    : `0.0 pts`}
               </em>
             )}
           </div>
@@ -359,7 +432,13 @@ export function Insights() {
           <p className="volume-panel__note">
             {data.stats.total_submissions > 0 ? (
               <>
-                <Sparkles size={14} /> Volume is up 15.2% over the prior month. Review time held steady.
+                <Sparkles size={14} />{' '}
+                {data.stats.volume_delta > 0
+                  ? `Volume is up ${data.stats.volume_delta.toFixed(1)}% over the prior month.`
+                  : data.stats.volume_delta < 0
+                    ? `Volume is down ${Math.abs(data.stats.volume_delta).toFixed(1)}% over the prior month.`
+                    : `Volume is consistent with the prior month.`}{' '}
+                Review turnaround held steady.
               </>
             ) : (
               <>
@@ -382,8 +461,8 @@ export function Insights() {
           />
           <div className="heat-panel__note">
             <span>
-              {data.stats.total_submissions > 0 ? (
-                <><strong>Thursday</strong> is the busiest review day. <strong>Monday morning</strong> is the quietest.</>
+              {busiestDayInfo ? (
+                <><strong>{busiestDayInfo}</strong> is the busiest review day for this workspace.</>
               ) : (
                 <>No review activity recorded yet for this workspace.</>
               )}
@@ -448,33 +527,34 @@ export function Insights() {
         </Panel>
       </section>
 
-      {data.stats.total_submissions > 0 && (
+      {guidelineGap && (
         <section className="gap-callout">
           <div className="gap-callout__blob" aria-hidden="true" />
           <div className="gap-callout__copy">
             <span className="gap-callout__tag">
               <BookOpen size={13} /> Guideline gap
             </span>
-            <h2>The facts library is carrying too much weight.</h2>
+            <h2>The {guidelineGap.label.toLowerCase()} library is carrying the highest issue load.</h2>
             <p>
-              Facts accounts for <strong>23 issues</strong> but only <strong>two guidelines</strong>. A worked example
-              for sustainability claims would give creators a specific pattern to follow, not another abstract rule.
+              {guidelineGap.label} accounts for <strong>{guidelineGap.issues} {guidelineGap.issues === 1 ? 'issue' : 'issues'}</strong> across{' '}
+              <strong>{guidelineGap.guidelines} {guidelineGap.guidelines === 1 ? 'guideline' : 'guidelines'}</strong>. Adding worked examples
+              gives creators clear reference patterns to reduce recurring violations.
             </p>
-            <Link to="/guidelines?guideline=3" className="btn btn--light btn--md">
-              Review the facts library <ArrowUpRight size={14} />
+            <Link to="/guidelines" className="btn btn--light btn--md">
+              Review the guideline library <ArrowUpRight size={14} />
             </Link>
           </div>
           <div className="gap-callout__stats">
             <div>
-              <strong>23</strong>
-              <span>fact issues</span>
+              <strong>{guidelineGap.issues}</strong>
+              <span>{guidelineGap.label.toLowerCase()} issues</span>
             </div>
             <div>
-              <strong>2</strong>
+              <strong>{guidelineGap.guidelines}</strong>
               <span>guidelines</span>
             </div>
             <div>
-              <strong>19</strong>
+              <strong>{guidelineGap.blocking}</strong>
               <span>blocking</span>
             </div>
           </div>

@@ -307,7 +307,11 @@ export function Sidebar({ open, onClose, onNewReview }) {
           </div>
           <p>
             {data?.stats?.total_submissions > 0
-              ? `Up ${data?.stats?.score_delta ?? 1.6} points over the last 30 days`
+              ? (data?.stats?.score_delta > 0
+                  ? `Up ${data.stats.score_delta.toFixed(1)} points over the last 30 days`
+                  : data?.stats?.score_delta < 0
+                    ? `Down ${Math.abs(data.stats.score_delta).toFixed(1)} points over the last 30 days`
+                    : 'Score holding steady over the last 30 days')
               : 'Awaiting first review'}
           </p>
         </NavLink>

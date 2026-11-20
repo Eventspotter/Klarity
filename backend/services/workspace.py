@@ -111,8 +111,10 @@ def build_stats(
         score_delta = round(mean(current_scores) - mean(previous_scores), 1)
 
     current_approval = _approval_rate(current)
-    previous_approval = _approval_rate(previous)
-    approval_delta = round(current_approval - previous_approval, 1)
+    approval_delta = 0.0
+    if previous:
+        previous_approval = _approval_rate(previous)
+        approval_delta = round(current_approval - previous_approval, 1)
 
     open_issues = sum(
         len(reports[item.id].issues)
