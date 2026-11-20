@@ -82,7 +82,6 @@ export function AppProvider({ children }) {
     try {
       const stored = localStorage.getItem('klarity_theme')
       if (stored === 'dark' || stored === 'light') return stored
-      if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) return 'dark'
     } catch {}
     return 'light'
   })
