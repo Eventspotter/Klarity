@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
 import { useApp } from '../context/AppContext'
-import { api } from '../lib/api'
+import { api, setStoredToken } from '../lib/api'
 
 export function Login() {
   const { user, data, authenticate } = useApp()
@@ -37,11 +37,29 @@ export function Login() {
   const [pendingNotice, setPendingNotice] = useState(false)
   const [availableBrands, setAvailableBrands] = useState([])
 
+  // OTP state
+  const [otpStep, setOtpStep] = useState(false)
+  const [otpEmail, setOtpEmail] = useState('')
+  const [otpFromEmail, setOtpFromEmail] = useState('goklarity@gmail.com')
+  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
+  const [otpBusy, setOtpBusy] = useState(false)
+  const [otpError, setOtpError] = useState('')
+  const [otpSuccess, setOtpSuccess] = useState('')
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const inputRefs = useRef([])
+
   useEffect(() => {
     api.listBrands().then(res => {
       if (res?.brands) setAvailableBrands(res.brands)
     }).catch(() => {})
   }, [])
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000)
+    return () => clearTimeout(timer)
+  }, [resendCooldown])
 
   if (user && data) return <Navigate to="/" replace />
 
@@ -76,7 +94,23 @@ export function Login() {
         setRegister(false)
         setPassword('')
       } else {
-        await authenticate('login', { identifier: email.trim(), password })
+        // Step 1: Send credentials → server validates and sends OTP
+        const res = await api.login({ identifier: email.trim(), password })
+        if (res?.otp_required) {
+          setOtpEmail(res.email)
+          setOtpFromEmail(res.from_email || 'goklarity@gmail.com')
+          setOtpStep(true)
+          setOtpDigits(['', '', '', '', '', ''])
+          setOtpError('')
+          setOtpSuccess('')
+          setResendCooldown(30)
+          // Auto-focus first input
+          setTimeout(() => inputRefs.current[0]?.focus(), 100)
+        } else if (res?.token) {
+          // Direct login (no OTP required — fallback)
+          setStoredToken(res.token)
+          await authenticate('me', {})
+        }
       }
     } catch (failure) {
       setError(failure.message)
@@ -85,6 +119,294 @@ export function Login() {
     }
   }
 
+  // Handle OTP digit input
+  const handleOtpChange = (index, value) => {
+    if (!/^\d*$/.test(value)) return // Only digits
+    const newDigits = [...otpDigits]
+    
+    if (value.length > 1) {
+      // Handle paste: distribute digits across inputs
+      const digits = value.replace(/\D/g, '').slice(0, 6 - index)
+      digits.split('').forEach((d, i) => {
+        if (index + i < 6) newDigits[index + i] = d
+      })
+      setOtpDigits(newDigits)
+      const nextIdx = Math.min(index + digits.length, 5)
+      inputRefs.current[nextIdx]?.focus()
+      return
+    }
+
+    newDigits[index] = value
+    setOtpDigits(newDigits)
+
+    // Auto-advance to next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus()
+    }
+  }
+
+  const handleOtpKeyDown = (index, e) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus()
+    }
+  }
+
+  const handleOtpPaste = (e) => {
+    e.preventDefault()
+    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
+    if (!paste) return
+    const newDigits = [...otpDigits]
+    paste.split('').forEach((d, i) => {
+      if (i < 6) newDigits[i] = d
+    })
+    setOtpDigits(newDigits)
+    const focusIdx = Math.min(paste.length, 5)
+    inputRefs.current[focusIdx]?.focus()
+  }
+
+  // Submit OTP verification
+  const submitOtp = async () => {
+    const code = otpDigits.join('')
+    if (code.length !== 6) {
+      setOtpError('Please enter all 6 digits.')
+      return
+    }
+    setOtpBusy(true)
+    setOtpError('')
+    setOtpSuccess('')
+
+    try {
+      const res = await api.verifyOtp({ email: otpEmail, otp: code })
+      if (res?.token) {
+        setOtpSuccess('Verified! Signing you in...')
+        setStoredToken(res.token)
+        // Small delay for the success animation
+        setTimeout(async () => {
+          try {
+            const me = await api.me()
+            const bootstrap = await api.bootstrap()
+            // Force page reload to pick up the new session
+            window.location.reload()
+          } catch {
+            window.location.reload()
+          }
+        }, 800)
+      }
+    } catch (failure) {
+      setOtpError(failure.message)
+      setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => inputRefs.current[0]?.focus(), 100)
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  // Auto-submit when all digits filled
+  useEffect(() => {
+    if (otpStep && otpDigits.every(d => d !== '') && !otpBusy) {
+      submitOtp()
+    }
+  }, [otpDigits, otpStep])
+
+  // Resend OTP
+  const resendOtp = async () => {
+    if (resendCooldown > 0) return
+    setOtpBusy(true)
+    setOtpError('')
+    try {
+      await api.resendOtp({ email: otpEmail })
+      setOtpSuccess('New code sent! Check your inbox.')
+      setResendCooldown(30)
+      setOtpDigits(['', '', '', '', '', ''])
+      setTimeout(() => {
+        setOtpSuccess('')
+        inputRefs.current[0]?.focus()
+      }, 2000)
+    } catch (failure) {
+      setOtpError(failure.message)
+    } finally {
+      setOtpBusy(false)
+    }
+  }
+
+  // Cancel OTP → go back to login form
+  const cancelOtp = () => {
+    setOtpStep(false)
+    setOtpEmail('')
+    setOtpDigits(['', '', '', '', '', ''])
+    setOtpError('')
+    setOtpSuccess('')
+    setPassword('')
+  }
+
+  // ─── OTP Verification Screen ──────────────────────────────────────
+  if (otpStep) {
+    return (
+      <div className="login-page">
+        <div className="login-nav">
+          <Link to="/hero" className="login-back-link">
+            <ArrowLeft size={16} />
+            Back to Product Overview
+          </Link>
+        </div>
+        <div className="login-container">
+          <div className="login-card" style={{ maxWidth: '480px' }}>
+            <div className="login-card__header">
+              <Link to="/hero" className="login-brand">
+                <BrandMark size={42} />
+                <span className="login-brand__name">Klarity</span>
+              </Link>
+              <h1 className="login-title">Sign in to your workspace</h1>
+              <p className="login-subtitle">Enter your username or email and password.</p>
+            </div>
+
+            <div style={{
+              background: 'var(--paper)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '24px',
+              marginBottom: '8px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <KeyRound size={18} color="var(--sage)" />
+                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--ink)' }}>
+                  Enter Verification Code
+                </h2>
+              </div>
+              <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                Check your inbox for the 6-digit OTP code sent from{' '}
+                <strong style={{ color: 'var(--ink)' }}>{otpFromEmail}</strong>
+              </p>
+
+              <p style={{
+                textAlign: 'center',
+                fontSize: '12px',
+                fontWeight: 700,
+                letterSpacing: '0.5px',
+                textTransform: 'uppercase',
+                color: 'var(--muted)',
+                marginBottom: '6px',
+              }}>
+                ENTER 6-DIGIT CODE
+              </p>
+              <p style={{
+                textAlign: 'center',
+                fontSize: '13px',
+                color: 'var(--muted)',
+                marginBottom: '16px',
+              }}>
+                Sent to <strong style={{ color: 'var(--ink)' }}>{otpEmail}</strong>
+              </p>
+
+              {/* OTP Input Boxes */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  gap: '10px',
+                  marginBottom: '16px',
+                }}
+                onPaste={handleOtpPaste}
+              >
+                {otpDigits.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={el => inputRefs.current[i] = el}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={e => handleOtpChange(i, e.target.value)}
+                    onKeyDown={e => handleOtpKeyDown(i, e)}
+                    disabled={otpBusy}
+                    style={{
+                      width: '48px',
+                      height: '56px',
+                      textAlign: 'center',
+                      fontSize: '22px',
+                      fontWeight: 700,
+                      fontFamily: 'monospace',
+                      border: `2px solid ${otpError ? '#ef4444' : otpSuccess ? '#16a34a' : digit ? 'var(--sage)' : 'var(--line-strong)'}`,
+                      borderRadius: '12px',
+                      background: otpSuccess ? '#f0fdf4' : 'var(--surface)',
+                      color: 'var(--ink)',
+                      outline: 'none',
+                      transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
+                      boxShadow: digit ? '0 0 0 3px rgba(45,90,61,0.08)' : 'none',
+                    }}
+                    onFocus={e => {
+                      e.target.style.borderColor = 'var(--sage)'
+                      e.target.style.boxShadow = '0 0 0 3px rgba(45,90,61,0.12)'
+                    }}
+                    onBlur={e => {
+                      e.target.style.borderColor = digit ? 'var(--sage)' : 'var(--line-strong)'
+                      e.target.style.boxShadow = digit ? '0 0 0 3px rgba(45,90,61,0.08)' : 'none'
+                    }}
+                  />
+                ))}
+              </div>
+
+              <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--muted)', margin: '0 0 16px' }}>
+                Enter the 6-digit code above to proceed.
+              </p>
+
+              {otpError && (
+                <div className="login-alert-error" role="alert" style={{ marginBottom: '12px' }}>
+                  <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
+                  <div style={{ fontSize: '13px' }}>{otpError}</div>
+                </div>
+              )}
+
+              {otpSuccess && (
+                <div className="login-alert-success" role="status" style={{ marginBottom: '12px' }}>
+                  <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '1px', color: '#16a34a' }} />
+                  <div style={{ fontSize: '13px' }}>{otpSuccess}</div>
+                </div>
+              )}
+
+              {/* Resend + Cancel buttons */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  onClick={resendOtp}
+                  disabled={resendCooldown > 0 || otpBusy}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: resendCooldown > 0 ? 'var(--muted)' : 'var(--sage)',
+                    cursor: resendCooldown > 0 ? 'default' : 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    padding: '4px 0',
+                    textDecoration: resendCooldown > 0 ? 'none' : 'underline',
+                  }}
+                >
+                  {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelOtp}
+                  disabled={otpBusy}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--muted)',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    fontWeight: 500,
+                    padding: '4px 0',
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── Normal Login / Register Form ─────────────────────────────────
   return (
     <div className="login-page">
       <div className="login-nav">

@@ -220,6 +220,11 @@ export function AppProvider({ children }) {
     }
   }, [toast, fetchPendingCount])
   const authenticate = async (mode, payload) => {
+    if (mode === 'login') {
+      // Login now returns otp_required — handled in Login.jsx directly
+      return await api.login(payload)
+    }
+    // For direct session establishment (after OTP verification)
     const account = await api[mode](payload)
     if (account?.token) {
       setStoredToken(account.token)
@@ -227,6 +232,7 @@ export function AppProvider({ children }) {
     setUser(account)
     const bootstrapPayload = await refresh(account)
     writeCachedWorkspace(account, bootstrapPayload)
+    return account
   }
   const logout = async () => {
     try {

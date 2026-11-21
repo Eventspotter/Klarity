@@ -50,6 +50,7 @@ def get_db():
 def init_db():
     import models  # Register all models before creating tables.
     import auth
+    import services.email_otp  # Register OTP model
     from sqlalchemy import text
 
     Base.metadata.create_all(bind=engine)

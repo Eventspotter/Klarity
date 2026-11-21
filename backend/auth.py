@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS
 from database import Base, SessionLocal, get_db
+from services.email_otp import create_otp, verify_otp, cleanup_expired_otps, SMTP_EMAIL
 
 
 class Account(Base):
@@ -220,6 +221,15 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
+class VerifyOTPRequest(BaseModel):
+    email: str = Field(min_length=1, max_length=254)
+    otp: str = Field(min_length=6, max_length=6)
+
+
+class ResendOTPRequest(BaseModel):
+    email: str = Field(min_length=1, max_length=254)
+
+
 class ApproveAccountRequest(BaseModel):
     account_id: int
     approve: bool = True
@@ -403,7 +413,61 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     if not getattr(account, "is_approved", True):
         raise HTTPException(403, "Account pending Admin/Owner verification. Please contact your Brand Administrator to verify your account.")
 
+    # --- OTP flow: send code to registered email ---
+    email = account.email
+    msg, success = create_otp(db, email)
+    if not success:
+        raise HTTPException(500, msg)
+
+    # Clean up old OTPs periodically
+    try:
+        cleanup_expired_otps(db)
+    except Exception:
+        pass
+
+    return {
+        "otp_required": True,
+        "email": email,
+        "message": msg,
+        "from_email": SMTP_EMAIL or "goklarity@gmail.com",
+    }
+
+
+@router.post("/verify-otp")
+def verify_otp_endpoint(payload: VerifyOTPRequest, request: Request, response: Response, db: Session = Depends(get_db)):
+    """Verify the OTP and create a login session if valid."""
+    email = payload.email.strip().lower()
+
+    msg, success = verify_otp(db, email, payload.otp)
+    if not success:
+        raise HTTPException(400, msg)
+
+    # OTP verified — find the account and create a session
+    account = db.query(Account).filter(Account.email == email).first()
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    if not getattr(account, "is_approved", True):
+        raise HTTPException(403, "Account pending Admin/Owner verification.")
+
     return start_session(account, request, response, db)
+
+
+@router.post("/resend-otp")
+def resend_otp_endpoint(payload: ResendOTPRequest, db: Session = Depends(get_db)):
+    """Resend a new OTP to the given email address."""
+    email = payload.email.strip().lower()
+
+    # Verify the email belongs to an existing account
+    account = db.query(Account).filter(Account.email == email).first()
+    if not account:
+        raise HTTPException(404, "No account found with that email address.")
+
+    msg, success = create_otp(db, email)
+    if not success:
+        raise HTTPException(500, msg)
+
+    return {"message": msg, "email": email}
 
 
 @router.get("/pending-accounts")
