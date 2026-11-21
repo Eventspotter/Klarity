@@ -125,25 +125,25 @@ export function AppProvider({ children }) {
         Math.max(y, window.innerHeight - y)
       ) * 1.35
 
-      // Generate dynamic keyframes with harmonic S-curve front:
-      // wave = 0.72 * sin(1.8 * pi * v - 1.4 * pi * p) + 0.28 * sin(3.6 * pi * v + 0.9 * pi * p)
-      const steps = 18
-      const numPoints = 36
+      // Generate dynamic keyframes with authentic organic S-curve wave boundary (as seen in the reference image)
+      const steps = 24
+      const numPoints = 64
       const clipKeyframes = []
 
       for (let s = 0; s <= steps; s++) {
         const p = s / steps
         const currR = maxRadius * p
-        // Wave amplitude peaks during mid expansion for maximum defined liquid crests & valleys
-        const amp = p === 0 || p === 1 ? 0 : 0.26 * Math.sin(p * Math.PI)
+        // Prominent organic wave amplitude across mid & late expansion
+        const amp = p === 0 || p === 1 ? 0 : 0.38 * Math.sin(Math.pow(p, 0.75) * Math.PI)
 
         const points = []
         for (let i = 0; i < numPoints; i++) {
           const v = i / numPoints
           const angle = v * 2 * Math.PI
-          // Exact harmonic S-curve wave boundary formula from reference
-          const wave = 0.72 * Math.sin(1.8 * Math.PI * v - 1.4 * Math.PI * p) +
-                       0.28 * Math.sin(3.6 * Math.PI * v + 0.9 * Math.PI * p)
+          // Continuous S-curve undulating silhouette with organic crests and trailing bell curve
+          const wave = 0.78 * Math.sin(1.0 * Math.PI * v - 1.2 * Math.PI * p) +
+                       0.32 * Math.sin(2.0 * Math.PI * v + 0.6 * Math.PI * p) +
+                       0.14 * Math.cos(3.0 * Math.PI * v - 1.8 * Math.PI * p)
           const r = Math.max(0, currR * (1 + wave * amp))
           const px = (x + r * Math.cos(angle)).toFixed(1)
           const py = (y + r * Math.sin(angle)).toFixed(1)
@@ -157,16 +157,16 @@ export function AppProvider({ children }) {
       })
 
       transition.ready.then(() => {
-        // Directional wave animation with harmonic S-curve:
-        // - To Dark: expands with S-curve wave boundary from top-right down to bottom-left
-        // - To Light: expands in the opposite direction with fluid wave from bottom-left up to top-right
+        // Directional organic S-curve boundary wave animation:
+        // - To Dark: sweeps from top-right with an authentic organic wave edge down to bottom-left
+        // - To Light: sweeps back in the opposite direction from bottom-left to top-right
         document.documentElement.animate(
           {
             clipPath: clipKeyframes
           },
           {
-            duration: 850,
-            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            duration: 950,
+            easing: 'cubic-bezier(0.25, 1, 0.35, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         )
