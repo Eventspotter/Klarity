@@ -73,7 +73,7 @@ export function Hero() {
         </SlidingGroup>
         <div className="nav-actions">
           <button type="button" className="landing-theme" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
-          <Link to={getPath('/reviews')} className="button nav-workspace">Open workspace <ArrowRight size={14} /></Link>
+          <Link to={getPath('/')} className="button nav-workspace">Open workspace <ArrowRight size={14} /></Link>
           <button ref={menuButton} type="button" className="menu-button" aria-label="Open navigation" aria-expanded={menu} aria-controls="landing-menu" onClick={() => setMenu(true)}><Menu size={19} /></button>
         </div>
       </div>
@@ -84,7 +84,7 @@ export function Hero() {
         <div className="landing-menu-head"><span className="brand" id="landing-menu-title"><BrandMark size={28} />Klarity</span><button type="button" className="landing-theme" aria-label="Close navigation" onClick={closeMenu}><X size={20} /></button></div>
         <p>Every piece of content. One clear identity.</p>
         <nav aria-label="Mobile navigation" className="sheet-links">{links.map(link => <a key={link.href} href={link.href} aria-current={active === link.href.slice(1) ? 'location' : undefined} onClick={() => { select(link.href.slice(1)); closeMenu() }}>{link.label}<ArrowRight size={15} /></a>)}</nav>
-        <Link className="button" to={getPath('/reviews')} onClick={closeMenu}>Open workspace <ArrowRight size={14} /></Link>
+        <Link className="button" to={getPath('/')} onClick={closeMenu}>Open workspace <ArrowRight size={14} /></Link>
         {!user && <Link className="text-button" to="/login" onClick={closeMenu}>Sign in</Link>}
       </div>
     </div>}
@@ -107,7 +107,7 @@ export function Hero() {
             </h1>
             <p className="rise" style={{ animationDelay: '.55s' }}>Your brand has a voice. Keep it clear. Klarity checks content against your guidelines, facts, and visual standards—with the reason behind every suggestion.</p>
             <div className="hero-ctas rise" style={{ animationDelay: '.7s' }}>
-              <Link className="button button-lg" to={getPath('/reviews')}>Open Klarity <span className="cta-note">Your brand workspace</span><ArrowRight size={16} /></Link>
+              <Link className="button button-lg" to={getPath('/')}>Open Klarity <span className="cta-note">Your brand workspace</span><ArrowRight size={16} /></Link>
               <a className="button button-outline button-lg" href="#proof-desk" onClick={() => select('proof-desk')}><Play size={14} /> See it in action</a>
             </div>
             <p className="hero-reassurance rise" style={{ animationDelay: '.8s' }}><ShieldCheck size={13} /> Evidence behind the feedback. People behind the decision.</p>
@@ -174,7 +174,7 @@ export function Hero() {
         <div className="faq" data-reveal>{faqs.map((faq, i) => { const open = openQuestion === i; return <div className="ui-accordion-item" key={faq.q}><h3 className="ui-accordion-header"><button type="button" id={`faq-question-${i}`} className="ui-accordion-trigger" aria-expanded={open} aria-controls={`faq-answer-${i}`} data-panel-open={open || undefined} onClick={() => setOpenQuestion(open ? null : i)}>{faq.q}<span className="ui-accordion-icon" aria-hidden="true" /></button></h3><div id={`faq-answer-${i}`} role="region" aria-labelledby={`faq-question-${i}`} hidden={!open}><div className="ui-accordion-content">{faq.a}</div></div></div> })}</div>
       </section>
 
-      <section className="closing" data-reveal><span className="closing-mark" aria-hidden="true"><BrandMark size={44} /></span><h2>Make the next draft <em>feel like you.</em></h2><p>Bring your guidelines, your content, and your team. Give every piece of work the clarity it deserves.</p><div className="hero-ctas"><Link className="button button-lg" to={getPath('/reviews')}>Open your workspace <ArrowRight size={16} /></Link><Link className="button button-outline button-lg" to={getPath('/guidelines')}>Explore guidelines</Link></div></section>
+      <section className="closing" data-reveal><span className="closing-mark" aria-hidden="true"><BrandMark size={44} /></span><h2>Make the next draft <em>feel like you.</em></h2><p>Bring your guidelines, your content, and your team. Give every piece of work the clarity it deserves.</p><div className="hero-ctas"><Link className="button button-lg" to={getPath('/')}>Open your workspace <ArrowRight size={16} /></Link><Link className="button button-outline button-lg" to={getPath('/guidelines')}>Explore guidelines</Link></div></section>
     </main>
 
     <footer className="footer"><div className="footer-top"><a className="brand" href="#top"><BrandMark size={27} />Klarity</a><nav aria-label="Footer navigation"><Link to={getPath('/reviews')}>Reviews</Link><Link to={getPath('/guidelines')}>Guidelines</Link><Link to={getPath('/assets')}>Brand assets</Link><Link to={getPath('/calendar')}>Calendar</Link>{!user && <Link to="/login">Sign in</Link>}</nav></div><div className="footer-bottom"><p>© {new Date().getFullYear()} Klarity · Enterprise Brand Intelligence.</p><p>Every piece of content. One clear brand identity.</p></div></footer>

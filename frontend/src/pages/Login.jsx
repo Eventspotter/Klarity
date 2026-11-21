@@ -67,10 +67,10 @@ export function Login() {
         target = sessionStorage.getItem('klarity_redirect')
       } catch {}
     }
-    if (target && target !== '/login' && target !== '/hero') {
-      try {
-        sessionStorage.removeItem('klarity_redirect')
-      } catch {}
+    try {
+      sessionStorage.removeItem('klarity_redirect')
+    } catch {}
+    if (target && target !== '/login' && target !== '/hero' && target !== '/reviews') {
       return target
     }
     return '/'
