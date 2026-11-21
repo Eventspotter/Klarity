@@ -56,7 +56,6 @@ def latest_report_map(submissions: list[ContentSubmission]) -> Dict[int, ReviewR
 
 def _submission_query(db: Session):
     return db.query(ContentSubmission).options(
-        defer(ContentSubmission.content_text),
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.issues),
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
     )

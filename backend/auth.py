@@ -246,12 +246,16 @@ def public_account(account, db=None):
         "brand_values": "Authenticity, craft, sustainability, quiet confidence" if is_demo else "",
     }
     try:
-        if db:
-            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(brand_name)).first()
+        if is_demo:
+            res["brand_code"] = "KLARITY-2026"
+            res["brand_values"] = "Authenticity, craft, sustainability, quiet confidence"
+        elif db:
+            cached_brands = _get_cached_brands(db)
+            brand_rec = next((b for b in cached_brands if (b.get("brand_name") or "").lower() == brand_name.lower()), None)
             if brand_rec:
-                res["brand_code"] = brand_rec.brand_code
-                res["brand_values"] = brand_rec.brand_values
-            elif not is_demo and brand_name:
+                res["brand_code"] = brand_rec.get("brand_code", res["brand_code"])
+                res["brand_values"] = brand_rec.get("brand_values", res["brand_values"])
+            elif brand_name:
                 clean_slug = re.sub(r"[^A-Za-z0-9]", "", brand_name).upper()[:6] or "BRAND"
                 new_c = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
                 new_b = Brand(brand_name=brand_name, brand_code=new_c, brand_values="")
@@ -259,14 +263,10 @@ def public_account(account, db=None):
                     db.add(new_b)
                     db.commit()
                     res["brand_code"] = new_c
+                    global _BRANDS_CACHE
+                    _BRANDS_CACHE = None
                 except Exception:
                     db.rollback()
-        elif is_demo:
-            with SessionLocal() as session:
-                setting = session.get(WorkspaceSettings, 1)
-                if setting:
-                    res["brand_code"] = setting.brand_code
-                    res["brand_values"] = setting.brand_values
     except Exception:
         pass
     return res
@@ -318,6 +318,12 @@ def start_session(account, request, response, db):
     )
     res = public_account(account, db)
     res["token"] = token
+    try:
+        from services.workspace import build_bootstrap
+        bootstrap_data = build_bootstrap(db, account=account)
+        res["bootstrap"] = bootstrap_data.model_dump(mode="json")
+    except Exception:
+        pass
     return res
 
 
@@ -1061,12 +1067,15 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     if token:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
         _SESSION_CACHE.pop(token_hash, None)
-        db.query(LoginSession).filter_by(token_hash=token_hash).delete()
-        db.commit()
+        try:
+            db.query(LoginSession).filter_by(token_hash=token_hash).delete()
+            db.commit()
+        except Exception:
+            db.rollback()
     is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
-    response.headers["Clear-Site-Data"] = '"cookies", "storage"'
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate"
 
 
 # ---------------------------------------------------------------------------

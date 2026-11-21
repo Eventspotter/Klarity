@@ -396,8 +396,20 @@ export function AppProvider({ children }) {
         } catch {}
       }
     }
-    const bootstrapPayload = await refresh(account)
-    writeCachedWorkspace(account, bootstrapPayload)
+    // Optimistic cache hydration: use bootstrap included in login response or cached workspace
+    const bootstrapData = account?.bootstrap || readCachedWorkspace()?.data
+    if (bootstrapData) {
+      setData(bootstrapData)
+      setConnected(true)
+      writeCachedWorkspace(account, bootstrapData)
+    }
+    const refreshPromise = refresh(account)
+    if (!bootstrapData) {
+      const liveData = await refreshPromise
+      writeCachedWorkspace(account, liveData)
+    } else {
+      refreshPromise.catch(() => {})
+    }
     return account
   }
   const cleanWorkspace = async () => {
@@ -412,20 +424,22 @@ export function AppProvider({ children }) {
     }
   }
   const logout = async () => {
+    // 1. Instantly wipe client session state for 0ms perceived latency
+    setStoredToken(null)
+    clearCachedWorkspace()
+    setUser(null)
+    setData(null)
+    setConnected(false)
+    setAllBrands(DEFAULT_BRANDS)
+    setActiveBrand(DEFAULT_BRANDS[0])
     try {
-      await api.logout()
-    } finally {
-      setStoredToken(null)
-      clearCachedWorkspace()
-      setUser(null)
-      setData(null)
-      setConnected(false)
-      setAllBrands(DEFAULT_BRANDS)
-      setActiveBrand(DEFAULT_BRANDS[0])
-      try {
-        localStorage.removeItem('klarity_active_brand'); localStorage.removeItem('klarity_role')
-      } catch {}
-    }
+      localStorage.removeItem('klarity_active_brand')
+      localStorage.removeItem('klarity_role')
+      sessionStorage.removeItem('klarity_redirect')
+    } catch {}
+
+    // 2. Invalidate server-side session asynchronously in background
+    api.logout().catch(() => {})
   }
   const mutate = async (operation, message) => {
     try {

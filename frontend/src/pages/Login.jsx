@@ -61,18 +61,24 @@ export function Login() {
   }, [rawTarget])
 
   const getDestination = () => {
-    let target = rawTarget
-    if (!target || target === '/login' || target === '/hero') {
+    if (redirectParam && redirectParam !== '/login' && redirectParam !== '/hero' && redirectParam !== '/reviews') {
       try {
-        target = sessionStorage.getItem('klarity_redirect')
+        sessionStorage.removeItem('klarity_redirect')
       } catch {}
+      return redirectParam
+    }
+    if (fromState) {
+      const fromPath = typeof fromState === 'object' ? `${fromState.pathname || ''}${fromState.search || ''}${fromState.hash || ''}` : fromState
+      if (fromPath && fromPath !== '/login' && fromPath !== '/hero' && fromPath !== '/') {
+        try {
+          sessionStorage.removeItem('klarity_redirect')
+        } catch {}
+        return fromPath
+      }
     }
     try {
       sessionStorage.removeItem('klarity_redirect')
     } catch {}
-    if (target && target !== '/login' && target !== '/hero' && target !== '/reviews') {
-      return target
-    }
     return '/'
   }
 
@@ -82,7 +88,7 @@ export function Login() {
     }).catch(() => {})
   }, [])
 
-  if (user && data) return <Navigate to={getDestination()} replace />
+  if (user) return <Navigate to={getDestination()} replace />
 
   const isAdmin = role === 'owner'
 
