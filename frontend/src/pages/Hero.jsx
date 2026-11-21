@@ -132,7 +132,7 @@ export function Hero() {
             <BrandMark size={32} />
             <div className="hero-brand__copy">
               <span className="hero-brand__name">Klarity</span>
-              <span className="hero-brand__label">Editorial Brand Intelligence</span>
+              <span className="hero-brand__label">Brand Intelligence</span>
             </div>
           </Link>
 
