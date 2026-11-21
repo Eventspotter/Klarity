@@ -1150,15 +1150,379 @@
   padding: 14px;
   scrollbar-width: thin;
 }
-.klarity-landing .styles-demo {
-  display: grid;
-  grid-template-columns: 320px minmax(0, 1fr);
-  gap: 16px;
-  max-width: 980px;
+/* Centerpiece Creator Studio Demo */
+.klarity-landing .creator-studio-demo {
+  max-width: 1080px;
   margin: 0 auto;
+  text-align: left;
 }
-.klarity-landing .sd-controls,
-.klarity-landing .sd-out,
+
+.klarity-landing .creator-studio-demo .specimen-desk-card {
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--line);
+}
+
+/* Authentic Line-by-Line Review Desk Demo */
+.klarity-landing .review-desk-demo {
+  max-width: 1040px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  text-align: left;
+}
+
+.klarity-landing .review-desk-demo__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 16px 22px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.klarity-landing .review-desk-demo__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.klarity-landing .review-desk-demo__eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.klarity-landing .review-desk-demo__title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+
+.klarity-landing .review-desk-demo__author {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+.klarity-landing .review-desk-demo__badges {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.klarity-landing .review-status-pill {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+}
+
+.klarity-landing .review-status-pill.is-warn {
+  background: #fef3c7;
+  color: #92400e;
+  border-color: #fde68a;
+}
+
+.klarity-landing .review-status-pill.is-good {
+  background: #dcfce7;
+  color: #166534;
+  border-color: #bbf7d0;
+}
+
+html.dark .klarity-landing .review-status-pill.is-warn,
+[data-theme="dark"] .klarity-landing .review-status-pill.is-warn {
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.35);
+}
+
+html.dark .klarity-landing .review-status-pill.is-good,
+[data-theme="dark"] .klarity-landing .review-status-pill.is-good {
+  background: rgba(52, 211, 153, 0.16);
+  color: #34d399;
+  border-color: rgba(52, 211, 153, 0.35);
+}
+
+.klarity-landing .review-score-pill {
+  font-family: var(--font-mono), monospace;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+  background: var(--cream-deep);
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+}
+
+.klarity-landing .review-desk-demo__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.12fr) minmax(320px, 0.88fr);
+  gap: 18px;
+}
+
+@media (max-width: 900px) {
+  .klarity-landing .review-desk-demo__grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.klarity-landing .rdesk-panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.klarity-landing .rdesk-issues-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.klarity-landing .rdesk-issue {
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.2s ease;
+}
+
+.klarity-landing .rdesk-issue.is-fixed {
+  opacity: 0.7;
+  border-color: var(--line-soft);
+  background: var(--soft);
+}
+
+.klarity-landing .rdesk-issue__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.klarity-landing .severity-tag {
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.klarity-landing .severity-tag--warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.klarity-landing .severity-tag--critical {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+html.dark .klarity-landing .severity-tag--warning,
+[data-theme="dark"] .klarity-landing .severity-tag--warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+
+html.dark .klarity-landing .severity-tag--critical,
+[data-theme="dark"] .klarity-landing .severity-tag--critical {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.klarity-landing .rdesk-issue__rule {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+.klarity-landing .rdesk-issue h4 {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0;
+}
+
+.klarity-landing .rdesk-issue p {
+  font-size: 12.5px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.klarity-landing .btn-apply-rule {
+  margin-top: 4px;
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.klarity-landing .btn-apply-rule:hover:not(:disabled) {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  transform: translateY(-1px);
+}
+
+.klarity-landing .btn-apply-rule:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
+.klarity-landing .rdesk-gate {
+  border-top: 1px dashed var(--line);
+  padding-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.klarity-landing .rdesk-gate__title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--faint);
+  letter-spacing: 0.05em;
+}
+
+.klarity-landing .rdesk-gate__buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.klarity-landing .gate-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 700;
+  border: 1px solid var(--line);
+  background: var(--paper-raised);
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.klarity-landing .gate-btn:hover {
+  transform: translateY(-1px);
+}
+
+.klarity-landing .gate-btn--approve.is-selected,
+.klarity-landing .gate-btn--approve:hover {
+  background: #166534;
+  color: #ffffff;
+  border-color: #166534;
+}
+
+.klarity-landing .gate-btn--request.is-selected,
+.klarity-landing .gate-btn--request:hover {
+  background: #b45309;
+  color: #ffffff;
+  border-color: #b45309;
+}
+
+.klarity-landing .gate-btn--reject.is-selected,
+.klarity-landing .gate-btn--reject:hover {
+  background: #991b1b;
+  color: #ffffff;
+  border-color: #991b1b;
+}
+
+.klarity-landing .rdesk-gate__note {
+  font-size: 11.5px;
+  color: var(--faint);
+  font-style: italic;
+  margin: 0;
+}
+
+.klarity-landing .rdesk-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.klarity-landing .rdesk-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.klarity-landing .rdesk-reset-btn:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.klarity-landing .rdesk-reset-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.klarity-landing .rdesk-open-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.klarity-landing .rdesk-open-link:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
+}
+
+.klarity-landing .hl--approved {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.14);
+  border-bottom: 2px solid #22c55e;
+  border-radius: 3px;
+  padding: 1px 4px;
+}
+
+html.dark .klarity-landing .hl--approved,
+[data-theme="dark"] .klarity-landing .hl--approved {
+  color: #4ade80;
+  background: rgba(34, 197, 94, 0.22);
+  border-bottom-color: #4ade80;
+}
+
 .klarity-landing .proj-files,
 .klarity-landing .proj-answer {
   background: var(--surface);
@@ -1166,68 +1530,6 @@
   border-radius: 18px;
   padding: 22px;
   box-shadow: var(--shadow-sm);
-}
-.klarity-landing .sd-label {
-  font-size: 10.5px;
-  color: var(--faint);
-  letter-spacing: 0.06em;
-  margin-bottom: 10px;
-}
-.klarity-landing .sd-label:not(:first-child) {
-  margin-top: 20px;
-}
-.klarity-landing .sd-brief {
-  font-family: var(--font-serif), serif;
-  font-style: italic;
-  font-size: 18px;
-  line-height: 1.35;
-}
-.klarity-landing .seg.big {
-  display: flex;
-  padding: 4px;
-  border-radius: 12px;
-  background: var(--cream-deep);
-}
-.klarity-landing .seg.big button {
-  position: relative;
-  flex: 1;
-  border: 0;
-  background: none;
-  padding: 8px 6px;
-  border-radius: 9px;
-  font-weight: 550;
-  color: var(--ink-2);
-}
-.klarity-landing .sd-out {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  background:
-    radial-gradient(80% 60% at 100% 0%, var(--sage-wash), transparent 70%), var(--surface);
-}
-.klarity-landing .sd-out-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-weight: 650;
-}
-.klarity-landing .sd-out-head span {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--accent-deep);
-}
-.klarity-landing .sd-out-head em {
-  font-style: normal;
-  font-size: 11px;
-  color: var(--faint);
-}
-.klarity-landing .sd-out p {
-  font-family: var(--font-serif), serif;
-  font-size: 22px;
-  line-height: 1.45;
-  letter-spacing: -0.01em;
-  color: var(--ink);
 }
 .klarity-landing .proj {
   display: grid;
@@ -1544,7 +1846,7 @@
   .klarity-landing .canvas {
     display: none;
   }
-  .klarity-landing .styles-demo,
+  .klarity-landing .review-desk-demo__grid,
   .klarity-landing .proj {
     grid-template-columns: 1fr;
   }
@@ -1552,9 +1854,6 @@
 @media (max-width: 760px) {
   .klarity-landing .tile-wide {
     grid-column: auto;
-  }
-  .klarity-landing .sd-out p {
-    font-size: 19px;
   }
 }
 .klarity-landing .hero::before {

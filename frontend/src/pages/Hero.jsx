@@ -7,15 +7,15 @@ import { BrandMark } from '../components/BrandMark'
 import { useApp } from '../context/AppContext'
 import { Contours, Typed, useReveal } from '../components/landing/HeroEffects'
 import { SlidingGroup, spring, useActiveSection } from '../components/landing/LandingPrimitives'
-import { KnowledgeDemo, ReviewDemo, UseCasesDemo, VoiceDemo } from '../components/landing/LandingDemos'
+import { CreatorStudioDemo, KnowledgeDemo, ReviewDeskDemo, UseCasesDemo } from '../components/landing/LandingDemos'
 import { faqs } from '../components/landing/landingData'
 import './hero.css'
 
 const links = [
-  { href: '#proof-desk', label: 'Review desk' },
-  { href: '#styles', label: 'Brand voice' },
-  { href: '#projects', label: 'Knowledge' },
-  { href: '#uses', label: 'How it works' },
+  { href: '#proof-desk', label: 'Creator studio' },
+  { href: '#review-desk', label: 'Review desk' },
+  { href: '#guidelines', label: 'Guidelines' },
+  { href: '#workflow', label: 'Workflows' },
   { href: '#faq', label: 'Questions' },
 ]
 const sections = links.map(link => link.href.slice(1))
@@ -114,8 +114,8 @@ export function Hero() {
           </div>
         </div>
         <div className="hero-app" id="proof-desk">
-          <ReviewDemo getPath={getPath} />
-          <p className="hint mono">INTERACTIVE DEMO · Choose a draft, apply a suggestion, and compare the copy. Fictional brand; pre-written results.</p>
+          <CreatorStudioDemo getPath={getPath} />
+          <p className="hint mono">AUTHENTIC PRODUCT SPECIMEN · Real pre-flight inspection and compliance index from the Klarity Creator Studio.</p>
         </div>
       </section>
 
@@ -124,19 +124,19 @@ export function Hero() {
         <div className="brand-checks">{[{ icon: BookOpenText, label: 'Voice & tone' }, { icon: ShieldCheck, label: 'Facts & claims' }, { icon: FileText, label: 'Terminology' }, { icon: Images, label: 'Visual identity' }, { icon: Users, label: 'Human approval' }].map(({ icon: Icon, label }) => <span key={label}><Icon size={18} />{label}</span>)}</div>
       </section>
 
-      <section className="section" id="styles">
-        <SectionHead eyebrow="BRAND VOICE" description="Catch the phrase that sounds off. Suggest one that sounds like you. Keep the idea that made the draft worth writing.">Same thought, <em>your voice.</em></SectionHead>
-        <VoiceDemo />
+      <section className="section" id="review-desk">
+        <SectionHead eyebrow="LINE-BY-LINE REVIEW" description="Once submitted, reviewers inspect every flagged phrase with guideline citations, severity ratings, and 1-click recommendations.">Shows its work, <em>every single line.</em></SectionHead>
+        <ReviewDeskDemo getPath={getPath} />
       </section>
 
-      <section className="section" id="projects">
+      <section className="section" id="guidelines">
         <SectionHead eyebrow="YOUR SOURCE OF TRUTH" description="Bring guidelines, approved facts, terminology, and visual standards into one place. Every review starts with the rules your team agreed on.">Good feedback starts with <em>shared knowledge.</em></SectionHead>
         <KnowledgeDemo />
-        <p className="fine">Select the example references to see how each one informs a review.</p>
+        <p className="fine">Select the example standards to see how each rule informs live pre-flight checks.</p>
       </section>
 
-      <section className="section" id="uses">
-        <SectionHead eyebrow="FROM DRAFT TO DECISION" description="See what was flagged, which guideline it relates to, and how to fix it. Then let the right person make the call.">Shows its work, <em>every time.</em></SectionHead>
+      <section className="section" id="workflow">
+        <SectionHead eyebrow="FROM DRAFT TO DECISION" description="See what was flagged, which guideline it relates to, and how to fix it. Then let the right person make the call.">Complete audit trails, <em>human decisions.</em></SectionHead>
         <UseCasesDemo />
       </section>
 
