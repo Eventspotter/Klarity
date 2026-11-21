@@ -126,7 +126,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## Architecture
+## 🏗️Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -231,7 +231,7 @@ cd frontend && npm run build
 
 ---
 
-## Evaluation Profiles
+## 🧑‍⚖️Evaluation Profiles
 
 For rapid evaluation, the login page (`/login`) includes 1-click profiles with password `klarity`:
 
@@ -243,7 +243,7 @@ For rapid evaluation, the login page (`/login`) includes 1-click profiles with p
 
 ---
 
-## Team
+## 👥Team
 
 **Team Name:** localhost:5000
 
