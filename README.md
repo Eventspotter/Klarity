@@ -182,7 +182,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## Local Development
+## 💻Local Development
 
 ### Prerequisites
 - Python 3.11+
