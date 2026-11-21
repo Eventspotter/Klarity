@@ -18,7 +18,7 @@
 
 ---
 
-## The Problem
+## 🔍The Problem
 
 Modern organizations publish content across distributed teams, external agencies, and AI generators. Without centralized governance, messaging diverges, visual standards slip, and unverified claims create brand and compliance risks.
 
@@ -32,7 +32,7 @@ Modern organizations publish content across distributed teams, external agencies
 
 ---
 
-## The Solution
+## 💡The Solution
 
 Klarity acts as an intelligent brand control center. Content is validated in real time against approved guidelines, verified facts, and design tokens. Rather than just rejecting drafts, Klarity flags specific deviations, links to supporting guidelines, and provides contextual corrections that preserve the author's intent.
 
