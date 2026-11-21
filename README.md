@@ -2,6 +2,18 @@
 
 > *Every piece of content. One clear brand identity.*
 
+<p align="left">
+  <a href="https://python.org"><img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white" alt="Python 3.12" /></a>
+  <a href="https://fastapi.tiangolo.com"><img src="https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+  <a href="https://react.dev"><img src="https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black" alt="React 18" /></a>
+  <a href="https://vitejs.dev"><img src="https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white" alt="Vite" /></a>
+  <a href="https://postgresql.org"><img src="https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white" alt="PostgreSQL" /></a>
+  <a href="https://sqlite.org"><img src="https://img.shields.io/badge/SQLite-Local-003B57?style=flat&logo=sqlite&logoColor=white" alt="SQLite" /></a>
+  <a href="https://render.com"><img src="https://img.shields.io/badge/Render-Deployed-46E3B7?style=flat&logo=render&logoColor=white" alt="Render" /></a>
+  <a href="https://github.com/Eventspotter/Klarity"><img src="https://img.shields.io/badge/Tests-11%20Passed-brightgreen?style=flat&logo=pytest&logoColor=white" alt="Tests" /></a>
+  <a href="https://github.com/Eventspotter/Klarity"><img src="https://img.shields.io/badge/Security-BotShield%20%2B%20PBKDF2-blueviolet?style=flat&logo=auth0&logoColor=white" alt="Security" /></a>
+</p>
+
 **Klarity** is an AI-powered brand consistency and governance platform that ensures organizational content stays on-brand, accurate, and compliant across all channels before publication.
 
 ---
@@ -102,15 +114,15 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ## Tech Stack
 
-| Layer | Technology | Details |
+| Layer | Stack | Details |
 |---|---|---|
-| **Frontend** | React 18, Vite | Modular single-page application built with custom hooks and context state |
-| **Styling & Motion** | CSS Design Tokens, Motion, GSAP | System design variables, responsive fluid layouts, and micro-interactions |
-| **UI Components** | Lucide React, React Day Picker | Accessible iconography and custom calendar date selection |
-| **Backend** | Python 3.12, FastAPI, Uvicorn | Asynchronous REST API with Pydantic v2 schemas and request validation |
-| **Database & ORM** | PostgreSQL, SQLite, SQLAlchemy 2.0 | PostgreSQL for production on Render; SQLite for zero-config local development |
-| **Security & Auth** | PBKDF2-SHA256, HTTP-only Cookies | Salted password hashing, revocable server-side sessions, CORS, and BotShield |
-| **Deployment** | Render, Webhooks | Cloud API hosting and static frontend delivery with automated webhook CI/CD |
+| **Frontend Framework** | [![React](https://img.shields.io/badge/React-18.3-61DAFB?style=flat&logo=react&logoColor=black)](https://react.dev) [![Vite](https://img.shields.io/badge/Vite-5.4-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev) [![React Router](https://img.shields.io/badge/React_Router-v6-CA4245?style=flat&logo=react-router&logoColor=white)](https://reactrouter.com) | Modular single-page application built with custom hooks and context state |
+| **Styling & Motion** | [![CSS3](https://img.shields.io/badge/CSS3-Design_Tokens-1572B6?style=flat&logo=css3&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/CSS) [![Motion](https://img.shields.io/badge/Motion-Framer-0055FF?style=flat&logo=framer&logoColor=white)](https://motion.dev) [![GSAP](https://img.shields.io/badge/GSAP-3.15-88CE02?style=flat&logo=greensock&logoColor=white)](https://greensock.com) | System design variables, responsive fluid layouts, and micro-interactions |
+| **UI Components** | [![Lucide](https://img.shields.io/badge/Lucide-Icons-F56565?style=flat&logo=feather&logoColor=white)](https://lucide.dev) [![React Day Picker](https://img.shields.io/badge/React_Day_Picker-v10-blue?style=flat)](https://daypicker.dev) | Accessible iconography and custom calendar date selection |
+| **Backend & API** | [![Python](https://img.shields.io/badge/Python-3.12-3776AB?style=flat&logo=python&logoColor=white)](https://python.org) [![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com) [![Pydantic](https://img.shields.io/badge/Pydantic-v2-E92063?style=flat&logo=pydantic&logoColor=white)](https://docs.pydantic.dev) [![Uvicorn](https://img.shields.io/badge/Uvicorn-ASGI-499848?style=flat&logo=python&logoColor=white)](https://www.uvicorn.org) | Asynchronous REST API with Pydantic v2 schemas and request validation |
+| **Database & ORM** | [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://postgresql.org) [![SQLite](https://img.shields.io/badge/SQLite-Local-003B57?style=flat&logo=sqlite&logoColor=white)](https://sqlite.org) [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-D71F00?style=flat&logo=sqlalchemy&logoColor=white)](https://www.sqlalchemy.org) | PostgreSQL for production on Render; SQLite for zero-config local development |
+| **Security & Auth** | [![PBKDF2](https://img.shields.io/badge/PBKDF2-SHA256-555555?style=flat&logo=lock&logoColor=white)](https://en.wikipedia.org/wiki/PBKDF2) [![Cookies](https://img.shields.io/badge/Cookies-HTTP--Only-blue?style=flat&logo=cookie&logoColor=white)](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies) [![BotShield](https://img.shields.io/badge/BotShield-Active-success?style=flat&logo=guard&logoColor=white)](https://github.com/Eventspotter/Klarity) | Salted password hashing, revocable server-side sessions, CORS, and BotShield |
+| **Deployment & CI/CD** | [![Render](https://img.shields.io/badge/Render-Hosted-46E3B7?style=flat&logo=render&logoColor=white)](https://render.com) [![Webhooks](https://img.shields.io/badge/Webhooks-Continuous_Deploy-2088FF?style=flat&logo=github-actions&logoColor=white)](https://render.com) | Cloud API hosting and static frontend delivery with automated webhook CI/CD |
 
 ---
 
