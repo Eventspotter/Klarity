@@ -329,6 +329,12 @@ export function TopPerformersCard({
               </div>
             </div>
 
+            <div className="forge-compare-rank-input is-baseline">
+              <span className="forge-compare-rank-label">Benchmark rank</span>
+              <span className="forge-compare-rank-field is-static">1</span>
+              <small className="forge-compare-rank-hint">Top Guideline Champion</small>
+            </div>
+
             <div className="forge-compare-stats-grid">
               <div className="forge-compare-stat">
                 <span className="forge-compare-stat-lbl">Average Score</span>

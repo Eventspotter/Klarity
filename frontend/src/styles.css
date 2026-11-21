@@ -15813,9 +15813,9 @@ html.dark .btn-mode-tab.is-active,
 /* Compare Mode (Side-by-Side) */
 .forge-compare-body {
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   gap: 16px;
-  align-items: center;
+  align-items: stretch;
   position: relative;
   z-index: 1;
 }
@@ -15828,6 +15828,8 @@ html.dark .btn-mode-tab.is-active,
   display: flex;
   flex-direction: column;
   gap: 16px;
+  height: 100%;
+  box-sizing: border-box;
 }
 
 .forge-compare-head {
@@ -15859,11 +15861,12 @@ html.dark .btn-mode-tab.is-active,
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  margin-bottom: 8px;
+  min-height: 46px;
+  box-sizing: border-box;
   background: var(--paper-raised);
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 .forge-compare-rank-label {
   font-size: 12px;
@@ -15872,8 +15875,10 @@ html.dark .btn-mode-tab.is-active,
   white-space: nowrap;
 }
 .forge-compare-rank-field {
-  width: 60px;
-  padding: 4px 8px;
+  width: 54px;
+  height: 28px;
+  line-height: 26px;
+  padding: 0 8px;
   font-size: 14px;
   font-weight: 700;
   text-align: center;
@@ -15882,16 +15887,28 @@ html.dark .btn-mode-tab.is-active,
   background: var(--paper);
   color: var(--ink);
   outline: none;
+  box-sizing: border-box;
   transition: border-color 0.15s, box-shadow 0.15s;
 }
 .forge-compare-rank-field:focus {
   border-color: var(--klarity-blue, #298EE4);
   box-shadow: 0 0 0 2px rgba(41, 142, 228, 0.18);
 }
+.forge-compare-rank-field.is-static {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(41, 142, 228, 0.08);
+  border-color: rgba(41, 142, 228, 0.35);
+  color: var(--klarity-blue, #298EE4);
+  cursor: default;
+  user-select: none;
+}
 .forge-compare-rank-hint {
   font-size: 11px;
   color: var(--ink-soft);
   margin-left: auto;
+  white-space: nowrap;
 }
 
 .forge-compare-stat {
