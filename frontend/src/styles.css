@@ -1293,6 +1293,13 @@ ol {
   opacity: 0.52;
 }
 
+.btn > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: normal;
+}
+
 .btn--sm {
   height: 34px;
   padding: 0 12px;

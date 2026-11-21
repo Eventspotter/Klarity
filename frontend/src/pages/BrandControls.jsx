@@ -30,6 +30,7 @@ import { Avatar, Button, Drawer, Field, Panel, SectionHead, Select } from '../co
 import { api } from '../lib/api'
 import { cx } from '../lib/utils'
 import { animateSlidingPill } from '../lib/animations'
+import WakeSlider from '../components/WakeSlider'
 
 const getSettingsKey = (name) => `klarity.settings.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
 const getTeamKey = (name) => `klarity.team_roster.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
@@ -783,23 +784,35 @@ export function BrandControls() {
                   htmlFor="ctrl-brand-code"
                   hint="Unique workspace code shared with incoming team members and reviewers upon registration. Fully editable."
                 >
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input
                       id="ctrl-brand-code"
                       className="brand-code-input"
                       value={brandMeta.brand_code}
                       disabled={!isOwner}
                       onChange={(e) => updateBrandMeta('brand_code', e.target.value.toUpperCase())}
-                      style={!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : undefined}
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        ...(!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : {}),
+                      }}
                       placeholder="e.g. GNR-2026"
                     />
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
-                      icon={Copy}
                       onClick={copyBrandCode}
                       title="Copy code"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        lineHeight: 'normal',
+                        padding: '0 16px',
+                        flexShrink: 0,
+                      }}
                     >
                       Copy
                     </Button>
@@ -808,9 +821,17 @@ export function BrandControls() {
                         type="button"
                         variant="secondary"
                         size="sm"
-                        icon={Sparkles}
                         onClick={generateNewCode}
                         title="Generate a new unique brand code"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textAlign: 'center',
+                          lineHeight: 'normal',
+                          padding: '0 16px',
+                          flexShrink: 0,
+                        }}
                       >
                         Generate
                       </Button>
@@ -923,16 +944,24 @@ export function BrandControls() {
                 }
               >
                 <div className="threshold-field">
-                  <input
-                    id="workspace-threshold"
-                    type="range"
-                    min="60"
-                    max="95"
-                    disabled={!isLead}
-                    value={settings.threshold}
-                    onChange={(event) => updateSetting('threshold', event.target.value)}
-                    style={!isLead ? { cursor: 'not-allowed', opacity: 0.7 } : undefined}
-                  />
+                  <div style={{ flex: 1, minWidth: 200, maxWidth: 360 }}>
+                    <WakeSlider
+                      value={Number(settings.threshold) || 85}
+                      min={60}
+                      max={95}
+                      step={1}
+                      bars={28}
+                      height={36}
+                      restHeight={8}
+                      gap={3}
+                      fillColor="var(--sage, #298EE4)"
+                      trackColor="rgba(41, 142, 228, 0.15)"
+                      disabled={!isLead}
+                      readOnly={!isLead}
+                      onChange={(val) => updateSetting('threshold', String(Math.round(val)))}
+                      ariaLabel="Publish Clearance Threshold"
+                    />
+                  </div>
                   <span>
                     <strong>{settings.threshold}</strong>
                     <small>/100</small>
