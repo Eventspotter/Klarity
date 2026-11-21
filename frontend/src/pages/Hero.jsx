@@ -24,11 +24,13 @@ import { useApp } from '../context/AppContext'
 
 export function Hero() {
   const navigate = useNavigate()
-  const { theme, toggleTheme } = useApp()
+  const { user, theme, toggleTheme } = useApp()
   const heroRef = useRef(null)
   const [applied, setApplied] = useState(false)
   const [scoreDisplay, setScoreDisplay] = useState(84)
   const scoreObj = useRef({ val: 84 })
+
+  const getPath = (route) => (user ? route : `/login?redirect=${encodeURIComponent(route)}`)
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -137,8 +139,8 @@ export function Hero() {
           <nav className="hero-nav__links">
             <a href="#proof-desk">Review Desk</a>
             <a href="#pillars">Architecture</a>
-            <Link to="/guidelines">Guidelines</Link>
-            <Link to="/assets">Assets</Link>
+            <Link to={getPath('/guidelines')}>Guidelines</Link>
+            <Link to={getPath('/assets')}>Assets</Link>
           </nav>
 
           <div className="hero-nav__actions">
@@ -151,7 +153,7 @@ export function Hero() {
             >
               {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
-            <Link to="/reviews" className="hero-btn hero-btn--sm hero-btn--primary">
+            <Link to={getPath('/reviews')} className="hero-btn hero-btn--sm hero-btn--primary">
               <span>Open Workspace</span>
               <ArrowRight size={14} />
             </Link>
@@ -177,7 +179,7 @@ export function Hero() {
               <span>Inspect Live Proof Desk</span>
               <ArrowRight size={16} />
             </a>
-            <Link to="/guidelines" className="hero-btn hero-btn--lg hero-btn--secondary">
+            <Link to={getPath('/guidelines')} className="hero-btn hero-btn--lg hero-btn--secondary">
               <BookOpen size={16} />
               <span>Explore Guidelines</span>
             </Link>
@@ -352,7 +354,7 @@ export function Hero() {
                   </div>
                 </div>
 
-                <Link to="/reviews" className="hero-plate__cta">
+                <Link to={getPath('/reviews')} className="hero-plate__cta">
                   <span>Open Full Review Desk</span>
                   <ChevronRight size={15} />
                 </Link>
@@ -384,7 +386,7 @@ export function Hero() {
                 Define tone parameters, banned jargon, approved phrasing, and mandatory legal disclosures.
                 When guidelines evolve, every desk and automated check updates instantly.
               </p>
-              <Link to="/guidelines" className="hero-pillar-link">
+              <Link to={getPath('/guidelines')} className="hero-pillar-link">
                 <span>View Guidelines Spec</span>
                 <ArrowRight size={14} />
               </Link>
@@ -399,7 +401,7 @@ export function Hero() {
                 Triage submitted campaign copy, press plates, and website launches. Automated scans highlight
                 unsubstantiated claims and voice drift with clear rationale and replacement suggestions.
               </p>
-              <Link to="/reviews" className="hero-pillar-link">
+              <Link to={getPath('/reviews')} className="hero-pillar-link">
                 <span>Explore Review Queue</span>
                 <ArrowRight size={14} />
               </Link>
@@ -414,7 +416,7 @@ export function Hero() {
                 Verify color hex codes, SVG typography marks, and campaign templates against single-source tokens.
                 Eliminates stale logos and unapproved palette variations across channels.
               </p>
-              <Link to="/assets" className="hero-pillar-link">
+              <Link to={getPath('/assets')} className="hero-pillar-link">
                 <span>Inspect Asset Tokens</span>
                 <ArrowRight size={14} />
               </Link>
@@ -434,11 +436,11 @@ export function Hero() {
               maintain editorial excellence.
             </p>
             <div className="hero-cta-buttons">
-              <Link to="/reviews" className="hero-btn hero-btn--lg hero-btn--primary">
+              <Link to={getPath('/reviews')} className="hero-btn hero-btn--lg hero-btn--primary">
                 <span>Open Review Desk</span>
                 <ArrowRight size={16} />
               </Link>
-              <Link to="/guidelines" className="hero-btn hero-btn--lg hero-btn--secondary">
+              <Link to={getPath('/guidelines')} className="hero-btn hero-btn--lg hero-btn--secondary">
                 <span>Browse Guidelines</span>
               </Link>
             </div>
@@ -456,10 +458,10 @@ export function Hero() {
             <small>© 2026 Klarity. Archival brand governance.</small>
           </div>
           <div className="hero-footer__links">
-            <Link to="/reviews">Reviews</Link>
-            <Link to="/guidelines">Guidelines</Link>
-            <Link to="/assets">Assets</Link>
-            <Link to="/calendar">Calendar</Link>
+            <Link to={getPath('/reviews')}>Reviews</Link>
+            <Link to={getPath('/guidelines')}>Guidelines</Link>
+            <Link to={getPath('/assets')}>Assets</Link>
+            <Link to={getPath('/calendar')}>Calendar</Link>
             <Link to="/login">Sign In</Link>
           </div>
         </div>

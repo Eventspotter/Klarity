@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useLocation } from 'react-router-dom'
 import {
   ArrowLeft,
   ArrowRight,
@@ -23,6 +23,7 @@ import { api } from '../lib/api'
 
 export function Login() {
   const { user, data, authenticate } = useApp()
+  const location = useLocation()
   const [register, setRegister] = useState(false)
   const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
   const [forgotEmail, setForgotEmail] = useState('')
@@ -47,13 +48,41 @@ export function Login() {
   const [pendingNotice, setPendingNotice] = useState(false)
   const [availableBrands, setAvailableBrands] = useState([])
 
+  const redirectParam = new URLSearchParams(location.search).get('redirect')
+  const fromState = location.state?.from
+  const rawTarget = redirectParam || (typeof fromState === 'object' ? `${fromState.pathname || ''}${fromState.search || ''}${fromState.hash || ''}` : fromState)
+
+  useEffect(() => {
+    if (rawTarget && rawTarget !== '/login' && rawTarget !== '/hero') {
+      try {
+        sessionStorage.setItem('klarity_redirect', rawTarget)
+      } catch {}
+    }
+  }, [rawTarget])
+
+  const getDestination = () => {
+    let target = rawTarget
+    if (!target || target === '/login' || target === '/hero') {
+      try {
+        target = sessionStorage.getItem('klarity_redirect')
+      } catch {}
+    }
+    if (target && target !== '/login' && target !== '/hero') {
+      try {
+        sessionStorage.removeItem('klarity_redirect')
+      } catch {}
+      return target
+    }
+    return '/'
+  }
+
   useEffect(() => {
     api.listBrands().then(res => {
       if (res?.brands) setAvailableBrands(res.brands)
     }).catch(() => {})
   }, [])
 
-  if (user && data) return <Navigate to="/" replace />
+  if (user && data) return <Navigate to={getDestination()} replace />
 
   const isAdmin = role === 'owner'
 

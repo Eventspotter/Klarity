@@ -264,7 +264,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                 <button onClick={() => { setOpenMenu(null); navigate('/hero') }}>
                   <Sparkles size={15} /> Product overview
                 </button>
-                <button onClick={async () => { try { await logout(); setOpenMenu(null); navigate('/login') } catch (error) { toast(error.message, 'warn') } }}>
+                <button onClick={async () => { try { sessionStorage.removeItem('klarity_redirect'); await logout(); setOpenMenu(null); navigate('/login') } catch (error) { toast(error.message, 'warn') } }}>
                   <LogOut size={15} /> Sign out
                 </button>
                 <div className="popover__meta">

@@ -125,7 +125,14 @@ function AppShell() {
   }
 
   if (loading) return <LoadingScreen />
-  if (!user) return <Navigate to="/login" replace />
+  if (!user) {
+    const fromPath = `${location.pathname}${location.search || ''}${location.hash || ''}`
+    const isTargetSafe = fromPath && fromPath !== '/' && fromPath !== '/hero' && fromPath !== '/login'
+    const loginTarget = isTargetSafe
+      ? `/login?redirect=${encodeURIComponent(fromPath)}`
+      : '/login'
+    return <Navigate to={loginTarget} state={{ from: location }} replace />
+  }
   if (!data) return <div className="loading-screen"><p>Workspace unavailable.</p><button onClick={() => refresh().catch(() => {})}>Try again</button></div>
 
   return (
