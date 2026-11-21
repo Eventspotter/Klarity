@@ -29,10 +29,10 @@ const DEMO_PROFILES = [
     password: 'klarity',
     name: 'Elena Vance',
     brand: 'Aster & Oak',
-    roleTag: 'Executive Admin',
+    roleTag: 'Admin',
     icon: Crown,
     color: '#d97706',
-    desc: 'Executive brand governance, guidelines & rules, design tokens, team rosters & approvals.',
+    desc: 'Full brand governance, rules, tokens & team approvals.',
   },
   {
     key: 'reviewer',
@@ -41,10 +41,10 @@ const DEMO_PROFILES = [
     password: 'klarity',
     name: 'Marcus Chen',
     brand: 'Aster & Oak',
-    roleTag: 'Editorial Auditor',
+    roleTag: 'Auditor',
     icon: FileCheck2,
     color: '#0284c7',
-    desc: 'Review desk, brand compliance audits, queue inspection, and approve / request changes.',
+    desc: 'Editorial review desk, compliance audits & decisions.',
   },
   {
     key: 'member',
@@ -53,10 +53,10 @@ const DEMO_PROFILES = [
     password: 'klarity',
     name: 'Maya Iyer',
     brand: 'Aster & Oak',
-    roleTag: 'Creator Studio',
+    roleTag: 'Creator',
     icon: User,
     color: '#059669',
-    desc: 'Creator Studio drafting, real-time AST pre-flight checks, and personal submissions.',
+    desc: 'Creator Studio, live AST pre-flight checks & drafting.',
   },
 ]
 
@@ -591,61 +591,64 @@ export function Login() {
             )}
 
             {!register && (
-              <div className="login-demo-panel">
-                <div className="login-demo-header">
-                  <div className="login-demo-badge">
-                    <Sparkles size={13} className="login-demo-sparkle" />
-                    <span>Hackathon Judge Demo Profiles</span>
+              <>
+                <div className="login-demo-panel">
+                  <div className="login-demo-header">
+                    <div className="login-demo-badge">
+                      <Sparkles size={13} className="login-demo-sparkle" />
+                      <span>Hackathon Judge Demo Profiles</span>
+                    </div>
+                    <span className="login-demo-brand-tag">Aster &amp; Oak · KLARITY-2026</span>
                   </div>
-                  <span className="login-demo-brand-tag">Aster &amp; Oak · KLARITY-2026</span>
-                </div>
 
-                <p className="login-demo-desc">
-                  Select a pre-configured role below to log in instantly with 1-click and evaluate role-specific workspace capabilities:
-                </p>
+                  <p className="login-demo-desc">
+                    Choose an evaluation profile to explore role-specific permissions and live features with 1 click:
+                  </p>
 
-                <div className="login-demo-cards">
-                  {DEMO_PROFILES.map((p) => {
-                    const Icon = p.icon
-                    const isSelected = email === p.email
-                    const isCurrentLogging = quickLogging === p.key
-                    return (
-                      <button
-                        key={p.key}
-                        type="button"
-                        className={`login-demo-card ${isSelected ? 'is-selected' : ''}`}
-                        onClick={() => handleDemoSelect(p, true)}
-                        disabled={busy}
-                        title={`1-Click login as ${p.title} (${p.email})`}
-                      >
-                        <div className="login-demo-card__head">
-                          <span className="login-demo-card__icon" style={{ color: p.color, background: `${p.color}18` }}>
-                            <Icon size={14} />
-                          </span>
-                          <span className="login-demo-card__tag" style={{ color: p.color, borderColor: `${p.color}35` }}>
-                            {p.roleTag}
-                          </span>
-                        </div>
-                        <strong className="login-demo-card__title">{p.title}</strong>
-                        <span className="login-demo-card__name">{p.name}</span>
-                        <p className="login-demo-card__desc">{p.desc}</p>
-                        <div className="login-demo-card__cta" style={{ color: p.color }}>
-                          <span>{isCurrentLogging ? 'Signing in…' : '1-Click Sign In'}</span>
-                          <ArrowRight size={11} />
-                        </div>
-                      </button>
-                    )
-                  })}
-                </div>
+                  <div className="login-demo-cards">
+                    {DEMO_PROFILES.map((p) => {
+                      const Icon = p.icon
+                      const isSelected = email === p.email
+                      const isCurrentLogging = quickLogging === p.key
+                      return (
+                        <button
+                          key={p.key}
+                          type="button"
+                          className={`login-demo-card ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => handleDemoSelect(p, true)}
+                          disabled={busy}
+                          title={`1-Click login as ${p.title} (${p.email})`}
+                        >
+                          <div className="login-demo-card__head">
+                            <span className="login-demo-card__icon" style={{ color: p.color, background: `${p.color}15` }}>
+                              <Icon size={14} />
+                            </span>
+                            <span className="login-demo-card__tag" style={{ color: p.color, borderColor: `${p.color}35`, background: `${p.color}10` }}>
+                              {p.roleTag}
+                            </span>
+                          </div>
+                          <strong className="login-demo-card__title">{p.title}</strong>
+                          <span className="login-demo-card__name">{p.name}</span>
+                          <p className="login-demo-card__desc">{p.desc}</p>
+                          <div className="login-demo-card__cta" style={{ color: p.color, borderColor: `${p.color}30`, background: `${p.color}0d` }}>
+                            <span>{isCurrentLogging ? 'Signing in…' : '1-Click Sign In'}</span>
+                            <ArrowRight size={11} />
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
 
-                <div className="login-demo-footer">
-                  <span>Pre-authenticated Aster &amp; Oak workspace · Password: <code>klarity</code></span>
+                  <div className="login-demo-footer">
+                    <span>Pre-authenticated Aster &amp; Oak workspace</span>
+                    <span>Password: <code>klarity</code></span>
+                  </div>
                 </div>
 
                 <div className="login-demo-divider">
                   <span>or enter credentials manually</span>
                 </div>
-              </div>
+              </>
             )}
 
             <div className="login-field">
