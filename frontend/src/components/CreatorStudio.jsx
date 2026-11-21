@@ -33,21 +33,18 @@ const getPresetDrafts = (brandName = 'Brand') => ({
   spring: {
     id: 'spring',
     title: `${brandName} · Collection Launch Plate`,
-    channel: 'Web Editorial · v1.4',
     content:
       `${brandName} creates thoughtful designs with an organic aesthetic. Our new collection delivers seamless craftsmanship across both digital and physical living environments.\n\nEvery piece is crafted in small batches to maintain eco-friendly integrity without compromise.`,
   },
   clean: {
     id: 'clean',
     title: `${brandName} Care & Standards Primer`,
-    channel: 'Customer Knowledge · v2.0',
     content:
       `We craft every ${brandName} piece in small batches from high-grade materials. Each piece is finished slowly to achieve a durable, tactile finish that deepens with daily rituals.\n\nOur products are inspected by hand to ensure longevity and quality.`,
   },
   blank: {
     id: 'blank',
     title: '',
-    channel: 'Web Editorial · v1.0',
     content: '',
   },
 })
@@ -59,7 +56,6 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
   const PRESET_DRAFTS = useMemo(() => getPresetDrafts(bName), [bName])
 
   const [draftTitle, setDraftTitle] = useState('')
-  const [channel, setChannel] = useState('Web Editorial · v1.0')
   const [draftText, setDraftText] = useState('')
   const [viewMode, setViewMode] = useState('write') // 'write' (live textarea) | 'specimen' (highlight view)
   const [submitting, setSubmitting] = useState(false)
@@ -160,7 +156,6 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
     const preset = PRESET_DRAFTS[key]
     if (!preset) return
     setDraftTitle(preset.title)
-    setChannel(preset.channel)
     setDraftText(preset.content)
     toast?.(key === 'blank' ? 'Started a blank draft document.' : `Loaded template: ${preset.title}`, 'info')
   }
@@ -328,7 +323,6 @@ export function CreatorStudio({ submissions = [], onNewReview, toast }) {
               onChange={(e) => setDraftTitle(e.target.value)}
               placeholder="Give your draft piece a title..."
             />
-            <span className="specimen-version-tag">{channel}</span>
           </div>
           <div className="specimen-desk-card__top-actions">
             <Button
