@@ -3516,8 +3516,9 @@ kbd {
   transition: transform 180ms ease, color 150ms ease;
 }
 
-/* Periodic realistic ringing chime animation */
-.topbar__notifications-btn:not(:hover) .bell-icon {
+/* Periodic realistic ringing chime animation only when unread notifications exist */
+.topbar__notifications-btn.has-indicator:not(:hover) .bell-icon,
+.topbar__notifications-btn.has-unread:not(:hover) .bell-icon {
   animation: bellRing 5.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
 }
 
