@@ -117,11 +117,6 @@ export function Hero() {
         </div>
       </section>
 
-      <section className="teams" aria-label="Brand checks">
-        <p>One clear standard, from the first draft to the final decision.</p>
-        <div className="brand-checks">{[{ icon: BookOpenText, label: 'Voice & tone' }, { icon: ShieldCheck, label: 'Facts & claims' }, { icon: FileText, label: 'Terminology' }, { icon: Images, label: 'Visual identity' }, { icon: Users, label: 'Human approval' }].map(({ icon: Icon, label }) => <span key={label}><Icon size={18} />{label}</span>)}</div>
-      </section>
-
       <section className="section" id="review-desk">
         <SectionHead eyebrow="LINE-BY-LINE REVIEW" description="Once submitted, reviewers inspect every flagged phrase with guideline citations, severity ratings, and 1-click recommendations.">Shows its work, <em>every single line.</em></SectionHead>
         <ReviewDeskDemo getPath={getPath} />
