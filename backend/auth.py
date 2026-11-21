@@ -119,12 +119,8 @@ def seed_test_account():
             ashwik.brand_name = "Aster & Oak"
             ashwik.is_demo = True
 
-        sunless = db.query(Account).filter_by(username="sunless").first()
-        if not sunless:
-            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="reviewer", brand_name="Aster & Oak", is_demo=True))
-        else:
-            sunless.brand_name = "Aster & Oak"
-            sunless.is_demo = True
+        # Ensure only ashwik exists as the seeded default account
+        # Other accounts (e.g. sunless or test accounts) should not be automatically re-created
 
         # Seed brands
         default_brands = [
