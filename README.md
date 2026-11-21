@@ -45,7 +45,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## Key Differentiators
+## ✨Key Differentiators
 
 - **Evidence-Based Validation** — Every flagged issue cites a specific approved guideline or authoritative source.
 - **Context-Aware Corrections** — Targeted suggestions resolve specific issues rather than generic content rewriting.
@@ -55,7 +55,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## Implemented Features
+## 🚀Implemented Features
 
 ### 1. Creator Studio
 - Real-time pre-flight analysis with live compliance score (0–100) calculated as content is drafted.
