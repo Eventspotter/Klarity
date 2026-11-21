@@ -1162,6 +1162,145 @@
   border: 1px solid var(--line);
 }
 
+/* Button Visibility & Contrast Fixes for Creator Studio & Review Desk */
+.klarity-landing .btn-full-dark,
+.klarity-landing a.btn-full-dark,
+.klarity-landing button.btn-full-dark {
+  background: var(--ink, #20150f) !important;
+  color: #ffffff !important;
+  border-color: var(--ink, #20150f) !important;
+}
+
+.klarity-landing .btn-full-dark:hover,
+.klarity-landing a.btn-full-dark:hover,
+.klarity-landing button.btn-full-dark:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.klarity-landing .btn-full-dark svg,
+.klarity-landing a.btn-full-dark svg,
+.klarity-landing button.btn-full-dark svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.klarity-landing .chip-fix--all,
+.klarity-landing button.chip-fix--all {
+  background: var(--ink, #20150f) !important;
+  color: #ffffff !important;
+  border-color: var(--ink, #20150f) !important;
+}
+
+.klarity-landing .chip-fix--all:hover,
+.klarity-landing button.chip-fix--all:hover {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+.klarity-landing .chip-fix--ai,
+.klarity-landing button.chip-fix--ai,
+.klarity-landing .btn-ai-rewrite-inline,
+.klarity-landing button.btn-ai-rewrite-inline {
+  background: #3b28cc !important;
+  color: #ffffff !important;
+  border-color: #3121aa !important;
+}
+
+.klarity-landing .chip-fix--ai svg,
+.klarity-landing button.chip-fix--ai svg,
+.klarity-landing .btn-ai-rewrite-inline svg,
+.klarity-landing button.btn-ai-rewrite-inline svg {
+  color: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.klarity-landing .chip-fix--ai:hover:not(:disabled),
+.klarity-landing button.chip-fix--ai:hover:not(:disabled),
+.klarity-landing .btn-ai-rewrite-inline:hover:not(:disabled),
+.klarity-landing button.btn-ai-rewrite-inline:hover:not(:disabled) {
+  background: #2d1fa3 !important;
+  color: #ffffff !important;
+}
+
+.klarity-landing .btn-preset.is-active,
+.klarity-landing button.btn-preset.is-active {
+  background: var(--ink, #20150f) !important;
+  color: #ffffff !important;
+  border-color: var(--ink, #20150f) !important;
+}
+
+.klarity-landing .btn-preset,
+.klarity-landing button.btn-preset {
+  color: var(--ink-soft);
+}
+
+.klarity-landing .chip-fix,
+.klarity-landing button.chip-fix {
+  color: var(--ink-soft);
+}
+
+.klarity-landing .btn-full-secondary,
+.klarity-landing a.btn-full-secondary,
+.klarity-landing button.btn-full-secondary {
+  color: var(--ink) !important;
+  background: var(--paper-raised, #fffdf8) !important;
+  border: 1px solid var(--line-strong, #d2c8b4) !important;
+}
+
+.klarity-landing .btn-full-secondary svg,
+.klarity-landing a.btn-full-secondary svg,
+.klarity-landing button.btn-full-secondary svg {
+  color: var(--ink) !important;
+}
+
+/* Dark mode button contrast */
+html.dark .klarity-landing .btn-full-dark,
+[data-theme="dark"] .klarity-landing .btn-full-dark,
+html.dark .klarity-landing a.btn-full-dark,
+[data-theme="dark"] .klarity-landing a.btn-full-dark,
+html.dark .klarity-landing .chip-fix--all,
+[data-theme="dark"] .klarity-landing .chip-fix--all {
+  background: var(--sage-deep, #0284c7) !important;
+  color: #ffffff !important;
+  border-color: var(--sage, #38bdf8) !important;
+}
+
+html.dark .klarity-landing .btn-full-dark:hover,
+[data-theme="dark"] .klarity-landing .btn-full-dark:hover,
+html.dark .klarity-landing a.btn-full-dark:hover,
+[data-theme="dark"] .klarity-landing a.btn-full-dark:hover,
+html.dark .klarity-landing .chip-fix--all:hover,
+[data-theme="dark"] .klarity-landing .chip-fix--all:hover {
+  background: var(--sage-strong, #0ea5e9) !important;
+  color: #ffffff !important;
+}
+
+html.dark .klarity-landing .chip-fix--ai,
+[data-theme="dark"] .klarity-landing .chip-fix--ai,
+html.dark .klarity-landing .btn-ai-rewrite-inline,
+[data-theme="dark"] .klarity-landing .btn-ai-rewrite-inline {
+  background: #4f46e5 !important;
+  color: #ffffff !important;
+  border-color: #6366f1 !important;
+}
+
+html.dark .klarity-landing .btn-full-secondary,
+[data-theme="dark"] .klarity-landing .btn-full-secondary,
+html.dark .klarity-landing a.btn-full-secondary,
+[data-theme="dark"] .klarity-landing a.btn-full-secondary {
+  background: var(--paper-raised) !important;
+  color: #ffffff !important;
+  border-color: var(--line-strong) !important;
+}
+
+html.dark .klarity-landing .btn-full-secondary svg,
+[data-theme="dark"] .klarity-landing .btn-full-secondary svg,
+html.dark .klarity-landing a.btn-full-secondary svg,
+[data-theme="dark"] .klarity-landing a.btn-full-secondary svg {
+  color: #ffffff !important;
+}
+
 /* Authentic Line-by-Line Review Desk Demo */
 .klarity-landing .review-desk-demo {
   max-width: 1040px;

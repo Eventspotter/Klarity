@@ -13619,7 +13619,7 @@ button.calendar-banner-pill:hover {
 
 .chip-fix--all {
   background: var(--ink, #20150f);
-  color: white;
+  color: #ffffff !important;
   border-color: var(--ink);
   transition: all 180ms var(--ease-out);
 }
@@ -13987,7 +13987,7 @@ html.dark .btn-ai-generate-score:hover:not(:disabled),
   width: 100%;
   height: 44px;
   background: var(--ink, #20150f);
-  color: white;
+  color: #ffffff !important;
   border: none;
   border-radius: 10px;
   font-family: inherit;
