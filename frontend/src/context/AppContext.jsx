@@ -104,52 +104,68 @@ export function AppProvider({ children }) {
   const toggleTheme = useCallback((event) => {
     const isSwitchingToDark = (theme !== 'dark')
 
-    // If browser supports native View Transitions API, animate directional wave with proper S-curve
+    // If browser supports native View Transitions API, animate a true organic wave mask
     if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      // Retain directional flow:
-      // When switching to dark: flows from top-right down to bottom-left
-      // When switching back to light: flows in the opposite direction (from bottom-left up to top-right)
-      let x, y
-      if (isSwitchingToDark) {
-        x = event?.clientX ?? (window.innerWidth - 30)
-        y = event?.clientY ?? 30
-      } else {
-        // Opposite direction origin: bottom-left corner
-        x = 24
-        y = window.innerHeight - 24
-      }
-
-      // Calculate distance to furthest corner to guarantee 100% full screen coverage
-      const maxRadius = Math.hypot(
-        Math.max(x, window.innerWidth - x),
-        Math.max(y, window.innerHeight - y)
-      ) * 1.35
-
-      // Generate dynamic keyframes with authentic organic S-curve wave boundary (as seen in the reference image)
-      const steps = 24
-      const numPoints = 64
+      // Create full-screen SVG wave wipe keyframes
+      // The wave travels diagonally across the viewport (0% to 100%)
+      // An S-curve profile is defined using 4 control points across the leading edge
+      const steps = 30
       const clipKeyframes = []
+      const w = window.innerWidth
+      const h = window.innerHeight
 
       for (let s = 0; s <= steps; s++) {
         const p = s / steps
-        const currR = maxRadius * p
-        // Prominent organic wave amplitude across mid & late expansion
-        const amp = p === 0 || p === 1 ? 0 : 0.38 * Math.sin(Math.pow(p, 0.75) * Math.PI)
+        // Non-linear progress for natural fluid inertia
+        const progress = Math.min(1.2, Math.max(-0.2, (p - 0.5) * 1.6 + 0.5))
 
-        const points = []
-        for (let i = 0; i < numPoints; i++) {
-          const v = i / numPoints
-          const angle = v * 2 * Math.PI
-          // Continuous S-curve undulating silhouette with organic crests and trailing bell curve
-          const wave = 0.78 * Math.sin(1.0 * Math.PI * v - 1.2 * Math.PI * p) +
-                       0.32 * Math.sin(2.0 * Math.PI * v + 0.6 * Math.PI * p) +
-                       0.14 * Math.cos(3.0 * Math.PI * v - 1.8 * Math.PI * p)
-          const r = Math.max(0, currR * (1 + wave * amp))
-          const px = (x + r * Math.cos(angle)).toFixed(1)
-          const py = (y + r * Math.sin(angle)).toFixed(1)
-          points.push(`${px}px ${py}px`)
+        if (isSwitchingToDark) {
+          // Flow from top-right to bottom-left:
+          // We construct an organic S-curved diagonal boundary
+          // The edge sweeps from (w + extra) down to (-extra)
+          const offset = (1 - p) * (w + h * 0.8) - h * 0.4
+          
+          // Generate an elegant, undulating curved wave front with smooth bezier-like points
+          const wavePoints = []
+          const curveSteps = 24
+          for (let i = 0; i <= curveSteps; i++) {
+            const t = i / curveSteps
+            const yPos = t * h
+            // Organic wave distortion across the boundary: S-curve inflection
+            const waveDelta = Math.sin(t * Math.PI) * 120 * Math.sin(p * Math.PI) + 
+                              Math.sin(t * 2 * Math.PI - p * Math.PI * 0.5) * 45
+            const xPos = Math.max(-20, Math.min(w + 20, offset + (1 - t) * (h * 0.6) + waveDelta))
+            wavePoints.push(`${xPos.toFixed(1)}px ${yPos.toFixed(1)}px`)
+          }
+          
+          // Close the polygon along the top-right corner where dark mode is active
+          const polygon = `polygon(${w + 50}px -50px, ${wavePoints[0]}, ${wavePoints.join(', ')}, ${wavePoints[wavePoints.length - 1]}, ${w + 50}px ${h + 50}px)`
+          clipKeyframes.push(polygon)
+        } else {
+          // Flow from bottom-left back to top-right
+          const offset = p * (w + h * 0.8) - h * 0.4
+          const wavePoints = []
+          const curveSteps = 24
+          for (let i = 0; i <= curveSteps; i++) {
+            const t = i / curveSteps
+            const yPos = (1 - t) * h
+            const waveDelta = Math.sin(t * Math.PI) * 120 * Math.sin(p * Math.PI) + 
+                              Math.sin(t * 2 * Math.PI - p * Math.PI * 0.5) * 45
+            const xPos = Math.max(-20, Math.min(w + 20, offset + (1 - t) * (h * 0.6) + waveDelta))
+            wavePoints.push(`${xPos.toFixed(1)}px ${yPos.toFixed(1)}px`)
+          }
+          const polygon = `polygon(-50px ${h + 50}px, ${wavePoints[0]}, ${wavePoints.join(', ')}, ${wavePoints[wavePoints.length - 1]}, -50px -50px)`
+          clipKeyframes.push(polygon)
         }
-        clipKeyframes.push(`polygon(${points.join(', ')})`)
+      }
+
+      // Guarantee clean initial & terminal bounds
+      if (isSwitchingToDark) {
+        clipKeyframes[0] = `polygon(${w + 50}px -50px, ${w + 50}px -50px, ${w + 50}px -50px, ${w + 50}px -50px)`
+        clipKeyframes[clipKeyframes.length - 1] = `polygon(-50px -50px, ${w + 50}px -50px, ${w + 50}px ${h + 50}px, -50px ${h + 50}px)`
+      } else {
+        clipKeyframes[0] = `polygon(-50px ${h + 50}px, -50px ${h + 50}px, -50px ${h + 50}px, -50px ${h + 50}px)`
+        clipKeyframes[clipKeyframes.length - 1] = `polygon(-50px -50px, ${w + 50}px -50px, ${w + 50}px ${h + 50}px, -50px ${h + 50}px)`
       }
 
       const transition = document.startViewTransition(() => {
@@ -157,16 +173,13 @@ export function AppProvider({ children }) {
       })
 
       transition.ready.then(() => {
-        // Directional organic S-curve boundary wave animation:
-        // - To Dark: sweeps from top-right with an authentic organic wave edge down to bottom-left
-        // - To Light: sweeps back in the opposite direction from bottom-left to top-right
         document.documentElement.animate(
           {
             clipPath: clipKeyframes
           },
           {
-            duration: 950,
-            easing: 'cubic-bezier(0.25, 1, 0.35, 1)',
+            duration: 850,
+            easing: 'cubic-bezier(0.33, 1, 0.68, 1)',
             pseudoElement: '::view-transition-new(root)'
           }
         )
