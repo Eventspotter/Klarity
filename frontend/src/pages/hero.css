@@ -1008,29 +1008,75 @@
   gap: 14px;
   scrollbar-width: thin;
 }
-.klarity-landing .turn-wren {
+/* Real Klarity Review Inspection Card */
+.klarity-landing .demo-inspection-card {
+  padding: 14px 16px;
+  background: var(--cream-deep);
+  border: 1px solid var(--line);
+  border-radius: 12px;
   display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.klarity-landing .demo-inspection-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   gap: 10px;
-  align-items: flex-start;
 }
-.klarity-landing .turn-wren > div {
-  flex: 1;
-  min-width: 0;
+.klarity-landing .demo-inspection-card__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink);
 }
-.klarity-landing .turn-wren p {
-  line-height: 1.55;
-  color: var(--ink-2);
-  font-size: 13.5px;
+.klarity-landing .demo-inspection-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 6px;
 }
-.klarity-landing .wren-mark {
-  flex-shrink: 0;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  display: grid;
-  place-items: center;
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+.klarity-landing .demo-inspection-badge.is-warn {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--clay);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.klarity-landing .demo-inspection-badge.is-good {
+  background: rgba(52, 211, 153, 0.15);
+  color: var(--good);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+.klarity-landing .demo-inspection-card__body {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+}
+.klarity-landing .demo-inspection-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.klarity-landing .inspection-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  color: var(--ink-soft);
+}
+.klarity-landing .demo-hl--flagged {
+  background: rgba(245, 158, 11, 0.22);
+  color: inherit;
+  border-bottom: 2px solid var(--clay);
+  border-radius: 3px;
+  padding: 1px 4px;
 }
 @keyframes kl-breathe {
   50% {
@@ -1258,42 +1304,113 @@
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent-hi), var(--accent));
 }
-.klarity-landing .proj-answer {
+/* Living Guideline Specification View */
+.klarity-landing .demo-guideline-pane {
   display: flex;
   flex-direction: column;
   gap: 14px;
+  min-height: 320px;
 }
-.klarity-landing .turn-q {
-  align-self: flex-end;
-  padding: 9px 13px;
-  border-radius: 14px 14px 4px 14px;
-  background: var(--cream-deep);
-}
-.klarity-landing .proj-a {
+.klarity-landing .demo-guideline-pane__head {
   display: flex;
-  gap: 10px;
-}
-.klarity-landing .proj-a p {
-  font-family: var(--font-serif), serif;
-  font-size: 17px;
-  line-height: 1.5;
-}
-.klarity-landing .proj-cites {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-left: 36px;
-}
-.klarity-landing .proj-cites span {
-  display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 8px;
-  border-radius: 999px;
+  justify-content: space-between;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--line);
   font-size: 11px;
-  color: var(--accent-deep);
-  background: var(--accent-soft);
-  border: 1px solid var(--accent-line);
+}
+.klarity-landing .demo-guideline-count {
+  font-weight: 700;
+  color: var(--sage);
+}
+.klarity-landing .demo-guidelines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  max-height: 420px;
+}
+.klarity-landing .demo-guideline-card {
+  padding: 14px 16px;
+  background: var(--cream-deep);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.klarity-landing .demo-guideline-card__head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.klarity-landing .demo-guideline-cat {
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 7px;
+  background: rgba(56, 189, 248, 0.14);
+  color: var(--sage);
+  border-radius: 4px;
+}
+.klarity-landing .demo-guideline-card strong {
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.klarity-landing .demo-guideline-card__text {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+}
+.klarity-landing .demo-guideline-card__examples {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.klarity-landing .example-block {
+  padding: 8px 10px;
+  border-radius: 8px;
+  font-size: 11px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.klarity-landing .example-block.example-do {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+.klarity-landing .example-block.example-do .ex-label {
+  color: var(--good);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.klarity-landing .example-block.example-dont {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.klarity-landing .example-block.example-dont .ex-label {
+  color: var(--danger);
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.klarity-landing .example-block code {
+  font-size: 11px;
+  color: var(--ink);
+  background: transparent;
+  padding: 0;
+}
+.klarity-landing .demo-guidelines-empty {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 20px;
+  text-align: center;
 }
 .klarity-landing .tile-wide {
   grid-column: span 3;
@@ -1624,94 +1741,111 @@
   border: 1px solid var(--line);
   color: var(--muted);
 }
-.klarity-landing .convo-body {
+.klarity-landing .demo-audit-card {
+  padding: 20px 24px;
   display: flex;
   flex-direction: column;
   gap: 16px;
-  padding: 22px 24px 24px;
 }
-.klarity-landing .bubble-user {
-  align-self: flex-end;
-  max-width: 78%;
-  padding: 11px 16px;
-  border-radius: 18px 18px 5px 18px;
-  background: var(--ink);
-  color: #fff;
-  font-size: 15px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
-}
-.klarity-landing .thought {
-  align-self: flex-start;
-  width: min(100%, 420px);
-  padding: 12px 14px 14px;
-  border-radius: 14px;
-  border: 1px dashed var(--line-strong);
-  background: var(--soft);
-}
-.klarity-landing .thought-head {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 11.5px;
-  color: var(--accent-deep);
-}
-.klarity-landing .thought ol {
-  list-style: none;
-  margin: 10px 0 0;
-  padding: 0 0 0 6px;
-  border-left: 1.5px solid var(--accent-line);
+.klarity-landing .audit-section {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
-.klarity-landing .thought li {
+.klarity-landing .audit-section__head {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin-left: -13.5px;
+  justify-content: space-between;
+}
+.klarity-landing .audit-badge {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+}
+.klarity-landing .audit-badge--submitted {
+  color: var(--clay);
+}
+.klarity-landing .audit-badge--matched {
+  color: var(--sage);
+}
+.klarity-landing .audit-badge--approved {
+  color: var(--good);
+}
+.klarity-landing .audit-severity {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 7px;
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--clay);
+  border-radius: 4px;
+}
+.klarity-landing .audit-rule-code {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--sage);
+}
+.klarity-landing .audit-status-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--good);
+}
+.klarity-landing .audit-specimen-box,
+.klarity-landing .audit-rule-box,
+.klarity-landing .audit-approved-box {
+  padding: 12px 14px;
+  background: var(--cream-deep);
+  border: 1px solid var(--line);
+  border-radius: 10px;
   font-size: 13.5px;
-  color: var(--ink-2);
-}
-.klarity-landing .thought-tick {
-  display: grid;
-  place-items: center;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--surface);
-  border: 1.5px solid var(--accent);
-  color: var(--accent);
-  flex-shrink: 0;
-}
-.klarity-landing .answer {
-  display: grid;
-  grid-template-columns: 30px minmax(0, 1fr) 150px;
-  gap: 14px;
-  align-items: start;
-}
-.klarity-landing .answer-mark {
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  background: var(--accent-soft);
-  color: var(--accent-deep);
-}
-.klarity-landing .answer-text strong {
-  display: block;
-  font-family: var(--font-serif), serif;
-  font-size: 21px;
-  font-weight: 500;
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+  line-height: 1.5;
   color: var(--ink);
 }
-.klarity-landing .answer-text p {
+.klarity-landing .audit-specimen-box {
+  border-left: 3px solid var(--clay);
+}
+.klarity-landing .audit-flag-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   margin-top: 6px;
-  font-size: 14px;
-  color: var(--muted);
+  font-size: 11.5px;
+  color: var(--clay);
+}
+.klarity-landing .audit-rule-box {
+  border-left: 3px solid var(--sage);
+  background: rgba(56, 189, 248, 0.04);
+}
+.klarity-landing .audit-rationale {
+  color: var(--ink-soft);
+  margin: 0;
+  font-size: 12.5px;
+}
+.klarity-landing .audit-approved-box {
+  border-left: 3px solid var(--good);
+  background: rgba(52, 211, 153, 0.05);
+}
+.klarity-landing .audit-actions-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 4px;
+}
+.klarity-landing .audit-action-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.klarity-landing .audit-decision-pill {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 3px 9px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--ink-soft);
 }
 @media (max-width: 860px) {
   .klarity-landing .convo {
