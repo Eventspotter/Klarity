@@ -100,7 +100,6 @@ export function Hero() {
             <span className="hh hh-3 rise" style={{ animationDelay: '1.5s' }}><Sparkles size={13} /> Your voice. A little clearer.</span>
           </div>
           <div className="hero-copy hero-think">
-            <div className="landing-eyebrow rise"><span /> YOUR BRAND, BEFORE YOU HIT PUBLISH</div>
             <h1 aria-label="Keep every word on-brand, accurate, consistent, and yours.">
               <span className="rise" style={{ animationDelay: '.2s' }} aria-hidden="true">Keep every word</span>
               <span className="rise typed-line" style={{ animationDelay: '.35s' }} aria-hidden="true"><Typed /></span>
@@ -110,7 +109,6 @@ export function Hero() {
               <Link className="button button-lg" to={getPath('/')}>Open Klarity <span className="cta-note">Your brand workspace</span><ArrowRight size={16} /></Link>
               <a className="button button-outline button-lg" href="#proof-desk" onClick={() => select('proof-desk')}><Play size={14} /> See it in action</a>
             </div>
-            <p className="hero-reassurance rise" style={{ animationDelay: '.8s' }}><ShieldCheck size={13} /> Evidence behind the feedback. People behind the decision.</p>
           </div>
         </div>
         <div className="hero-app" id="proof-desk">
