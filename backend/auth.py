@@ -595,3 +595,93 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
+
+
+# ---------------------------------------------------------------------------
+# Password Reset & OTP Flow (Supabase Database + goklarity@gmail.com)
+# ---------------------------------------------------------------------------
+
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp_code = Column(String(10), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+
+
+class ResetPasswordRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=10)
+    new_password: str = Field(min_length=8, max_length=128)
+
+
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        raise HTTPException(404, "No registered account found with that email. Please check your email address.")
+
+    from services.email_otp import generate_otp, send_otp_email, get_smtp_password
+    otp_code = generate_otp(6)
+    expires_at = datetime.utcnow() + timedelta(minutes=10)
+
+    # Invalidate old OTPs for this email in Supabase
+    db.query(PasswordResetOTP).filter_by(email=account.email, used=False).update({"used": True})
+
+    # Store new OTP record in Supabase
+    record = PasswordResetOTP(
+        email=account.email,
+        otp_code=otp_code,
+        expires_at=expires_at,
+        used=False,
+    )
+    db.add(record)
+    db.commit()
+
+    # Dispatch email from goklarity@gmail.com
+    sent, _ = send_otp_email(account.email, otp_code)
+
+    return {
+        "message": f"Verification code sent to {account.email}!",
+        "email": account.email,
+        "email_sent": sent,
+        "dev_code": otp_code if not sent else None,
+    }
+
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    otp_record = (
+        db.query(PasswordResetOTP)
+        .filter(
+            PasswordResetOTP.email == account.email,
+            PasswordResetOTP.otp_code == payload.otp.strip(),
+            PasswordResetOTP.used == False,
+        )
+        .order_by(PasswordResetOTP.id.desc())
+        .first()
+    )
+
+    if not otp_record or otp_record.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Invalid or expired OTP code. Please request a new one.")
+
+    # Update password in Supabase
+    account.password_hash = hash_password(payload.new_password)
+    otp_record.used = True
+    db.commit()
+
+    return {"message": "Password reset successful! You can now sign in with your new password."}

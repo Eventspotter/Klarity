@@ -9,11 +9,11 @@ services:
       - key: PYTHON_VERSION
         value: "3.11.9"
       - key: DATABASE_URL
-        value: postgresql://postgres.fldqzetudzkzutwftvmn:Ashwiktopper%40123@aws-0-ap-northeast-1.pooler.supabase.com:5432/postgres
+        value: postgresql+psycopg2://postgres.fldqzetudzkzutwftvmn:Ashwiktopper%40123@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres
       - key: COOKIE_SECURE
         value: "true"
       - key: SEED_DEMO_DATA
-        value: "true"
+        value: "false"
       - key: CORS_ORIGINS
         value: "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000,https://klarity-frontend.onrender.com"
       - key: SMTP_HOST
@@ -22,5 +22,9 @@ services:
         value: "587"
       - key: SMTP_EMAIL
         value: "goklarity@gmail.com"
+      - key: GMAIL_SENDER_EMAIL
+        value: "goklarity@gmail.com"
       - key: SMTP_PASSWORD
+        sync: false
+      - key: GMAIL_APP_PASSWORD
         sync: false
