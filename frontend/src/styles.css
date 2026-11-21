@@ -5029,8 +5029,8 @@ html.dark .insight-stat strong,
   gap: 10px;
   margin-top: 16px;
   padding: 11px 12px;
-  background: #f2eee2;
-  border: 1px solid rgba(59, 36, 24, 0.06);
+  background: var(--paper-raised, #f2eee2);
+  border: 1px solid var(--line, rgba(59, 36, 24, 0.06));
   border-radius: 12px;
   transition: background 150ms var(--ease-out);
 }
@@ -16612,6 +16612,47 @@ html.dark .message-item__tag,
   background: var(--paper-raised) !important;
   color: var(--ink-soft) !important;
   border: 1px solid var(--line) !important;
+}
+
+/* Guideline Nudge & Live Indicator in Dark Mode */
+html.dark .guideline-nudge,
+[data-theme="dark"] .guideline-nudge {
+  background: var(--paper-raised, #1f252d) !important;
+  border: 1px solid var(--line-strong, #384351) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+html.dark .guideline-nudge:hover,
+[data-theme="dark"] .guideline-nudge:hover {
+  background: var(--sage-wash, rgba(56, 189, 248, 0.08)) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+html.dark .guideline-nudge__icon,
+[data-theme="dark"] .guideline-nudge__icon {
+  background: rgba(56, 189, 248, 0.12) !important;
+  color: var(--sage, #38bdf8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+html.dark .guideline-nudge strong,
+[data-theme="dark"] .guideline-nudge strong {
+  color: var(--ink, #f3f6f9) !important;
+}
+
+html.dark .guideline-nudge small,
+[data-theme="dark"] .guideline-nudge small {
+  color: var(--ink-soft, #d8e0e8) !important;
+}
+
+html.dark .guideline-nudge > svg,
+[data-theme="dark"] .guideline-nudge > svg {
+  color: var(--ink-soft, #d8e0e8) !important;
+}
+
+html.dark .live-tag,
+[data-theme="dark"] .live-tag {
+  color: var(--sage, #38bdf8) !important;
 }
 
 /* 3. Hero CTA & Tooltip */

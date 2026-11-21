@@ -956,7 +956,7 @@ export function Dashboard({ onNewReview }) {
               />
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '8px' }}>
                 {guidelines.slice(0, 3).map((g) => (
-                  <div key={g.id || g.title} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'rgba(32, 21, 15, 0.03)', borderRadius: '8px' }}>
+                  <div key={g.id || g.title} style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', padding: '12px', background: 'var(--paper-raised)', border: '1px solid var(--line)', borderRadius: '8px' }}>
                     <CategoryTag category={g.category} />
                     <div>
                       <strong style={{ fontSize: '13px', display: 'block', marginBottom: '2px' }}>{g.title}</strong>
