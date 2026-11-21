@@ -132,7 +132,7 @@ export function Hero() {
       <section className="section" id="guidelines">
         <SectionHead eyebrow="YOUR SOURCE OF TRUTH" description="Bring guidelines, approved facts, terminology, and visual standards into one place. Every review starts with the rules your team agreed on.">Good feedback starts with <em>shared knowledge.</em></SectionHead>
         <KnowledgeDemo />
-        <p className="fine">Select the example standards to see how each rule informs live pre-flight checks.</p>
+        <p className="fine">Explore living guidelines to see how brand voice, substantiation, and lexicon rules inform live pre-flight checks.</p>
       </section>
 
       <section className="section" id="workflow">

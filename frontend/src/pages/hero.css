@@ -1833,113 +1833,67 @@ html.dark .klarity-landing .hl--approved,
   border-radius: 999px;
   background: linear-gradient(90deg, var(--accent-hi), var(--accent));
 }
-/* Living Guideline Specification View */
-.klarity-landing .demo-guideline-pane {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  min-height: 320px;
+/* Authentic Guidelines Desk Demo */
+.klarity-landing .guidelines-desk-demo {
+  max-width: 1040px;
+  margin: 0 auto;
+  text-align: left;
 }
-.klarity-landing .demo-guideline-pane__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding-bottom: 10px;
-  border-bottom: 1px solid var(--line);
-  font-size: 11px;
-}
-.klarity-landing .demo-guideline-count {
-  font-weight: 700;
-  color: var(--sage);
-}
-.klarity-landing .demo-guidelines-list {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  overflow-y: auto;
-  max-height: 420px;
-}
-.klarity-landing .demo-guideline-card {
-  padding: 14px 16px;
-  background: var(--cream-deep);
+
+.klarity-landing .guidelines-desk-demo .guideline-workspace {
+  background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 12px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  min-height: 600px;
+  overflow: hidden;
+}
+
+.klarity-landing .guidelines-desk-demo .guideline-list {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+}
+
+.klarity-landing .guidelines-desk-demo .guideline-list__scroll {
+  max-height: 560px;
+}
+
+.klarity-landing .guidelines-desk-demo .guideline-detail {
+  background: var(--surface);
+  padding: 26px 30px;
+}
+
+.klarity-landing .guidelines-desk-demo .guideline-empty-state {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-}
-.klarity-landing .demo-guideline-card__head {
-  display: flex;
   align-items: center;
-  gap: 8px;
-}
-.klarity-landing .demo-guideline-cat {
-  font-size: 10px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 2px 7px;
-  background: rgba(56, 189, 248, 0.14);
-  color: var(--sage);
-  border-radius: 4px;
-}
-.klarity-landing .demo-guideline-card strong {
-  font-size: 13.5px;
-  color: var(--ink);
-}
-.klarity-landing .demo-guideline-card__text {
-  font-size: 12.5px;
-  line-height: 1.5;
-  color: var(--ink-soft);
-  margin: 0;
-}
-.klarity-landing .demo-guideline-card__examples {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-  margin-top: 4px;
-}
-.klarity-landing .example-block {
-  padding: 8px 10px;
-  border-radius: 8px;
-  font-size: 11px;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.klarity-landing .example-block.example-do {
-  background: rgba(52, 211, 153, 0.1);
-  border: 1px solid rgba(52, 211, 153, 0.25);
-}
-.klarity-landing .example-block.example-do .ex-label {
-  color: var(--good);
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.klarity-landing .example-block.example-dont {
-  background: rgba(239, 68, 68, 0.1);
-  border: 1px solid rgba(239, 68, 68, 0.25);
-}
-.klarity-landing .example-block.example-dont .ex-label {
-  color: var(--danger);
-  font-weight: 800;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.klarity-landing .example-block code {
-  font-size: 11px;
-  color: var(--ink);
-  background: transparent;
-  padding: 0;
-}
-.klarity-landing .demo-guidelines-empty {
+  justify-content: center;
+  padding: 48px 20px;
   color: var(--muted);
-  font-size: 13px;
-  padding: 20px;
   text-align: center;
+  gap: 8px;
+}
+
+.klarity-landing .guidelines-desk-demo .guideline-empty-state p {
+  font-size: 13px;
+  margin: 0;
+  color: var(--muted);
+}
+
+@media (max-width: 900px) {
+  .klarity-landing .guidelines-desk-demo .guideline-workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .klarity-landing .guidelines-desk-demo .guideline-list {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .klarity-landing .guidelines-desk-demo .guideline-list__scroll {
+    max-height: 320px;
+  }
+  .klarity-landing .guidelines-desk-demo .guideline-voice-cards {
+    grid-template-columns: 1fr;
+  }
 }
 .klarity-landing .tile-wide {
   grid-column: span 3;

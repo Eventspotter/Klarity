@@ -1,22 +1,26 @@
 // Brand Review Desk and Governance Demos for Klarity
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { AnimatePresence, motion, useInView } from 'motion/react'
 import {
   AlertTriangle,
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   Check,
   CheckCircle2,
+  CircleAlert,
   Edit3,
   FileCheck,
   FileText,
   Images,
   PenLine,
+  PencilLine,
   Plus,
   RefreshCw,
   RotateCcw,
   Scale,
+  Search,
   Send,
   ShieldCheck,
   SlidersHorizontal,
@@ -26,6 +30,8 @@ import {
 import { BrandMark } from '../BrandMark'
 import { AnimatedValue } from '../AnimatedValue'
 import WakeSlider from '../WakeSlider'
+import { CategoryTag, Tabs } from '../UI'
+import { categoryLabels } from '../../lib/utils'
 import { isReducedMotion } from '../../lib/animations'
 import { SlidingGroup, spring } from './LandingPrimitives'
 import { contextFiles, reviewExamples, workflows } from './landingData'
@@ -592,7 +598,7 @@ export function ReviewDeskDemo({ getPath }) {
             <article className={`rdesk-issue ${isSeamlessFixed ? 'is-fixed' : ''}`}>
               <div className="rdesk-issue__head">
                 <span className="severity-tag severity-tag--warning">Warning</span>
-                <span className="rdesk-issue__rule mono">Voice Guide §3.1</span>
+                <span className="rdesk-issue__rule mono">Brand Voice Principles</span>
               </div>
               <h4>Tone mismatch: Overused superlative</h4>
               <p>Use calm, specific language. Avoid promotional superlatives like &quot;seamless&quot;.</p>
@@ -611,7 +617,7 @@ export function ReviewDeskDemo({ getPath }) {
             <article className={`rdesk-issue ${isEcoFixed ? 'is-fixed' : ''}`}>
               <div className="rdesk-issue__head">
                 <span className="severity-tag severity-tag--critical">Critical</span>
-                <span className="rdesk-issue__rule mono">Claims Policy §2.4</span>
+                <span className="rdesk-issue__rule mono">Claim Substantiation</span>
               </div>
               <h4>Unverified claim: Absolute environmental claim</h4>
               <p>Absolute environmental claims require verified third-party certification on file.</p>
@@ -681,86 +687,384 @@ export function ReviewDeskDemo({ getPath }) {
 export const ReviewDemo = CreatorStudioDemo
 export const VoiceDemo = ReviewDeskDemo
 
+const DEMO_GUIDELINES = [
+  {
+    id: 1,
+    category: 'tone',
+    priority: 5,
+    title: 'Brand voice principles',
+    content:
+      'We sound like a thoughtful host: warm, specific, and unhurried. Write in the second person. Prefer concrete nouns and active verbs. Confidence comes from detail, never from volume. Never use hype language, exclamation stacks, or claims we cannot show.',
+    soundsLike:
+      'We fire each vessel in small batches from local clay, ensuring durable, tactile homeware that lasts generations.',
+    avoid:
+      'Our revolutionary eco-friendly homeware delivers seamless, disruptive synergy.',
+    soundsTip: 'Uses concrete sensory nouns, active verbs, and calm, unhurried cadence.',
+    avoidTip: 'Avoids tech buzzwords, exclamation stacks, or hyperbolic claims.',
+    updatedAgo: '24d ago',
+    createdDate: '18 Jul 2026',
+    updatedDate: '28 Oct 2026',
+    issuesCiting: 25,
+    words: 39,
+  },
+  {
+    id: 2,
+    category: 'facts',
+    priority: 5,
+    title: 'Claim substantiation',
+    content:
+      "Superlatives, rankings, and performance claims need a named source and a date within the piece or in the linked evidence. Use 'world's best' only when the ranking body and year are visible. If the source is older than 12 months, refresh it before publishing.",
+    soundsLike:
+      'European flax certified under Masters of Linen® standard (OEKO-TEX Certificate #49182).',
+    avoid:
+      '100% green and eco-friendly with net-zero carbon footprint.',
+    soundsTip: 'Include precise certification numbers, harvest years, and batch IDs.',
+    avoidTip: 'Vague sustainability claims trigger strict ESG compliance flags.',
+    updatedAgo: '17d ago',
+    createdDate: '12 Aug 2026',
+    updatedDate: '04 Nov 2026',
+    issuesCiting: 18,
+    words: 42,
+  },
+  {
+    id: 3,
+    category: 'visual',
+    priority: 5,
+    title: 'Logo usage and clear space',
+    content:
+      'Use the primary horizontal lockup by default. Keep clear space equal to the height of the oak mark on every side, with a 24px minimum in digital layouts. Never recolour the mark, add effects, or place it on a busy photographic field without the cream holding shape.',
+    soundsLike:
+      'Unfiltered ambient daylight, muted organic sage backdrops (#EBF3EC), tactile textures and linen folds.',
+    avoid:
+      'Neon high-saturation gradients, studio lens flare, AI-gloss smoothing, floating product drop shadows.',
+    soundsTip: 'Authentic physical presence with gentle natural light.',
+    avoidTip: 'Overly synthetic or high-gloss rendering that breaks the artisanal palette.',
+    updatedAgo: '21d ago',
+    createdDate: '22 Aug 2026',
+    updatedDate: '31 Oct 2026',
+    issuesCiting: 9,
+    words: 47,
+  },
+  {
+    id: 4,
+    category: 'facts',
+    priority: 5,
+    title: 'Sustainability claims',
+    content:
+      "Every environmental claim needs a named certification, standard, or measured figure in the same paragraph. Approved language: 'made with 100% European flax linen', 'dyed in a closed-loop facility'. Do not use '100% sustainable', 'carbon neutral', or 'zero waste' without current evidence on file.",
+    soundsLike:
+      'Spun from 100% certified Belgian flax linen with OEKO-TEX Standard 100 verification.',
+    avoid:
+      'Completely zero-impact, 100% eco-friendly and climate-positive product.',
+    soundsTip: 'Include specific third-party audited certification names and registry IDs.',
+    avoidTip: 'Absolute sustainability claims violate truth-in-advertising guidelines.',
+    updatedAgo: '22d ago',
+    createdDate: '28 Aug 2026',
+    updatedDate: '30 Oct 2026',
+    issuesCiting: 12,
+    words: 44,
+  },
+  {
+    id: 5,
+    category: 'terminology',
+    priority: 5,
+    title: 'Words we use and avoid',
+    content:
+      'Use: linen, flax, maker, repair, keep, lived-in, considered. Avoid: seamless, game-changing, revolutionary, eco-friendly, utilize, leverage, best-in-class. If a word could describe any brand in the category, replace it with a specific observation.',
+    soundsLike:
+      'Use: linen, flax, maker, repair, keep, lived-in, considered, patina, tactile.',
+    avoid:
+      'Avoid: seamless, game-changing, revolutionary, eco-friendly, utilize, leverage, best-in-class.',
+    soundsTip: 'Specific observations unique to brand craftsmanship.',
+    avoidTip: 'Interchangeable corporate filler words that erode editorial voice.',
+    updatedAgo: '23d ago',
+    createdDate: '01 Sep 2026',
+    updatedDate: '29 Oct 2026',
+    issuesCiting: 14,
+    words: 34,
+  },
+  {
+    id: 6,
+    category: 'visual',
+    priority: 4,
+    title: 'Colour palette specification',
+    content:
+      'The core palette is Cream #F6F1E6, Brown #3B2418, Klarity Blue #298EE4, and Clay #A97A32. Klarity Blue is the working accent; it should carry action and selection, not decoration. Use no more than one accent per composition and keep text at brown or cream for contrast.',
+    soundsLike:
+      'Primary wordmark set against Cream #F6F1E6 ground with Brown #3B2418 body typography.',
+    avoid:
+      'Arbitrary HEX colors, unvetted secondary brand tints, or non-tokenized border styling.',
+    soundsTip: 'Stick strictly to verified design system token codes.',
+    avoidTip: 'Palette drift erodes brand coherence across product touchpoints.',
+    updatedAgo: '19d ago',
+    createdDate: '10 Sep 2026',
+    updatedDate: '02 Nov 2026',
+    issuesCiting: 8,
+    words: 46,
+  },
+  {
+    id: 7,
+    category: 'tone',
+    priority: 4,
+    title: 'Inclusive language',
+    content:
+      "Address the reader directly and avoid gendered defaults. Describe people the way they describe themselves. Use 'they' for a person whose pronouns are unknown. Avoid ability metaphors such as 'blind spot' and 'tone deaf' in product copy.",
+    soundsLike:
+      'Each apron is tailored to fit different body types comfortably with adjustable herringbone straps.',
+    avoid:
+      'Designed for normal people without physical handicaps or blind spots.',
+    soundsTip: 'Direct, respectful address that welcomes all individuals.',
+    avoidTip: 'Ableist idioms or outdated exclusionary framing.',
+    updatedAgo: '16d ago',
+    createdDate: '15 Sep 2026',
+    updatedDate: '05 Nov 2026',
+    issuesCiting: 6,
+    words: 38,
+  },
+]
+
+const DEMO_CATEGORIES = [
+  { value: 'all', label: 'All' },
+  { value: 'tone', label: 'Tone' },
+  { value: 'terminology', label: 'Terminology' },
+  { value: 'facts', label: 'Facts' },
+  { value: 'visual', label: 'Visual' },
+]
+
+const PRIORITY_LABELS = {
+  5: 'Critical',
+  4: 'High',
+  3: 'Standard',
+  2: 'Reference',
+  1: 'Reference',
+}
+
 export function KnowledgeDemo() {
-  const [added, setAdded] = useState(['voice', 'facts'])
-  const used = contextFiles.filter((file) => added.includes(file.id))
+  const [category, setCategory] = useState('all')
+  const [query, setQuery] = useState('')
+  const [selectedId, setSelectedId] = useState(1)
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return DEMO_GUIDELINES
+      .filter((item) => category === 'all' || item.category === category)
+      .filter(
+        (item) =>
+          !q ||
+          item.title.toLowerCase().includes(q) ||
+          item.content.toLowerCase().includes(q)
+      )
+  }, [category, query])
+
+  const selected =
+    filtered.find((item) => item.id === selectedId) || filtered[0] || DEMO_GUIDELINES[0]
+
+  const countFor = (val) =>
+    val === 'all'
+      ? DEMO_GUIDELINES.length
+      : DEMO_GUIDELINES.filter((item) => item.category === val).length
 
   return (
-    <div className="proj" data-reveal>
-      <div className="proj-files">
-        <p className="mono sd-label">ASTER &amp; OAK · LIVING GUIDELINE LIBRARY</p>
-        <ul>
-          {contextFiles.map((file) => {
-            const on = added.includes(file.id)
-            return (
-              <li key={file.id}>
+    <div className="guidelines-desk-demo" data-reveal>
+      <div className="guideline-workspace">
+        {/* Left Column: Guideline List */}
+        <div className="guideline-list">
+          <div className="guideline-list__head">
+            <label className="search-field search-field--small">
+              <Search size={15} />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search guidelines"
+                aria-label="Search guidelines"
+                autoCapitalize="none"
+                autoCorrect="off"
+              />
+            </label>
+            <Tabs
+              label="Filter guidelines by category"
+              value={category}
+              onChange={setCategory}
+              options={DEMO_CATEGORIES.map((cat) => ({
+                value: cat.value,
+                label: cat.label,
+                count: countFor(cat.value),
+              }))}
+            />
+          </div>
+
+          <div className="guideline-list__scroll">
+            {filtered.length ? (
+              filtered.map((item) => {
+                const isSelected = selected?.id === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    className={`guideline-item ${isSelected ? 'is-active' : ''}`}
+                    onClick={() => setSelectedId(item.id)}
+                  >
+                    <span className={`guideline-item__prio prio-${item.priority}`}>
+                      {item.priority}
+                    </span>
+                    <span className="guideline-item__copy">
+                      <span>
+                        <CategoryTag category={item.category} />
+                        <small>Updated {item.updatedAgo}</small>
+                      </span>
+                      <strong>{item.title}</strong>
+                      <p>{item.content}</p>
+                    </span>
+                    <ArrowUpRight size={14} className="guideline-item__arrow" />
+                  </button>
+                )
+              })
+            ) : (
+              <div className="guideline-empty-state">
+                <Search size={22} />
+                <p>No guidelines found matching &ldquo;{query}&rdquo;</p>
                 <button
                   type="button"
-                  data-on={on}
-                  aria-pressed={on}
-                  onClick={() =>
-                    setAdded((items) => (on ? items.filter((id) => id !== file.id) : [...items, file.id]))
-                  }
+                  className="btn btn--secondary btn--sm"
+                  style={{ marginTop: '8px' }}
+                  onClick={() => {
+                    setQuery('')
+                    setCategory('all')
+                  }}
                 >
-                  <FileText size={15} />
-                  <span>{file.name}</span>
-                  <em>{file.detail}</em>
-                  <Check size={14} style={{ opacity: on ? 1 : 0.15 }} />
+                  Clear filters
                 </button>
-              </li>
-            )
-          })}
-        </ul>
-
-        <div className="landing-context-meter">
-          <span>Active Standards Applied</span>
-          <b>
-            <AnimatedValue value={used.length} /> / 4
-          </b>
-          <i>
-            <motion.b animate={{ width: `${used.length * 25}%` }} transition={spring} />
-          </i>
-        </div>
-      </div>
-
-      {/* Real Guideline Spec Panel (NO Chatbot) */}
-      <div className="proj-answer demo-guideline-pane">
-        <div className="demo-guideline-pane__head">
-          <span className="mono">ENFORCED GUIDELINE SPECIFICATION</span>
-          <span className="demo-guideline-count">{used.length} active standards</span>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="demo-guidelines-list" aria-live="polite">
-          {used.length ? (
-            used.map((file) => (
-              <article key={file.id} className="demo-guideline-card">
-                <div className="demo-guideline-card__head">
-                  <span className="demo-guideline-cat">{file.category}</span>
-                  <strong>{file.rule}</strong>
+        {/* Right Column: Guideline Detail */}
+        {selected && (
+          <article className="guideline-detail">
+            <header className="guideline-detail__head">
+              <div>
+                <div className="guideline-detail__meta">
+                  <CategoryTag category={selected.category} />
+                  <span className={`priority-chip prio-${selected.priority}`}>
+                    Priority {selected.priority} · {PRIORITY_LABELS[selected.priority] || 'Critical'}
+                  </span>
                 </div>
-                <p className="demo-guideline-card__text">{file.guidance}</p>
-                <div className="demo-guideline-card__examples">
-                  <div className="example-block example-do">
-                    <span className="ex-label">
-                      <Check size={11} /> DO
+                <h2>{selected.title}</h2>
+                <p>
+                  Created {selected.createdDate} · Updated {selected.updatedDate}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn btn--secondary btn--sm"
+                style={{
+                  height: '32px',
+                  fontSize: '12px',
+                  padding: '0 12px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+                onClick={() => {}}
+              >
+                <PencilLine size={13} />
+                <span>Edit</span>
+              </button>
+            </header>
+
+            <div className="guideline-role-notice">
+              <ShieldCheck size={16} />
+              <span>
+                <strong>Governance Mode:</strong> You are authoring as a Brand Lead. Guidelines published here apply directly to all pre-flight and editorial checks.
+              </span>
+            </div>
+
+            <div className="guideline-detail__body">
+              <p>{selected.content}</p>
+
+              <div className="guideline-voice-cards">
+                {/* Sounds like this (Approved voice) */}
+                <div className="voice-card voice-card--approved">
+                  <div className="voice-card__head">
+                    <span className="voice-card__pill voice-card__pill--good">
+                      <Check size={13} /> Sounds like this (Approved voice)
                     </span>
-                    <code>{file.doExample}</code>
+                    <span className="voice-card__badge voice-card__badge--do">Do</span>
                   </div>
-                  <div className="example-block example-dont">
-                    <span className="ex-label">
-                      <X size={11} /> DON’T
-                    </span>
-                    <code>{file.dontExample}</code>
+                  <div className="voice-card__content">
+                    <blockquote>&ldquo;{selected.soundsLike}&rdquo;</blockquote>
+                    <p className="voice-card__hint">
+                      <strong>Cadence &amp; tone:</strong> {selected.soundsTip}
+                    </p>
                   </div>
                 </div>
-              </article>
-            ))
-          ) : (
-            <p className="demo-guidelines-empty">
-              Select one or more guideline standards from the left to inspect their active rules.
-            </p>
-          )}
-        </div>
+
+                {/* What to avoid (Flagged phrasing) */}
+                <div className="voice-card voice-card--avoid">
+                  <div className="voice-card__head">
+                    <span className="voice-card__pill voice-card__pill--warn">
+                      <CircleAlert size={13} /> What to avoid (Flagged phrasing)
+                    </span>
+                    <span className="voice-card__badge voice-card__badge--dont">Avoid</span>
+                  </div>
+                  <div className="voice-card__content">
+                    <blockquote>&ldquo;{selected.avoid}&rdquo;</blockquote>
+                    <p className="voice-card__hint">
+                      <strong>Risk:</strong> {selected.avoidTip}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="guideline-facts">
+              <div>
+                <span>Category</span>
+                <strong>{categoryLabels[selected.category] || selected.category}</strong>
+              </div>
+              <div>
+                <span>Issues citing this category</span>
+                <strong>{selected.issuesCiting}</strong>
+              </div>
+              <div>
+                <span>Priority</span>
+                <strong>
+                  <span className={`priority-dots prio-${selected.priority}`}>
+                    {[1, 2, 3, 4, 5].map((dot) => (
+                      <i key={dot} className={dot <= selected.priority ? 'is-filled' : ''} />
+                    ))}
+                  </span>
+                  {PRIORITY_LABELS[selected.priority] || 'Critical'}
+                </strong>
+              </div>
+            </div>
+
+            <div className="guideline-note">
+              <span className="guideline-note__icon">
+                <CircleAlert size={17} />
+              </span>
+              <div>
+                <strong>How this guideline is used</strong>
+                <p>
+                  The analyser checks priority-5 rules first and cites this document in every issue it produces. Reviewers see the evidence beside the suggested fix, never as an unexplained score.
+                </p>
+              </div>
+            </div>
+
+            <div className="guideline-detail__foot">
+              <span>
+                <FileText size={14} /> {selected.words} words
+              </span>
+              <span>
+                <Check size={14} /> In the live library
+              </span>
+              <span>
+                <BookOpen size={14} /> Checked on every review
+              </span>
+            </div>
+          </article>
+        )}
       </div>
     </div>
   )
