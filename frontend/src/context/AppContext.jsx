@@ -233,8 +233,15 @@ export function AppProvider({ children }) {
   useEffect(() => {
     if (user) {
       const isDemo = Boolean(user.is_demo || ['ashwik', 'sunless'].includes(user.username))
-      if (!isDemo) {
-        const brandObj = createDefaultBrand(user.brand_name || 'My Brand', user.brand_values || '', user.brand_code || '')
+      const userRole = (user.role || 'owner').toLowerCase()
+      const isOwnerRole = userRole === 'owner' || userRole === 'admin'
+
+      if (!isDemo || !isOwnerRole) {
+        const targetBrandName = user.brand_name || 'Aster & Oak'
+        const matched = DEFAULT_BRANDS.find(
+          b => (b.brand_name || b.name || '').toLowerCase() === targetBrandName.toLowerCase()
+        )
+        const brandObj = matched || createDefaultBrand(targetBrandName, user.brand_values || '', user.brand_code || '')
         setAllBrands([brandObj])
         setActiveBrand(brandObj)
         try {
@@ -245,15 +252,16 @@ export function AppProvider({ children }) {
 
       api.brandDirectory().then(res => {
         if (res?.brands && Array.isArray(res.brands)) {
+          const demoBrandNames = new Set(DEFAULT_BRANDS.map(b => (b.brand_name || b.name || '').toLowerCase()))
+          const filtered = res.brands.filter(sb => demoBrandNames.has((sb.brand_name || '').toLowerCase()))
+
           const merged = [...DEFAULT_BRANDS]
-          res.brands.forEach(sb => {
+          filtered.forEach(sb => {
             const idx = merged.findIndex(
               b => (b.brand_name || b.name || '').toLowerCase() === (sb.brand_name || '').toLowerCase()
             )
             if (idx >= 0) {
               merged[idx] = { ...merged[idx], ...sb }
-            } else {
-              merged.push(createDefaultBrand(sb.brand_name, sb.brand_values, sb.brand_code))
             }
           })
           setAllBrands(merged)

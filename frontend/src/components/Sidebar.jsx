@@ -44,7 +44,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
     switchBrand,
   } = useApp()
   const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
-  const canSwitchBrands = isDemo && allBrands.length > 1
+  const canSwitchBrands = isDemo && isOwner && allBrands.length > 1
   const [brandsOpen, setBrandsOpen] = useState(false)
   const location = useLocation()
   const queue = isLead

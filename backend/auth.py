@@ -11,7 +11,7 @@ from types import SimpleNamespace
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from pydantic import BaseModel, Field
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, or_
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, func, or_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -357,13 +357,12 @@ def public_account(account, db=None):
         if is_demo:
             res["brand_code"] = "KLARITY-2026"
             res["brand_values"] = "Authenticity, craft, sustainability, quiet confidence"
-        elif db:
-            cached_brands = _get_cached_brands(db)
-            brand_rec = next((b for b in cached_brands if (b.get("brand_name") or "").lower() == brand_name.lower()), None)
+        elif db and brand_name:
+            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(brand_name)).first()
             if brand_rec:
-                res["brand_code"] = brand_rec.get("brand_code", res["brand_code"])
-                res["brand_values"] = brand_rec.get("brand_values", res["brand_values"])
-            elif brand_name:
+                res["brand_code"] = brand_rec.brand_code or res["brand_code"]
+                res["brand_values"] = brand_rec.brand_values or res["brand_values"]
+            else:
                 clean_slug = re.sub(r"[^A-Za-z0-9]", "", brand_name).upper()[:6] or "BRAND"
                 new_c = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
                 new_b = Brand(brand_name=brand_name, brand_code=new_c, brand_values="")
@@ -375,6 +374,9 @@ def public_account(account, db=None):
                     _BRANDS_CACHE = None
                 except Exception:
                     db.rollback()
+                    b_again = db.query(Brand).filter(Brand.brand_name.ilike(brand_name)).first()
+                    if b_again:
+                        res["brand_code"] = b_again.brand_code or res["brand_code"]
     except Exception:
         pass
     return res
@@ -500,6 +502,14 @@ class SwitchBrandRequest(BaseModel):
 router = APIRouter(prefix="/api/auth", tags=["accounts"], dependencies=[Depends(check_origin)])
 
 
+OFFICIAL_DEMO_BRAND_NAMES = {
+    "Aster & Oak",
+    "Nova Athletics",
+    "Ember & Ivy",
+    "Solaris Media",
+    "Velvet Thread",
+}
+
 _BRANDS_CACHE: tuple[float, list[dict]] | None = None
 
 
@@ -536,11 +546,38 @@ def list_brands(db: Session = Depends(get_db)):
 
 @router.get("/brand-directory")
 def brand_directory(account: Account = Depends(current_account), db: Session = Depends(get_db)):
-    """Return all brands for demo accounts, or only their own brand for newly created brands."""
+    """Return curated showcase brands for demo owners, or only their own brand for reviewers/members/custom owners."""
     is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
-    if is_demo:
-        return {"brands": _get_cached_brands(db)}
+    is_owner = getattr(account, "role", "") in ("owner", "admin")
 
+    # Reviewers, team members, and non-owners are strictly locked to their single workspace
+    if not is_owner:
+        user_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
+        return {
+            "brands": [
+                {
+                    "id": brand_rec.id if brand_rec else 1,
+                    "brand_name": user_brand,
+                    "brand_code": brand_rec.brand_code if brand_rec else "KLARITY-2026",
+                    "brand_values": brand_rec.brand_values if brand_rec else "",
+                }
+            ]
+        }
+
+    # Demo owners get ONLY the 5 curated showcase brands - never private user brands!
+    if is_demo:
+        demo_target_names = {b.lower() for b in OFFICIAL_DEMO_BRAND_NAMES}
+        demo_brands = [
+            b for b in _get_cached_brands(db)
+            if (b.get("brand_name") or "").lower() in demo_target_names
+        ]
+        demo_order = ["Aster & Oak", "Nova Athletics", "Ember & Ivy", "Solaris Media", "Velvet Thread"]
+        order_map = {name.lower(): idx for idx, name in enumerate(demo_order)}
+        demo_brands.sort(key=lambda x: order_map.get((x.get("brand_name") or "").lower(), 99))
+        return {"brands": demo_brands}
+
+    # Non-demo custom brand owners get ONLY their own single registered brand
     user_brand = getattr(account, "brand_name", None) or "Brand"
     brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
     if not brand_rec and user_brand:
@@ -571,7 +608,11 @@ def switch_brand(
     account: Account = Depends(current_account),
     db: Session = Depends(get_db),
 ):
-    """Switch active brand workspace (allowed for multi-brand demo accounts)."""
+    """Switch active brand workspace (strictly permitted only for demo owners within the 5 showcase brands)."""
+    is_owner = getattr(account, "role", "") in ("owner", "admin")
+    if not is_owner:
+        raise HTTPException(403, "Only brand owners can switch workspaces")
+
     is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
     if not is_demo:
         user_brand = getattr(account, "brand_name", "Brand")
@@ -582,7 +623,12 @@ def switch_brand(
             "brand_code": brand_rec.brand_code if brand_rec else "BRAND-1000",
             "brand_values": brand_rec.brand_values if brand_rec else "",
         }
-    brand = db.query(Brand).filter(Brand.brand_name == payload.brand_name.strip()).first()
+
+    target_name = payload.brand_name.strip()
+    if target_name.lower() not in {b.lower() for b in OFFICIAL_DEMO_BRAND_NAMES}:
+        raise HTTPException(403, "Unauthorized to access private brand workspace")
+
+    brand = db.query(Brand).filter(Brand.brand_name.ilike(target_name)).first()
     if not brand:
         raise HTTPException(404, "Brand not found")
     setting = db.get(WorkspaceSettings, 1)
