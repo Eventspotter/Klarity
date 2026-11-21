@@ -81,8 +81,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
       document.removeEventListener('keydown', handleEscape)
     }
   }, [brandsOpen])
-    }
-  }, [brandsOpen])
 
   const updatePill = () => {
     animateSlidingPill({

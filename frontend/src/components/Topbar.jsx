@@ -169,7 +169,6 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
           >
             {theme === 'dark' || isDark ? <Sun size={18} /> : <Moon size={18} />}
           </IconButton>
-          </IconButton>
 
           <div className="topbar__popover-wrap">
             <IconButton

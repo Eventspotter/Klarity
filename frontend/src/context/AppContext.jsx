@@ -208,6 +208,9 @@ export function AppProvider({ children }) {
   const fetchPendingCount = useCallback((account) => {
     const r = (account?.role || '').toLowerCase()
     if (r === 'owner' || r === 'admin') {
+      // Call without brand_name so the backend uses the token's canonical
+      // brand_name — this is the same approach BrandControls.fetchPending uses,
+      // keeping the sidebar badge count and the detail list in sync.
       api.pendingAccounts().then(accs => {
         if (Array.isArray(accs)) setPendingApprovalsCount(accs.length)
       }).catch(() => {})

@@ -594,15 +594,28 @@ def list_pending_accounts(
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only Brand Owners and Admins can view pending accounts.")
     is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
-    target_brand = (brand_name or getattr(account, "brand_name", "") or "").strip()
+    # Prefer the explicit brand_name parameter; fall back to the account's own brand
+    account_brand = (getattr(account, "brand_name", "") or "").strip()
+    target_brand = (brand_name or "").strip() or account_brand
 
     query = db.query(Account).filter_by(is_approved=False)
     if not is_demo_admin and target_brand:
+        # Try the requested brand first; if nothing matches and a different
+        # explicit brand_name was supplied, also try the account's own brand
         query = query.filter(Account.brand_name.ilike(target_brand))
     elif target_brand and target_brand.lower() != "all":
         query = query.filter(Account.brand_name.ilike(target_brand))
 
     pending = query.all()
+
+    # If an explicit brand_name was passed and returned nothing, retry with the
+    # account's canonical brand — covers mismatches from apostrophe encoding,
+    # trailing whitespace, or stale frontend state.
+    if not pending and brand_name and account_brand and brand_name.strip().lower() != account_brand.lower():
+        fallback_query = db.query(Account).filter_by(is_approved=False)
+        fallback_query = fallback_query.filter(Account.brand_name.ilike(account_brand))
+        pending = fallback_query.all()
+
     return [public_account(acc, db) for acc in pending]
 
 

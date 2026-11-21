@@ -458,8 +458,17 @@ export function BrandControls() {
   const fetchPending = async () => {
     try {
       setLoadingPending(true)
-      const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
-      const list = await api.pendingAccounts(targetBrand)
+      // First try without brand filter — lets the backend use the token's own
+      // brand_name, which is the canonical source-of-truth and matches what
+      // AppContext.fetchPendingCount uses for the sidebar badge count.
+      let list
+      try {
+        list = await api.pendingAccounts()
+      } catch {
+        // Fallback: try with the frontend's activeBrand name
+        const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+        list = await api.pendingAccounts(targetBrand)
+      }
       const arr = Array.isArray(list) ? list : []
       setPendingAccounts(arr)
       if (typeof setPendingApprovalsCount === 'function') {
