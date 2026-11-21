@@ -112,7 +112,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## Tech Stack
+## ⚙️Tech Stack
 
 | Layer | Stack | Details |
 |---|---|---|
@@ -157,7 +157,7 @@ Klarity acts as an intelligent brand control center. Content is validated in rea
 
 ---
 
-## API Overview
+## 🔌API Overview
 
 | Method | Endpoint | Access | Purpose |
 |---|---|---|---|
