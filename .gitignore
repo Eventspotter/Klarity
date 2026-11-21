@@ -34,3 +34,11 @@ ENV/
 .idea/
 .DS_Store
 Thumbs.db
+
+# Tool caches, logs & agent artifacts
+.impeccable/
+.reticle/
+.pytest_cache/
+.agents/
+.codex/
+
