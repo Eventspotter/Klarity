@@ -53,7 +53,7 @@ def _submission(db: Session, submission_id: int, account = None) -> ContentSubmi
     # Broken Object-Level Authorization (BOLA) Check:
     # Non-admin users can only view or act on submissions within their brand workspace
     if account:
-        is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+        is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member")
         account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
         if not is_demo and submission.brand_name and submission.brand_name != account_brand:
             raise HTTPException(status_code=403, detail="Forbidden: You do not have access to this resource.")
@@ -73,7 +73,7 @@ def list_submissions(
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
     )
     from sqlalchemy import or_
-    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member") if account else True
     if is_demo:
         demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
         query = query.filter(or_(ContentSubmission.brand_name == demo_brand, ContentSubmission.brand_name == "Aster & Oak", ContentSubmission.brand_name.is_(None)))

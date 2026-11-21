@@ -123,6 +123,7 @@ def _make_account_snapshot(account) -> SimpleNamespace:
         is_approved=getattr(account, "is_approved", True),
         brand_name=getattr(account, "brand_name", None),
         is_demo=getattr(account, "is_demo", False),
+        full_name=getattr(account, "full_name", None),
     )
 
 
@@ -152,43 +153,83 @@ def invalidate_account_cache(username: str = None, email: str = None):
 
 def seed_test_account():
     with SessionLocal() as db:
-        ashwik = db.query(Account).filter(
-            or_(Account.username == "ashwik", Account.email == "ashwik@topper.local", Account.email == "ashwik@topper", Account.email == "ashwik@klarity.local")
-        ).first()
         default_pass = os.getenv("DEMO_ADMIN_PASSWORD", "klarity")
-        if not ashwik:
-            ashwik = Account(username="ashwik", email="ashwik@topper", password_hash=hash_password(default_pass), role="owner", brand_name="Aster & Oak", is_demo=True, is_approved=True)
-            db.add(ashwik)
-        else:
-            ashwik.username = "ashwik"
-            ashwik.email = "ashwik@topper"
-            ashwik.password_hash = hash_password(default_pass)
-            ashwik.role = "owner"
-            ashwik.brand_name = "Aster & Oak"
-            ashwik.is_demo = True
-            ashwik.is_approved = True
-
-        sunless = db.query(Account).filter(
-            or_(Account.username == "sunless", Account.email == "sunless@klarity.local")
-        ).first()
-        if not sunless:
-            sunless = Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password(default_pass), role="owner", brand_name="Aster & Oak", is_demo=True, is_approved=True)
-            db.add(sunless)
-        else:
-            sunless.username = "sunless"
-            sunless.email = "sunless@klarity.local"
-            sunless.password_hash = hash_password(default_pass)
-            sunless.role = "owner"
-            sunless.brand_name = "Aster & Oak"
-            sunless.is_demo = True
-            sunless.is_approved = True
-
-        # Pre-warm account cache with pure snapshots
+        pass_hash = hash_password(default_pass)
         now = time.monotonic()
-        _ACCOUNT_CACHE["ashwik"] = (now + 300.0, _make_account_snapshot(ashwik))
-        _ACCOUNT_CACHE["ashwik@topper"] = (now + 300.0, _make_account_snapshot(ashwik))
-        _ACCOUNT_CACHE["sunless"] = (now + 300.0, _make_account_snapshot(sunless))
-        _ACCOUNT_CACHE["sunless@klarity.local"] = (now + 300.0, _make_account_snapshot(sunless))
+
+        demo_accounts = [
+            {
+                "username": "ashwik",
+                "emails": ["ashwik@topper", "ashwik@topper.local", "ashwik@klarity.local"],
+                "role": "owner",
+                "brand_name": "Aster & Oak",
+                "full_name": "Ashwik Saxena",
+            },
+            {
+                "username": "sunless",
+                "emails": ["sunless@klarity.local"],
+                "role": "owner",
+                "brand_name": "Aster & Oak",
+                "full_name": "Sunless",
+            },
+            {
+                "username": "judge_owner",
+                "emails": ["judge.owner@klarity.local", "demo_owner@klarity.local", "owner@asterandoak.studio"],
+                "role": "owner",
+                "brand_name": "Aster & Oak",
+                "full_name": "Elena Vance (Brand Owner)",
+            },
+            {
+                "username": "judge_reviewer",
+                "emails": ["judge.reviewer@klarity.local", "demo_reviewer@klarity.local"],
+                "role": "reviewer",
+                "brand_name": "Aster & Oak",
+                "full_name": "Marcus Chen (Reviewer)",
+            },
+            {
+                "username": "judge_member",
+                "emails": ["judge.member@klarity.local", "demo_member@klarity.local"],
+                "role": "member",
+                "brand_name": "Aster & Oak",
+                "full_name": "Maya Iyer (Team Member)",
+            },
+        ]
+
+        for item in demo_accounts:
+            u_name = item["username"]
+            primary_email = item["emails"][0]
+            filter_conditions = [Account.username == u_name]
+            for em in item["emails"]:
+                filter_conditions.append(Account.email == em)
+
+            acc = db.query(Account).filter(or_(*filter_conditions)).first()
+            if not acc:
+                acc = Account(
+                    username=u_name,
+                    email=primary_email,
+                    password_hash=pass_hash,
+                    role=item["role"],
+                    brand_name=item["brand_name"],
+                    is_demo=True,
+                    is_approved=True,
+                    full_name=item["full_name"],
+                )
+                db.add(acc)
+            else:
+                acc.username = u_name
+                acc.email = primary_email
+                acc.password_hash = pass_hash
+                acc.role = item["role"]
+                acc.brand_name = item["brand_name"]
+                acc.is_demo = True
+                acc.is_approved = True
+                acc.full_name = item["full_name"]
+
+            db.flush()
+            snap = _make_account_snapshot(acc)
+            _ACCOUNT_CACHE[u_name.lower()] = (now + 300.0, snap)
+            for em in item["emails"]:
+                _ACCOUNT_CACHE[em.lower()] = (now + 300.0, snap)
 
         # Seed brands
         default_brands = [
@@ -238,6 +279,7 @@ def _cache_account(token_hash: str, account, session_expires_at: datetime) -> Si
         is_approved=getattr(account, "is_approved", True),
         brand_name=getattr(account, "brand_name", None),
         is_demo=getattr(account, "is_demo", False),
+        full_name=getattr(account, "full_name", None),
     )
     remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
     ttl = min(_SESSION_TTL_SECONDS, remaining)
@@ -288,7 +330,9 @@ def optional_account(request: Request, db: Session = Depends(get_db)):
 
 
 def public_account(account, db=None):
-    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in (
+        "ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member"
+    )
     brand_name = getattr(account, "brand_name", None)
     if not brand_name:
         brand_name = "Aster & Oak" if is_demo else "Brand"
@@ -676,17 +720,39 @@ def login(payload: LoginRequest, request: Request, response: Response, backgroun
     identifier = payload.identifier.strip().lower()
     clean_pass = payload.password.strip()
 
-    is_demo_bypass = identifier in (
-        "ashwik@topper", "ashwik", "sunless", "sunless@klarity.local", "roomtempinkelvin@gmail.com"
-    ) and clean_pass.lower() in ("klarity", "clarity")
+    demo_identifiers = {
+        "ashwik@topper", "ashwik", "sunless", "sunless@klarity.local", "roomtempinkelvin@gmail.com",
+        "judge_owner", "judge.owner@klarity.local", "demo_owner", "demo_owner@klarity.local", "owner@asterandoak.studio",
+        "judge_reviewer", "judge.reviewer@klarity.local", "demo_reviewer", "demo_reviewer@klarity.local",
+        "judge_member", "judge.member@klarity.local", "demo_member", "demo_member@klarity.local",
+    }
+    is_demo_bypass = identifier in demo_identifiers and clean_pass.lower() in ("klarity", "clarity")
 
     account = get_cached_account(identifier, db)
     if not account and is_demo_bypass:
-        u_name = "ashwik" if "ashwik" in identifier else "sunless"
-        account = db.query(Account).filter_by(username=u_name).first()
+        if "reviewer" in identifier:
+            u_name, e_mail, role, f_name = "judge_reviewer", "judge.reviewer@klarity.local", "reviewer", "Marcus Chen (Reviewer)"
+        elif "member" in identifier:
+            u_name, e_mail, role, f_name = "judge_member", "judge.member@klarity.local", "member", "Maya Iyer (Team Member)"
+        elif "ashwik" in identifier:
+            u_name, e_mail, role, f_name = "ashwik", "ashwik@topper", "owner", "Ashwik Saxena"
+        elif "sunless" in identifier or "roomtemp" in identifier:
+            u_name, e_mail, role, f_name = "sunless", "sunless@klarity.local", "owner", "Sunless"
+        else:
+            u_name, e_mail, role, f_name = "judge_owner", "judge.owner@klarity.local", "owner", "Elena Vance (Brand Owner)"
+
+        account = db.query(Account).filter(or_(Account.username == u_name, Account.email == e_mail)).first()
         if not account:
-            e_mail = "ashwik@topper" if u_name == "ashwik" else "sunless@klarity.local"
-            account = Account(username=u_name, email=e_mail, password_hash=hash_password("klarity"), role="owner", brand_name="Aster & Oak", is_demo=True, is_approved=True)
+            account = Account(
+                username=u_name,
+                email=e_mail,
+                password_hash=hash_password("klarity"),
+                role=role,
+                brand_name="Aster & Oak",
+                is_demo=True,
+                is_approved=True,
+                full_name=f_name,
+            )
             db.add(account)
             db.commit()
             db.refresh(account)
@@ -711,7 +777,10 @@ def login(payload: LoginRequest, request: Request, response: Response, backgroun
         elif not account:
             hashlib.pbkdf2_hmac("sha256", payload.password.encode(), b"invalid-account", 1_000)
 
-        if not valid and account and getattr(account, "username", None) in ("ashwik", "sunless") and clean_pass.lower() in ("clarity", "klarity"):
+        if not valid and account and (
+            getattr(account, "username", None) in ("ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member")
+            or getattr(account, "is_demo", False)
+        ) and clean_pass.lower() in ("clarity", "klarity"):
             valid = True
 
     if not valid:

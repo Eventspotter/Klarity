@@ -240,7 +240,7 @@ def build_activity(submissions: list[ContentSubmission], reports: Dict[int, Revi
 
 
 def build_bootstrap(db: Session, account=None) -> BootstrapOut:
-    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member") if account else True
     user_brand = getattr(account, "brand_name", None) if account else None
 
     cache_key = f"{DATABASE_URL}:demo" if is_demo else f"{DATABASE_URL}:{user_brand or 'custom'}"

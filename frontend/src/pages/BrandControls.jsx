@@ -65,10 +65,12 @@ const defaultSettings = {
 }
 
 const defaultTeam = [
+  { name: 'Elena Vance (Brand Owner)', email: 'judge.owner@klarity.local', role: 'Brand Owner', status: 'Active' },
+  { name: 'Marcus Chen (Reviewer)', email: 'judge.reviewer@klarity.local', role: 'Reviewer', status: 'Active' },
+  { name: 'Maya Iyer (Team Member)', email: 'judge.member@klarity.local', role: 'Team Member', status: 'Active' },
   { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Brand Owner', status: 'Active' },
   { name: 'Kruthik Kamegaonkar', email: 'kruthik@klarity.ai', role: 'Brand Owner', status: 'Active' },
   { name: 'Maddi Abhinav', email: 'abhinav@klarity.ai', role: 'Reviewer', status: 'Active' },
-  { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Reviewer', status: 'Active' },
   { name: 'G N Sreekar', email: 'sreekar@klarity.ai', role: 'Team Member', status: 'Active' },
   { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Team Member', status: 'Invited' },
 ]

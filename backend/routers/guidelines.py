@@ -22,7 +22,7 @@ def list_guidelines(
 ) -> list[BrandGuideline]:
     query = db.query(BrandGuideline)
     from sqlalchemy import or_
-    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless", "judge_owner", "judge_reviewer", "judge_member") if account else True
     if is_demo:
         demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
         query = query.filter(or_(BrandGuideline.brand_name == demo_brand, BrandGuideline.brand_name == "Aster & Oak", BrandGuideline.brand_name.is_(None)))

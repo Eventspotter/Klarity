@@ -108,7 +108,7 @@ function ActivityIcon({ kind }) {
 }
 
 export function Dashboard({ onNewReview }) {
-  const { data, currentUser, isLead, toast, activeBrand } = useApp()
+  const { data, currentUser, isLead, toast, activeBrand, user } = useApp()
   const { stats, submissions, trends, issue_breakdown: breakdown, coverage, activity, guidelines = [] } = data
   const [period, setPeriod] = useState('30d')
 
@@ -118,12 +118,15 @@ export function Dashboard({ onNewReview }) {
   const userLower = (currentUser || '').toLowerCase().trim()
   const mySubmissions = useMemo(() => {
     if (isLead) return submissions
-    if (!userLower) return []
+    if (!userLower && !user?.name) return []
+    const firstWord = (user?.name || '').toLowerCase().split(' ')[0]
     return submissions.filter((item) => {
       const author = (item.submitted_by || '').toLowerCase().trim()
-      return author === userLower || author.includes(userLower) || userLower.includes(author)
+      const matchesAuthor = author === userLower || author.includes(userLower) || userLower.includes(author)
+      const matchesName = firstWord && (author.includes(firstWord) || firstWord.includes(author))
+      return matchesAuthor || matchesName
     })
-  }, [currentUser, submissions, isLead, userLower])
+  }, [currentUser, submissions, isLead, userLower, user?.name])
 
   const myStats = useMemo(() => {
     const total = mySubmissions.length
@@ -254,7 +257,7 @@ export function Dashboard({ onNewReview }) {
 
   const topFlagged = useMemo(() => {
     if (totalSubmissions === 0) return null
-    const isDemo = Boolean(currentUser === 'ashwik' || currentUser === 'sunless')
+    const isDemo = Boolean(currentUser === 'ashwik' || currentUser === 'sunless' || currentUser?.startsWith('judge_') || user?.is_demo)
     const terms = (submissions || []).flatMap((sub) =>
       (sub.reports || []).flatMap((rep) =>
         (rep.issues || []).filter((iss) => iss.category === 'terminology')

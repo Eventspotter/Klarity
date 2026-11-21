@@ -21,6 +21,45 @@ import OtpInput from '../components/OtpInput'
 import { useApp } from '../context/AppContext'
 import { api } from '../lib/api'
 
+const DEMO_PROFILES = [
+  {
+    key: 'owner',
+    title: 'Brand Owner',
+    email: 'judge.owner@klarity.local',
+    password: 'klarity',
+    name: 'Elena Vance',
+    brand: 'Aster & Oak',
+    roleTag: 'Executive Admin',
+    icon: Crown,
+    color: '#d97706',
+    desc: 'Executive brand governance, guidelines & rules, design tokens, team rosters & approvals.',
+  },
+  {
+    key: 'reviewer',
+    title: 'Reviewer',
+    email: 'judge.reviewer@klarity.local',
+    password: 'klarity',
+    name: 'Marcus Chen',
+    brand: 'Aster & Oak',
+    roleTag: 'Editorial Auditor',
+    icon: FileCheck2,
+    color: '#0284c7',
+    desc: 'Review desk, brand compliance audits, queue inspection, and approve / request changes.',
+  },
+  {
+    key: 'member',
+    title: 'Team Member',
+    email: 'judge.member@klarity.local',
+    password: 'klarity',
+    name: 'Maya Iyer',
+    brand: 'Aster & Oak',
+    roleTag: 'Creator Studio',
+    icon: User,
+    color: '#059669',
+    desc: 'Creator Studio drafting, real-time AST pre-flight checks, and personal submissions.',
+  },
+]
+
 export function Login() {
   const { user, data, authenticate } = useApp()
   const location = useLocation()
@@ -43,10 +82,29 @@ export function Login() {
   const [cleanWorkspace, setCleanWorkspace] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [quickLogging, setQuickLogging] = useState(null)
   const [error, setError] = useState('')
   const [successMsg, setSuccessMsg] = useState('')
   const [pendingNotice, setPendingNotice] = useState(false)
   const [availableBrands, setAvailableBrands] = useState([])
+
+  const handleDemoSelect = async (p, autoSignIn = true) => {
+    setEmail(p.email)
+    setPassword(p.password)
+    setError('')
+    setSuccessMsg('')
+    if (!autoSignIn) return
+
+    setQuickLogging(p.key)
+    setBusy(true)
+    try {
+      await authenticate('login', { identifier: p.email, password: p.password })
+    } catch (err) {
+      setError(err.message || 'Demo sign-in failed. Please try again.')
+      setBusy(false)
+      setQuickLogging(null)
+    }
+  }
 
   const redirectParam = new URLSearchParams(location.search).get('redirect')
   const fromState = location.state?.from
@@ -234,7 +292,7 @@ export function Login() {
         </Link>
       </div>
       <div className="login-container">
-        <div className="login-card" style={{ maxWidth: register ? '540px' : '480px' }}>
+        <div className="login-card" style={{ maxWidth: register ? '540px' : '560px' }}>
           <div className="login-card__header">
             <Link to="/hero" className="login-brand">
               <BrandMark size={42} />
@@ -528,6 +586,64 @@ export function Login() {
                     placeholder="e.g. alex_brand"
                     required
                   />
+                </div>
+              </div>
+            )}
+
+            {!register && (
+              <div className="login-demo-panel">
+                <div className="login-demo-header">
+                  <div className="login-demo-badge">
+                    <Sparkles size={13} className="login-demo-sparkle" />
+                    <span>Hackathon Judge Demo Profiles</span>
+                  </div>
+                  <span className="login-demo-brand-tag">Aster &amp; Oak · KLARITY-2026</span>
+                </div>
+
+                <p className="login-demo-desc">
+                  Select a pre-configured role below to log in instantly with 1-click and evaluate role-specific workspace capabilities:
+                </p>
+
+                <div className="login-demo-cards">
+                  {DEMO_PROFILES.map((p) => {
+                    const Icon = p.icon
+                    const isSelected = email === p.email
+                    const isCurrentLogging = quickLogging === p.key
+                    return (
+                      <button
+                        key={p.key}
+                        type="button"
+                        className={`login-demo-card ${isSelected ? 'is-selected' : ''}`}
+                        onClick={() => handleDemoSelect(p, true)}
+                        disabled={busy}
+                        title={`1-Click login as ${p.title} (${p.email})`}
+                      >
+                        <div className="login-demo-card__head">
+                          <span className="login-demo-card__icon" style={{ color: p.color, background: `${p.color}18` }}>
+                            <Icon size={14} />
+                          </span>
+                          <span className="login-demo-card__tag" style={{ color: p.color, borderColor: `${p.color}35` }}>
+                            {p.roleTag}
+                          </span>
+                        </div>
+                        <strong className="login-demo-card__title">{p.title}</strong>
+                        <span className="login-demo-card__name">{p.name}</span>
+                        <p className="login-demo-card__desc">{p.desc}</p>
+                        <div className="login-demo-card__cta" style={{ color: p.color }}>
+                          <span>{isCurrentLogging ? 'Signing in…' : '1-Click Sign In'}</span>
+                          <ArrowRight size={11} />
+                        </div>
+                      </button>
+                    )
+                  })}
+                </div>
+
+                <div className="login-demo-footer">
+                  <span>Pre-authenticated Aster &amp; Oak workspace · Password: <code>klarity</code></span>
+                </div>
+
+                <div className="login-demo-divider">
+                  <span>or enter credentials manually</span>
                 </div>
               </div>
             )}
