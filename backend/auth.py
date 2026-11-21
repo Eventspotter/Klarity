@@ -29,6 +29,7 @@ class Account(Base):
     is_approved = Column(Boolean, nullable=False, default=True)
     brand_name = Column(String(120), nullable=True)
     is_demo = Column(Boolean, nullable=False, default=False)
+    full_name = Column(String(120), nullable=True)
 
 
 class WorkspaceSettings(Base):
@@ -196,9 +197,14 @@ def public_account(account, db=None):
     if not brand_name:
         brand_name = "Aster & Oak" if is_demo else "Brand"
 
+    display_name = getattr(account, "full_name", None)
+    if not display_name:
+        display_name = account.username.replace("_", " ").replace(".", " ").title() if "_" in account.username or "." in account.username else account.username
+
     res = {
         "id": account.id,
         "username": account.username,
+        "name": display_name,
         "email": account.email,
         "role": getattr(account, "role", "owner") or "owner",
         "is_approved": getattr(account, "is_approved", True),
@@ -286,6 +292,20 @@ class LoginRequest(BaseModel):
 class ApproveAccountRequest(BaseModel):
     account_id: int
     approve: bool = True
+
+
+class InviteMemberRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    role: str = Field(default="Team Member", max_length=50)
+    status: str = Field(default="Active", max_length=30)
+    brand_name: str | None = Field(default=None, max_length=120)
+
+
+class UpdateMemberRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    role: str | None = Field(default=None, max_length=50)
+    status: str | None = Field(default=None, max_length=30)
 
 
 class UpdateWorkspaceRequest(BaseModel):
@@ -545,29 +565,233 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     return start_session(account, request, response, db)
 
 
+ROLE_DISPLAY_MAP = {
+    "owner": "Brand Owner",
+    "admin": "Brand Owner",
+    "reviewer": "Reviewer",
+    "member": "Team Member",
+    "creator": "Team Member",
+}
+
+ROLE_DB_MAP = {
+    "Brand Owner": "owner",
+    "Reviewer": "reviewer",
+    "Team Member": "member",
+    "owner": "owner",
+    "admin": "admin",
+    "reviewer": "reviewer",
+    "member": "member",
+    "creator": "creator",
+}
+
+
 @router.get("/pending-accounts")
-def list_pending_accounts(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+def list_pending_accounts(
+    brand_name: str | None = None,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only Brand Owners and Admins can view pending accounts.")
-    pending = db.query(Account).filter_by(is_approved=False).all()
-    return [public_account(acc) for acc in pending]
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    target_brand = (brand_name or getattr(account, "brand_name", "") or "").strip()
+
+    query = db.query(Account).filter_by(is_approved=False)
+    if not is_demo_admin and target_brand:
+        query = query.filter(Account.brand_name.ilike(target_brand))
+    elif target_brand and target_brand.lower() != "all":
+        query = query.filter(Account.brand_name.ilike(target_brand))
+
+    pending = query.all()
+    return [public_account(acc, db) for acc in pending]
 
 
 @router.post("/verify-account")
-def verify_account(payload: ApproveAccountRequest, account: Account = Depends(current_account), db: Session = Depends(get_db)):
+def verify_account(
+    payload: ApproveAccountRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only Brand Owners and Admins can verify accounts.")
     target = db.get(Account, payload.account_id)
     if not target:
         raise HTTPException(404, "Account not found")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot verify account for another brand.")
+
     if payload.approve:
         target.is_approved = True
         db.commit()
-        return {"message": f"Account '{target.username}' approved successfully.", "account": public_account(target)}
+        return {"message": f"Account '{target.username}' approved successfully.", "account": public_account(target, db)}
     else:
         db.delete(target)
         db.commit()
         return {"message": f"Account '{target.username}' rejected and removed."}
+
+
+@router.get("/team-members")
+def get_team_members(
+    brand_name: str | None = None,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    target_brand = (brand_name or getattr(account, "brand_name", "") or "").strip()
+    is_demo_user = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not target_brand:
+        target_brand = "Aster & Oak" if is_demo_user else (getattr(account, "brand_name", "") or "")
+
+    accounts = []
+    if target_brand:
+        accounts = db.query(Account).filter(Account.brand_name.ilike(target_brand)).all()
+
+    # If the user is an owner/admin and no accounts returned, make sure current account is present
+    if not accounts and account:
+        accounts = [account]
+
+    roster = []
+    for acc in accounts:
+        display_name = getattr(acc, "full_name", None)
+        if not display_name:
+            display_name = (
+                acc.username.replace("_", " ").replace(".", " ").title()
+                if "_" in acc.username or "." in acc.username
+                else acc.username
+            )
+        role_label = ROLE_DISPLAY_MAP.get(acc.role, "Team Member")
+        status = "Active" if acc.is_approved else "Invited"
+        roster.append({
+            "id": acc.id,
+            "name": display_name,
+            "username": acc.username,
+            "email": acc.email,
+            "role": role_label,
+            "status": status,
+            "is_approved": acc.is_approved,
+            "is_demo": getattr(acc, "is_demo", False),
+            "brand_name": acc.brand_name,
+        })
+
+    # Sort order: Brand Owner -> Reviewer -> Team Member; Active before Invited
+    role_weights = {"Brand Owner": 0, "Reviewer": 1, "Team Member": 2}
+    roster.sort(key=lambda m: (role_weights.get(m["role"], 3), not m["is_approved"], m["name"].lower()))
+    return roster
+
+
+@router.post("/team-members")
+def invite_team_member(
+    payload: InviteMemberRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can add team members.")
+
+    target_brand = (payload.brand_name or getattr(account, "brand_name", "") or "").strip()
+    if not target_brand:
+        raise HTTPException(400, "Brand name is required.")
+
+    email = payload.email.strip().lower()
+    existing = db.query(Account).filter_by(email=email).first()
+    if existing:
+        raise HTTPException(400, f"Account with email '{email}' already exists.")
+
+    name = payload.name.strip()
+    clean_base = re.sub(r"[^a-z0-9_]", "_", name.lower())[:70] or "member"
+    username = clean_base
+    counter = 1
+    while db.query(Account).filter_by(username=username).first():
+        username = f"{clean_base}_{counter}"
+        counter += 1
+
+    role_db = ROLE_DB_MAP.get(payload.role, "member")
+    is_active = (payload.status.lower() == "active")
+    temp_pass = secrets.token_hex(8)
+
+    new_acc = Account(
+        username=username,
+        full_name=name,
+        email=email,
+        password_hash=hash_password(temp_pass),
+        role=role_db,
+        is_approved=is_active,
+        brand_name=target_brand,
+        is_demo=False,
+    )
+    db.add(new_acc)
+    db.commit()
+    db.refresh(new_acc)
+
+    return {
+        "message": f"Added {name} directly to {target_brand} roster.",
+        "member": {
+            "id": new_acc.id,
+            "name": name,
+            "username": new_acc.username,
+            "email": new_acc.email,
+            "role": ROLE_DISPLAY_MAP.get(new_acc.role, "Team Member"),
+            "status": "Active" if new_acc.is_approved else "Invited",
+            "is_approved": new_acc.is_approved,
+            "brand_name": new_acc.brand_name,
+        },
+    }
+
+
+@router.patch("/team-members/{member_id}")
+def update_team_member(
+    member_id: int,
+    payload: UpdateMemberRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can edit member credentials.")
+
+    target = db.get(Account, member_id)
+    if not target:
+        raise HTTPException(404, "Member not found.")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot edit members of another brand.")
+
+    if payload.name:
+        target.full_name = payload.name.strip()
+    if payload.role:
+        target.role = ROLE_DB_MAP.get(payload.role, "member")
+    if payload.status:
+        target.is_approved = (payload.status.lower() == "active")
+
+    db.commit()
+    return {"message": f"Updated governance settings for {target.username}."}
+
+
+@router.delete("/team-members/{member_id}")
+def delete_team_member(
+    member_id: int,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can remove team members.")
+
+    target = db.get(Account, member_id)
+    if not target:
+        raise HTTPException(404, "Member not found.")
+
+    if target.id == account.id:
+        raise HTTPException(400, "You cannot remove yourself from the workspace.")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot remove members of another brand.")
+
+    username = target.username
+    db.delete(target)
+    db.commit()
+    return {"message": f"Removed {username} from roster."}
 
 
 _SETTINGS_CACHE: tuple[float, dict] | None = None

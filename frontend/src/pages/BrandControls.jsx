@@ -179,14 +179,40 @@ export function BrandControls() {
 
   // Team Governance Roster State
   const [team, setTeam] = useState(() => {
+    const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+    const bName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+    if (isDemo && bName.toLowerCase() === 'aster & oak') {
+      try {
+        const stored = window.localStorage.getItem(getTeamKey(bName))
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {}
+      return defaultTeam
+    }
     try {
-      const stored = window.localStorage.getItem(getTeamKey(currentBrandName))
+      const stored = window.localStorage.getItem(getTeamKey(bName))
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
       }
     } catch {}
-    return defaultTeam
+    if (user) {
+      const ownerName = user.name || (user.username?.replace?.(/_/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || user.username)
+      return [
+        {
+          id: user.id,
+          name: ownerName,
+          username: user.username,
+          email: user.email,
+          role: isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member',
+          status: 'Active',
+          is_approved: true,
+        },
+      ]
+    }
+    return []
   })
 
   const persistTeam = (updatedTeam) => {
@@ -195,6 +221,54 @@ export function BrandControls() {
       const targetBrand = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
       window.localStorage.setItem(getTeamKey(targetBrand), JSON.stringify(updatedTeam))
     } catch {}
+  }
+
+  const fetchTeamRoster = async () => {
+    const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+    try {
+      const list = await api.teamMembers(targetBrand)
+      if (Array.isArray(list)) {
+        setTeam(list)
+        try {
+          window.localStorage.setItem(getTeamKey(targetBrand), JSON.stringify(list))
+        } catch {}
+        return
+      }
+    } catch {
+      // offline / fallback
+    }
+
+    const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+    if (isDemo && targetBrand.toLowerCase() === 'aster & oak') {
+      try {
+        const stored = window.localStorage.getItem(getTeamKey(targetBrand))
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTeam(parsed)
+            return
+          }
+        }
+      } catch {}
+      setTeam(defaultTeam)
+    } else {
+      if (user) {
+        const ownerName = user.name || (user.username?.replace?.(/_/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || user.username)
+        setTeam([
+          {
+            id: user.id,
+            name: ownerName,
+            username: user.username,
+            email: user.email,
+            role: isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member',
+            status: 'Active',
+            is_approved: true,
+          },
+        ])
+      } else {
+        setTeam([])
+      }
+    }
   }
 
   // Member Audit Drawer State
@@ -216,33 +290,57 @@ export function BrandControls() {
     })
   }
 
-  const handleSaveAudit = (e) => {
+  const handleSaveAudit = async (e) => {
     e?.preventDefault?.()
     if (!auditForm.name.trim() || !auditForm.email.trim()) {
       toast('Name and email are required.', 'warn')
       return
     }
-    const updated = [...team]
-    updated[auditTarget.index] = {
-      ...updated[auditTarget.index],
-      name: auditForm.name.trim(),
-      email: auditForm.email.trim(),
-      role: auditForm.role,
-      status: auditForm.status,
+    try {
+      if (auditTarget?.id) {
+        await api.updateTeamMember(auditTarget.id, {
+          name: auditForm.name.trim(),
+          role: auditForm.role,
+          status: auditForm.status,
+        })
+      }
+      toast(`Governance details updated for ${auditForm.name}.`, 'good')
+      setAuditTarget(null)
+      await fetchTeamRoster()
+    } catch {
+      const updated = [...team]
+      if (auditTarget?.index !== undefined) {
+        updated[auditTarget.index] = {
+          ...updated[auditTarget.index],
+          name: auditForm.name.trim(),
+          email: auditForm.email.trim(),
+          role: auditForm.role,
+          status: auditForm.status,
+        }
+        persistTeam(updated)
+      }
+      toast(`Governance details updated for ${auditForm.name}.`, 'good')
+      setAuditTarget(null)
     }
-    persistTeam(updated)
-    toast(`Governance details updated for ${auditForm.name}.`, 'good')
-    setAuditTarget(null)
   }
 
-  const handleDeleteMember = () => {
+  const handleDeleteMember = async () => {
     if (!auditTarget) return
     const confirmDelete = window.confirm(`Remove ${auditTarget.name} from the workspace governance roster?`)
     if (!confirmDelete) return
-    const updated = team.filter((_, idx) => idx !== auditTarget.index)
-    persistTeam(updated)
-    toast(`Removed ${auditTarget.name} from roster.`, 'good')
-    setAuditTarget(null)
+    try {
+      if (auditTarget.id) {
+        await api.deleteTeamMember(auditTarget.id)
+      }
+      toast(`Removed ${auditTarget.name} from roster.`, 'good')
+      setAuditTarget(null)
+      await fetchTeamRoster()
+    } catch {
+      const updated = team.filter((_, idx) => idx !== auditTarget.index)
+      persistTeam(updated)
+      toast(`Removed ${auditTarget.name} from roster.`, 'good')
+      setAuditTarget(null)
+    }
   }
 
   // Invite & Add Member Drawer State
@@ -264,7 +362,7 @@ export function BrandControls() {
     setIsInviteOpen(true)
   }
 
-  const handleAddMember = (e) => {
+  const handleAddMember = async (e) => {
     e?.preventDefault?.()
     if (!inviteForm.name.trim()) {
       toast('Please enter the member name.', 'warn')
@@ -282,17 +380,30 @@ export function BrandControls() {
       return
     }
 
-    const newMember = {
-      name: inviteForm.name.trim(),
-      email: inviteForm.email.trim(),
-      role: inviteForm.role,
-      status: inviteForm.status,
+    try {
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      const res = await api.inviteTeamMember({
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role: inviteForm.role,
+        status: inviteForm.status,
+        brand_name: targetBrand,
+      })
+      toast(res?.message || `Added ${inviteForm.name} directly to the brand roster!`, 'good')
+      setIsInviteOpen(false)
+      await fetchTeamRoster()
+    } catch {
+      const newMember = {
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role: inviteForm.role,
+        status: inviteForm.status,
+      }
+      const updated = [newMember, ...team]
+      persistTeam(updated)
+      toast(`Added ${newMember.name} directly to the brand roster!`, 'good')
+      setIsInviteOpen(false)
     }
-
-    const updated = [newMember, ...team]
-    persistTeam(updated)
-    toast(`Added ${newMember.name} directly to the brand roster!`, 'good')
-    setIsInviteOpen(false)
   }
 
   const [activeSection, setActiveSection] = useState('brand-identity')
@@ -346,7 +457,8 @@ export function BrandControls() {
   const fetchPending = async () => {
     try {
       setLoadingPending(true)
-      const list = await api.pendingAccounts()
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+      const list = await api.pendingAccounts(targetBrand)
       const arr = Array.isArray(list) ? list : []
       setPendingAccounts(arr)
       if (typeof setPendingApprovalsCount === 'function') {
@@ -399,7 +511,8 @@ export function BrandControls() {
     }
     fetchPending()
     fetchWorkspaceMeta()
-  }, [activeBrand?.brand_name, activeBrand?.name])
+    fetchTeamRoster()
+  }, [activeBrand?.brand_name, activeBrand?.name, user?.username])
 
   const handleVerify = async (accountId, approve) => {
     try {
@@ -407,6 +520,7 @@ export function BrandControls() {
       const res = await api.verifyAccount({ account_id: accountId, approve })
       toast(res.message, approve ? 'good' : 'warn')
       await fetchPending()
+      await fetchTeamRoster()
     } catch (err) {
       toast(err.message, 'warn')
     } finally {
@@ -1003,35 +1117,47 @@ export function BrandControls() {
             />
 
             <div className="team-list" style={{ marginTop: '16px' }}>
-              {team.map((member, index) => (
-                <div className="team-row" key={`${member.email}-${index}`}>
-                  <Avatar name={member.name} />
-                  <div className="team-row__identity">
-                    <strong>{member.name}</strong>
-                    <small>{member.email}</small>
-                  </div>
-                  <span className="team-row__role">{member.role}</span>
-                  <span
-                    className={cx(
-                      'team-row__status',
-                      member.status === 'Invited' && 'is-invited'
-                    )}
-                    style={member.status === 'Suspended' ? { color: '#dc2626' } : undefined}
-                  >
-                    <span style={member.status === 'Suspended' ? { background: '#dc2626' } : undefined} />
-                    {member.status}
-                  </span>
-                  {isLead && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenAudit(member, index)}
-                    >
-                      Audit
-                    </Button>
-                  )}
+              {team.length === 0 ? (
+                <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+                  <Users size={28} style={{ opacity: 0.4, margin: '0 auto 8px', display: 'block' }} />
+                  <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>
+                    No team members on this brand yet
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    Share your Brand Access Code (<code>{brandMeta.brand_code || 'KLARITY-2026'}</code>) with reviewers or team members to let them join.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                team.map((member, index) => (
+                  <div className="team-row" key={`${member.email}-${index}`}>
+                    <Avatar name={member.name} />
+                    <div className="team-row__identity">
+                      <strong>{member.name}</strong>
+                      <small>{member.email}</small>
+                    </div>
+                    <span className="team-row__role">{member.role}</span>
+                    <span
+                      className={cx(
+                        'team-row__status',
+                        member.status === 'Invited' && 'is-invited'
+                      )}
+                      style={member.status === 'Suspended' ? { color: '#dc2626' } : undefined}
+                    >
+                      <span style={member.status === 'Suspended' ? { background: '#dc2626' } : undefined} />
+                      {member.status}
+                    </span>
+                    {isLead && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenAudit(member, index)}
+                      >
+                        Audit
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="settings-note" style={{ marginTop: '16px' }}>

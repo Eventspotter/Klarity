@@ -227,6 +227,77 @@ class SecurityBotProtectionTests(unittest.IsolatedAsyncioTestCase):
         ashwik_guidelines = [g["title"] for g in demo_boot.json()["guidelines"]]
         self.assertNotIn("Acme Tone", ashwik_guidelines)
 
+    async def test_team_governance_roster_isolation_and_approval_flow(self):
+        # 1. Register brand owner on a new brand "Zenith Audio"
+        owner_reg = await self.client.post("/api/auth/register", json={
+            "username": "zenith_founder",
+            "email": "founder@zenithaudio.io",
+            "password": "zenithpassword123",
+            "role": "owner",
+            "brand_name": "Zenith Audio",
+            "brand_values": "Purity, precision acoustics, silence",
+        })
+        self.assertEqual(owner_reg.status_code, 201)
+        owner_data = owner_reg.json()
+        self.assertTrue(owner_data["is_approved"])
+        brand_code = owner_data["account"]["brand_code"]
+        self.assertTrue(brand_code.startswith("ZENITH"))
+
+        # Login as the new owner
+        login_res = await self.client.post("/api/auth/login", json={
+            "identifier": "founder@zenithaudio.io",
+            "password": "zenithpassword123",
+        })
+        self.assertEqual(login_res.status_code, 200)
+
+        # 2. On a new account, team roster must have ONLY the founder, no demo members!
+        team_res = await self.client.get("/api/auth/team-members")
+        self.assertEqual(team_res.status_code, 200)
+        team_list = team_res.json()
+        self.assertEqual(len(team_list), 1)
+        self.assertEqual(team_list[0]["username"], "zenith_founder")
+        self.assertEqual(team_list[0]["role"], "Brand Owner")
+        self.assertEqual(team_list[0]["status"], "Active")
+
+        # 3. A new employee registers using Zenith's brand code
+        emp_reg = await self.client.post("/api/auth/register", json={
+            "username": "sound_engineer",
+            "email": "engineer@zenithaudio.io",
+            "password": "engineerpass123",
+            "role": "member",
+            "brand_code": brand_code,
+        })
+        self.assertEqual(emp_reg.status_code, 201)
+        emp_data = emp_reg.json()
+        self.assertFalse(emp_data["is_approved"])
+
+        # 4. Owner lists pending accounts: sound_engineer must be pending
+        pending_res = await self.client.get("/api/auth/pending-accounts")
+        self.assertEqual(pending_res.status_code, 200)
+        pending_list = pending_res.json()
+        self.assertIn("sound_engineer", [p["username"] for p in pending_list])
+        emp_acc_id = next(p["id"] for p in pending_list if p["username"] == "sound_engineer")
+
+        # 5. Owner approves the employee
+        verify_res = await self.client.post("/api/auth/verify-account", json={
+            "account_id": emp_acc_id,
+            "approve": True,
+        })
+        self.assertEqual(verify_res.status_code, 200)
+
+        # 6. Team roster must now include BOTH zenith_founder and sound_engineer!
+        updated_team_res = await self.client.get("/api/auth/team-members")
+        self.assertEqual(updated_team_res.status_code, 200)
+        updated_team = updated_team_res.json()
+        self.assertEqual(len(updated_team), 2)
+        team_usernames = [m["username"] for m in updated_team]
+        self.assertIn("zenith_founder", team_usernames)
+        self.assertIn("sound_engineer", team_usernames)
+        emp_member = next(m for m in updated_team if m["username"] == "sound_engineer")
+        self.assertEqual(emp_member["status"], "Active")
+        self.assertEqual(emp_member["role"], "Team Member")
+
+
 
 def tearDownModule():
     engine.dispose()
