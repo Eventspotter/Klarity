@@ -16,7 +16,7 @@ const links = [
   { href: '#review-desk', label: 'Review desk' },
   { href: '#guidelines', label: 'Guidelines' },
   { href: '#workflow', label: 'Workflows' },
-  { href: '#faq', label: 'Questions' },
+  { href: '#faq', label: 'FAQ' },
 ]
 const sections = links.map(link => link.href.slice(1))
 const lift = { whileHover: { y: -4 }, transition: spring }
