@@ -323,6 +323,11 @@ export function AppProvider({ children }) {
   }, [toast, refresh])
   useEffect(() => {
     let alive = true
+    const token = getStoredToken()
+    if (!token && !document.cookie.includes('klarity_session=')) {
+      setLoading(false)
+      return
+    }
     Promise.all([api.me(), api.bootstrap()])
       .then(([account, payload]) => {
         if (!alive) return
@@ -403,6 +408,7 @@ export function AppProvider({ children }) {
       setConnected(true)
       writeCachedWorkspace(account, bootstrapData)
     }
+    setLoading(false)
     const refreshPromise = refresh(account)
     if (!bootstrapData) {
       const liveData = await refreshPromise

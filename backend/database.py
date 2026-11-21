@@ -16,9 +16,9 @@ connect_args = (
         "keepalives_count": 5,
     }
 )
-engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": True}
+engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": False}
 if not is_sqlite:
-    engine_kwargs.update({"pool_size": 10, "max_overflow": 15, "pool_recycle": 300, "pool_timeout": 15})
+    engine_kwargs.update({"pool_size": 10, "max_overflow": 15, "pool_recycle": 600, "pool_timeout": 15})
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

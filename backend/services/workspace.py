@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, selectinload, defer
 from config import DATABASE_URL, SEED_DEMO_DATA
 
 _BOOTSTRAP_CACHE: dict[str, tuple[float, BootstrapOut]] = {}
-_BOOTSTRAP_TTL_SECONDS = 300.0
+_BOOTSTRAP_TTL_SECONDS = 3600.0
 
 
 def invalidate_bootstrap_cache() -> None:

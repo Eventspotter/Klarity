@@ -36,6 +36,10 @@ async def lifespan(_: FastAPI):
     try:
         with SessionLocal() as db:
             build_bootstrap(db)
+            from auth import get_cached_account
+            sunless = get_cached_account("sunless", db)
+            if sunless:
+                build_bootstrap(db, account=sunless)
     except Exception:
         pass
     yield
