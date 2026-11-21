@@ -66,10 +66,10 @@ const defaultSettings = {
 
 const defaultTeam = [
   { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Brand Owner', status: 'Active' },
-  { name: 'Kruthik Kamegaonkar', email: 'kruthik@localhost5000.dev', role: 'Brand Owner', status: 'Active' },
-  { name: 'Maddi Abhinav', email: 'abhinav@localhost5000.dev', role: 'Reviewer', status: 'Active' },
+  { name: 'Kruthik Kamegaonkar', email: 'kruthik@klarity.ai', role: 'Brand Owner', status: 'Active' },
+  { name: 'Maddi Abhinav', email: 'abhinav@klarity.ai', role: 'Reviewer', status: 'Active' },
   { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Reviewer', status: 'Active' },
-  { name: 'G N Sreekar', email: 'sreekar@localhost5000.dev', role: 'Team Member', status: 'Active' },
+  { name: 'G N Sreekar', email: 'sreekar@klarity.ai', role: 'Team Member', status: 'Active' },
   { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Team Member', status: 'Invited' },
 ]
 

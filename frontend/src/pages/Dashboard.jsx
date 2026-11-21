@@ -1018,7 +1018,7 @@ export function Dashboard({ onNewReview }) {
       )}
 
       <footer className="page-foot">
-        <span>Klarity v0.1 · localhost:5000</span>
+        <span>Klarity v2.0 · Enterprise Brand Governance</span>
         <span>All names, scores, and content in this workspace are synthetic demonstration data.</span>
       </footer>
     </div>
