@@ -15853,6 +15853,47 @@ html.dark .btn-mode-tab.is-active,
   padding: 10px;
 }
 
+/* Compare rank input */
+.forge-compare-rank-input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  flex-wrap: wrap;
+}
+.forge-compare-rank-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+}
+.forge-compare-rank-field {
+  width: 60px;
+  padding: 4px 8px;
+  font-size: 14px;
+  font-weight: 700;
+  text-align: center;
+  border: 1.5px solid var(--klarity-blue, #298EE4);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--ink);
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.forge-compare-rank-field:focus {
+  border-color: var(--klarity-blue, #298EE4);
+  box-shadow: 0 0 0 2px rgba(41, 142, 228, 0.18);
+}
+.forge-compare-rank-hint {
+  font-size: 11px;
+  color: var(--ink-soft);
+  margin-left: auto;
+}
+
 .forge-compare-stat {
   display: flex;
   flex-direction: column;
