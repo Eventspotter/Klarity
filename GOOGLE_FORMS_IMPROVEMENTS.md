@@ -1,9 +1,7 @@
 # Next-Gen Google Forms: Intelligent Enterprise Evolution
 > *Architectural Blueprint & Feature Specification for Modern Data Collection*
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 [![Security: Enterprise Grade](https://img.shields.io/badge/Security-SOC2%20%7C%20HIPAA%20%7C%20GDPR-emerald.svg)]()
-[![AI: Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini%20Pro-orange.svg)]()
 [![Status: Production Spec](https://img.shields.io/badge/Status-Specification%20v3.0-purple.svg)]()
 
 ---
@@ -134,7 +132,6 @@ Eliminates data silos by turning Google Forms into an active operational hub wit
 
 ---
 
-## 📄 License & Attribution
+## 📄 Attribution & Purpose
 
-This proposal and specification is open-sourced under the [MIT License](LICENSE).
 Designed for enterprise teams seeking modern, secure, and AI-first data collection architectures.
