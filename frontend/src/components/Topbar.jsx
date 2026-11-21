@@ -9,7 +9,6 @@ import {
   CircleDot,
   FileClock,
   LogOut,
-  Mail,
   Menu,
   Moon,
   Plus,
@@ -22,7 +21,6 @@ import {
 import { useApp } from '../context/AppContext'
 import { Avatar, Button, IconButton, Kbd, StatusDot } from './UI'
 import { CommandPalette } from './CommandPalette'
-import { MessagesDrawer } from './MessagesDrawer'
 import { actionLabel, cx, timeAgo } from '../lib/utils'
 import { gsap } from 'gsap'
 import { isReducedMotion } from '../lib/animations'
@@ -69,7 +67,6 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [openMenu, setOpenMenu] = useState(null)
-  const [messagesOpen, setMessagesOpen] = useState(false)
   const barRef = useRef(null)
 
   const title = currentPath?.startsWith('/reviews/')
@@ -171,15 +168,6 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
             className="theme-toggle-btn"
           >
             {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-          </IconButton>
-
-          <IconButton
-            label="Messages & Editorial Mail"
-            className="has-indicator"
-            onClick={() => setMessagesOpen(true)}
-          >
-            <Mail size={18} />
-            <span className="indicator indicator--unread" />
           </IconButton>
 
           <div className="topbar__popover-wrap">
@@ -290,7 +278,6 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
         </div>
       </header>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <MessagesDrawer open={messagesOpen} onClose={() => setMessagesOpen(false)} toast={toast} />
     </>
   )
 }
