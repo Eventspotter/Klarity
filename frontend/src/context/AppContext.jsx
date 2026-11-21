@@ -364,12 +364,11 @@ export function AppProvider({ children }) {
     }
   }, [toast, fetchPendingCount])
   const authenticate = async (mode, payload) => {
-    if (mode === 'login') {
-      // Login now returns otp_required — handled in Login.jsx directly
-      return await api.login(payload)
+    const res = await api[mode](payload)
+    if (res?.otp_required) {
+      return res
     }
-    // For direct session establishment (after OTP verification)
-    const account = await api[mode](payload)
+    const account = res
     if (account?.token) {
       setStoredToken(account.token)
     }

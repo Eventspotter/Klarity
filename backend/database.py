@@ -16,9 +16,9 @@ connect_args = (
         "keepalives_count": 5,
     }
 )
-engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": False}
+engine_kwargs = {"connect_args": connect_args, "pool_pre_ping": True}
 if not is_sqlite:
-    engine_kwargs.update({"pool_size": 10, "max_overflow": 15, "pool_recycle": 600})
+    engine_kwargs.update({"pool_size": 10, "max_overflow": 15, "pool_recycle": 300, "pool_timeout": 15})
 
 engine = create_engine(DATABASE_URL, **engine_kwargs)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -63,6 +63,10 @@ def init_db():
         "CREATE INDEX IF NOT EXISTS idx_review_issues_report_id ON review_issues (report_id)",
         "CREATE INDEX IF NOT EXISTS idx_review_actions_report_id ON review_actions (report_id)",
         "CREATE INDEX IF NOT EXISTS idx_login_sessions_expires_at ON login_sessions (expires_at)",
+        "CREATE INDEX IF NOT EXISTS idx_accounts_username ON accounts (username)",
+        "CREATE INDEX IF NOT EXISTS idx_accounts_email ON accounts (email)",
+        "CREATE INDEX IF NOT EXISTS idx_accounts_brand ON accounts (brand_name)",
+        "CREATE INDEX IF NOT EXISTS idx_login_sessions_account_id ON login_sessions (account_id)",
     ]
     with engine.connect() as conn:
         try:

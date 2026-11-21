@@ -65,10 +65,29 @@ class PasswordResetOTP(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
-def hash_password(password, salt=None):
+def hash_password(password, salt=None, iterations=100_000):
     salt = salt or secrets.token_hex(16)
-    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 600_000).hex()
-    return f"{salt}${digest}"
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), iterations).hex()
+    return f"{salt}${iterations}${digest}"
+
+
+def verify_stored_password(stored_hash: str, candidate_password: str) -> bool:
+    if not stored_hash or "$" not in stored_hash:
+        return False
+    parts = stored_hash.split("$")
+    if len(parts) == 3:
+        salt, iters_str, digest = parts
+        try:
+            iters = int(iters_str)
+        except ValueError:
+            iters = 100_000
+    elif len(parts) == 2:
+        salt, digest = parts
+        iters = 600_000
+    else:
+        return False
+    candidate_digest = hashlib.pbkdf2_hmac("sha256", candidate_password.encode(), salt.encode(), iters).hex()
+    return hmac.compare_digest(digest, candidate_digest)
 
 
 def seed_test_account():
@@ -548,9 +567,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
         db.refresh(account)
     valid = False
     if account and getattr(account, "password_hash", None) and "$" in account.password_hash:
-        salt = account.password_hash.split("$")[0]
-        candidate = hash_password(payload.password, salt)
-        valid = bool(hmac.compare_digest(account.password_hash, candidate))
+        valid = verify_stored_password(account.password_hash, payload.password)
     elif not account:
         hash_password(payload.password, "invalid-account")
 
@@ -1009,7 +1026,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
     is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
-    response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
+    response.headers["Clear-Site-Data"] = '"cookies", "storage"'
 
 
 # ---------------------------------------------------------------------------
