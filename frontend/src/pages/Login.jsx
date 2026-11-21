@@ -218,9 +218,9 @@ export function Login() {
           {successMsg && (!forgotMode || forgotMode === 'email') && (
             <div className="login-alert-success" role="status" style={{ marginBottom: '18px' }}>
               {pendingNotice ? (
-                <Clock size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#b45309' }} />
+                <Clock size={20} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--clay)' }} />
               ) : (
-                <CheckCircle2 size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#16a34a' }} />
+                <CheckCircle2 size={20} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--good)' }} />
               )}
               <div>
                 <strong>{pendingNotice ? 'Pending Admin / Owner Verification' : 'Registration Complete'}</strong>
@@ -346,7 +346,7 @@ export function Login() {
                           animation: 'fadeIn 0.25s ease-out'
                         }}
                       >
-                        <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#16a34a' }} />
+                        <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--good)' }} />
                         <div>{successMsg}</div>
                       </div>
                     )}

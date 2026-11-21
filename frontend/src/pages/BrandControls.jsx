@@ -1010,10 +1010,10 @@ export function BrandControls() {
                 ) : (
                   <span
                     style={{
-                      background: 'rgba(34, 197, 94, 0.15)',
-                      color: '#15803d',
+                      background: 'var(--good-soft, rgba(34, 197, 94, 0.15))',
+                      color: 'var(--good-text, #15803d)',
                       fontSize: '11.5px',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       padding: '3px 9px',
                       borderRadius: '6px',
                     }}
@@ -1095,7 +1095,7 @@ export function BrandControls() {
                         icon={UserCheck}
                         disabled={verifyingId === acc.id}
                         onClick={() => handleVerify(acc.id, true)}
-                        style={{ background: '#16a34a', borderColor: '#16a34a', color: '#fff' }}
+                        className="btn--good"
                       >
                         {verifyingId === acc.id ? 'Processing…' : 'Allow / Verify'}
                       </Button>
