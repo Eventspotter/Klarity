@@ -116,6 +116,64 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
     return filtered.slice(0, 5)
   }, [data?.activity, data?.submissions, isLead, user?.username])
 
+  const storageKey = `klarity_notifications_last_read_${user?.username || 'guest'}`
+  const [lastReadTime, setLastReadTime] = useState(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      return stored ? parseInt(stored, 10) : 0
+    } catch {
+      return 0
+    }
+  })
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(storageKey)
+      setLastReadTime(stored ? parseInt(stored, 10) : 0)
+    } catch {
+      setLastReadTime(0)
+    }
+  }, [storageKey])
+
+  const unreadNotifications = useMemo(() => {
+    if (!notifications || notifications.length === 0) return []
+    if (!lastReadTime) return notifications
+    return notifications.filter((item) => {
+      if (!item.created_at) return false
+      const itemTime = new Date(item.created_at).getTime()
+      if (isNaN(itemTime)) return false
+      return itemTime > lastReadTime
+    })
+  }, [notifications, lastReadTime])
+
+  const hasUnread = unreadNotifications.length > 0
+
+  const handleToggleNotifications = () => {
+    if (openMenu !== 'notifications') {
+      setOpenMenu('notifications')
+      const now = Date.now()
+      setLastReadTime(now)
+      try {
+        localStorage.setItem(storageKey, String(now))
+      } catch {
+        // ignore
+      }
+    } else {
+      setOpenMenu(null)
+    }
+  }
+
+  const handleMarkAllRead = (e) => {
+    e?.stopPropagation?.()
+    const now = Date.now()
+    setLastReadTime(now)
+    try {
+      localStorage.setItem(storageKey, String(now))
+    } catch {
+      // ignore
+    }
+  }
+
   return (
     <>
       <header className="topbar" ref={barRef}>
@@ -173,11 +231,15 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
           <div className="topbar__popover-wrap">
             <IconButton
               label="Notifications"
-              className={cx('has-indicator topbar__notifications-btn', openMenu === 'notifications' && 'is-active')}
-              onClick={() => setOpenMenu(openMenu === 'notifications' ? null : 'notifications')}
+              className={cx(
+                'topbar__notifications-btn',
+                hasUnread && 'has-indicator has-unread',
+                openMenu === 'notifications' && 'is-active'
+              )}
+              onClick={handleToggleNotifications}
             >
               <Bell size={18} className="bell-icon" />
-              <span className="indicator indicator--pulse" />
+              {hasUnread && <span className="indicator indicator--pulse" />}
             </IconButton>
             {openMenu === 'notifications' ? (
               <AnimatedPopover className="popover popover--notifications">
@@ -186,7 +248,19 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                     <h3>Notifications</h3>
                     <p>Recent review activity</p>
                   </div>
-                  <span className="popover__count">{notifications.length}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {hasUnread && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-link"
+                        style={{ fontSize: '11px', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                      >
+                        Mark all as read
+                      </button>
+                    )}
+                    <span className="popover__count">{notifications.length}</span>
+                  </div>
                 </div>
                 <ul className="notification-list">
                   {notifications.map((item) => {
@@ -264,7 +338,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                 <button onClick={() => { setOpenMenu(null); navigate('/hero') }}>
                   <Sparkles size={15} /> Product overview
                 </button>
-                <button onClick={async () => { try { await logout(); setOpenMenu(null); navigate('/login') } catch (error) { toast(error.message, 'warn') } }}>
+                <button onClick={async () => { try { sessionStorage.removeItem('klarity_redirect'); await logout(); setOpenMenu(null); navigate('/login') } catch (error) { toast(error.message, 'warn') } }}>
                   <LogOut size={15} /> Sign out
                 </button>
                 <div className="popover__meta">

@@ -1,469 +1,182 @@
+// Adapted from Wren by LN (MIT). Original: ln-dev7/landing-pages/landing-pages/wren.
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import gsap from 'gsap'
-import {
-  ArrowRight,
-  BookOpen,
-  Check,
-  CheckCircle2,
-  ChevronRight,
-  FileCheck2,
-  FileText,
-  Layers,
-  RotateCcw,
-  Scale,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Sun,
-  Moon,
-} from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { motion, MotionConfig } from 'motion/react'
+import { ArrowRight, BookOpenText, Check, CheckCircle2, CircleHelp, FileText, Images, LineChart, Menu, Moon, Play, ShieldCheck, Sparkles, Sun, Users, X } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
-import WakeSlider from '../components/WakeSlider'
 import { useApp } from '../context/AppContext'
+import { Contours, Typed, useReveal } from '../components/landing/HeroEffects'
+import { SlidingGroup, spring, useActiveSection } from '../components/landing/LandingPrimitives'
+import { KnowledgeDemo, ReviewDemo, UseCasesDemo, VoiceDemo } from '../components/landing/LandingDemos'
+import { faqs } from '../components/landing/landingData'
+import './hero.css'
+
+const links = [
+  { href: '#proof-desk', label: 'Review desk' },
+  { href: '#styles', label: 'Brand voice' },
+  { href: '#projects', label: 'Knowledge' },
+  { href: '#uses', label: 'How it works' },
+  { href: '#faq', label: 'Questions' },
+]
+const sections = links.map(link => link.href.slice(1))
+const lift = { whileHover: { y: -4 }, transition: spring }
+
+function SectionHead({ eyebrow, children, description }) {
+  return <div className="landing-section-head" data-reveal><span className="eyebrow mono">{eyebrow}</span><h2>{children}</h2>{description && <p>{description}</p>}</div>
+}
 
 export function Hero() {
-  const navigate = useNavigate()
-  const { theme, toggleTheme } = useApp()
-  const heroRef = useRef(null)
-  const [applied, setApplied] = useState(false)
-  const [scoreDisplay, setScoreDisplay] = useState(84)
-  const scoreObj = useRef({ val: 84 })
+  const { user, theme, toggleTheme } = useApp()
+  const getPath = route => user ? route : `/login?redirect=${encodeURIComponent(route)}`
+  const { active, select } = useActiveSection(sections)
+  const [scrolled, setScrolled] = useState(false)
+  const [menu, setMenu] = useState(false)
+  const [openQuestion, setOpenQuestion] = useState(null)
+  const menuButton = useRef(null)
+  const menuPanel = useRef(null)
+  useReveal()
 
   useEffect(() => {
-    const ctx = gsap.context(() => {
-      const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
-
-      tl.from('.hero-tagline', {
-        opacity: 0,
-        y: -10,
-        duration: 0.5,
-      })
-        .from(
-          '.hero-title',
-          {
-            opacity: 0,
-            y: 20,
-            duration: 0.7,
-          },
-          '-=0.3'
-        )
-        .from(
-          '.hero-subtitle',
-          {
-            opacity: 0,
-            y: 16,
-            duration: 0.6,
-          },
-          '-=0.4'
-        )
-        .from(
-          '.hero-cta-group',
-          {
-            opacity: 0,
-            y: 12,
-            duration: 0.5,
-          },
-          '-=0.4'
-        )
-        .from(
-          '.hero-proof-strip',
-          {
-            opacity: 0,
-            y: 10,
-            duration: 0.4,
-          },
-          '-=0.3'
-        )
-        .from(
-          '.hero-plate',
-          {
-            opacity: 0,
-            y: 28,
-            scale: 0.985,
-            duration: 0.8,
-          },
-          '-=0.2'
-        )
-        .from(
-          '.hero-pillar-card',
-          {
-            opacity: 0,
-            y: 20,
-            duration: 0.6,
-            stagger: 0.12,
-          },
-          '-=0.3'
-        )
-    }, heroRef)
-
-    return () => ctx.revert()
+    const onScroll = () => setScrolled(window.scrollY > 12)
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
-  const handleToggle = () => {
-    const nextState = !applied
-    setApplied(nextState)
-    const targetScore = nextState ? 98 : 84
+  useEffect(() => {
+    if (!menu) return
+    const previous = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    menuPanel.current?.querySelector('a, button')?.focus()
+    const handleKey = e => {
+      if (e.key === 'Escape') { setMenu(false); menuButton.current?.focus() }
+      if (e.key === 'Tab') {
+        const items = menuPanel.current?.querySelectorAll('a, button')
+        if (!items?.length) return
+        if (e.shiftKey && document.activeElement === items[0]) { e.preventDefault(); items[items.length - 1].focus() }
+        else if (!e.shiftKey && document.activeElement === items[items.length - 1]) { e.preventDefault(); items[0].focus() }
+      }
+    }
+    document.addEventListener('keydown', handleKey)
+    return () => { document.body.style.overflow = previous; document.removeEventListener('keydown', handleKey) }
+  }, [menu])
 
-    gsap.to(scoreObj.current, {
-      val: targetScore,
-      duration: 0.6,
-      ease: 'power2.out',
-      onUpdate: () => {
-        setScoreDisplay(Math.round(scoreObj.current.val))
-      },
-    })
+  const closeMenu = () => { setMenu(false); menuButton.current?.focus() }
 
-    gsap.fromTo(
-      '.hero-plate__content-box',
-      { backgroundColor: nextState ? 'rgba(41, 142, 228, 0.04)' : 'rgba(184, 91, 53, 0.04)' },
-      { backgroundColor: 'var(--paper)', duration: 0.5, ease: 'power2.out' }
-    )
-  }
+  return <MotionConfig reducedMotion="user"><div className="klarity-landing">
+    <a className="skip" href="#landing-main">Skip to content</a>
+    <header className="nav" data-scrolled={scrolled}>
+      <div className="nav-inner">
+        <a href="#top" className="brand" aria-label="Klarity home"><BrandMark size={29} /><span>Klarity</span></a>
+        <SlidingGroup as="nav" className="nav-links" active={active} aria-label="Main navigation">
+          {links.map(link => { const id = link.href.slice(1); return <a key={id} href={link.href} data-selected={active === id} aria-current={active === id ? 'location' : undefined} onClick={() => select(id)}><span>{link.label}</span></a> })}
+        </SlidingGroup>
+        <div className="nav-actions">
+          <button type="button" className="landing-theme" onClick={toggleTheme} aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>{theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}</button>
+          <Link to={getPath('/reviews')} className="button nav-workspace">Open workspace <ArrowRight size={14} /></Link>
+          <button ref={menuButton} type="button" className="menu-button" aria-label="Open navigation" aria-expanded={menu} aria-controls="landing-menu" onClick={() => setMenu(true)}><Menu size={19} /></button>
+        </div>
+      </div>
+    </header>
 
-  return (
-    <div className="hero-page" ref={heroRef}>
-      {/* Top Navigation */}
-      <header className="hero-nav">
-        <div className="hero-nav__inner">
-          <Link to="/hero" className="hero-brand">
-            <BrandMark size={32} />
-            <div className="hero-brand__copy">
-              <span className="hero-brand__name">Klarity</span>
-              <span className="hero-brand__label">Editorial Brand Intelligence</span>
+    {menu && <div className="landing-menu-backdrop" onClick={closeMenu}>
+      <div className="landing-menu" id="landing-menu" ref={menuPanel} role="dialog" aria-modal="true" aria-labelledby="landing-menu-title" onClick={e => e.stopPropagation()}>
+        <div className="landing-menu-head"><span className="brand" id="landing-menu-title"><BrandMark size={28} />Klarity</span><button type="button" className="landing-theme" aria-label="Close navigation" onClick={closeMenu}><X size={20} /></button></div>
+        <p>Every piece of content. One clear identity.</p>
+        <nav aria-label="Mobile navigation" className="sheet-links">{links.map(link => <a key={link.href} href={link.href} aria-current={active === link.href.slice(1) ? 'location' : undefined} onClick={() => { select(link.href.slice(1)); closeMenu() }}>{link.label}<ArrowRight size={15} /></a>)}</nav>
+        <Link className="button" to={getPath('/reviews')} onClick={closeMenu}>Open workspace <ArrowRight size={14} /></Link>
+        {!user && <Link className="text-button" to="/login" onClick={closeMenu}>Sign in</Link>}
+      </div>
+    </div>}
+
+    <main id="landing-main">
+      <section className="hero" id="top">
+        <div className="frame" aria-hidden="true"><span className="corner tl" /><span className="corner tr" /></div>
+        <div className="hero-stage">
+          <Contours />
+          <div className="hero-hints" aria-hidden="true">
+            <span className="hh hh-1 rise" style={{ animationDelay: '1.2s' }}><Check size={13} /> Voice guide, checked.</span>
+            <span className="hh hh-2 rise" style={{ animationDelay: '1.35s' }}><CircleHelp size={13} /> Can we back up this claim?</span>
+            <span className="hh hh-3 rise" style={{ animationDelay: '1.5s' }}><Sparkles size={13} /> Your voice. A little clearer.</span>
+          </div>
+          <div className="hero-copy hero-think">
+            <div className="landing-eyebrow rise"><span /> YOUR BRAND, BEFORE YOU HIT PUBLISH</div>
+            <h1 aria-label="Keep every word on-brand, accurate, consistent, and yours.">
+              <span className="rise" style={{ animationDelay: '.2s' }} aria-hidden="true">Keep every word</span>
+              <span className="rise typed-line" style={{ animationDelay: '.35s' }} aria-hidden="true"><Typed /></span>
+            </h1>
+            <p className="rise" style={{ animationDelay: '.55s' }}>Your brand has a voice. Keep it clear. Klarity checks content against your guidelines, facts, and visual standards—with the reason behind every suggestion.</p>
+            <div className="hero-ctas rise" style={{ animationDelay: '.7s' }}>
+              <Link className="button button-lg" to={getPath('/reviews')}>Open Klarity <span className="cta-note">Your brand workspace</span><ArrowRight size={16} /></Link>
+              <a className="button button-outline button-lg" href="#proof-desk" onClick={() => select('proof-desk')}><Play size={14} /> See it in action</a>
             </div>
-          </Link>
-
-          <nav className="hero-nav__links">
-            <a href="#proof-desk">Review Desk</a>
-            <a href="#pillars">Architecture</a>
-            <Link to="/guidelines">Guidelines</Link>
-            <Link to="/assets">Assets</Link>
-          </nav>
-
-          <div className="hero-nav__actions">
-            <button
-              type="button"
-              className="hero-theme-toggle"
-              onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            >
-              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-            </button>
-            <Link to="/reviews" className="hero-btn hero-btn--sm hero-btn--primary">
-              <span>Open Workspace</span>
-              <ArrowRight size={14} />
-            </Link>
+            <p className="hero-reassurance rise" style={{ animationDelay: '.8s' }}><ShieldCheck size={13} /> Evidence behind the feedback. People behind the decision.</p>
           </div>
         </div>
-      </header>
-
-      {/* Main Masthead */}
-      <section className="hero-masthead">
-        <div className="hero-container hero-masthead__content">
-          <h1 className="hero-title">
-            Brand rules that live inside the work, <br className="hero-title__br" />
-            not in an 80-page PDF<span className="hero-accent">.</span>
-          </h1>
-
-          <p className="hero-subtitle">
-            Klarity evaluates copy, digital surfaces, and creative assets against live guidelines before
-            publishing. Line-by-line inspection, verified claim substantiation, and token-bound design fidelity.
-          </p>
-
-          <div className="hero-cta-group">
-            <a href="#proof-desk" className="hero-btn hero-btn--lg hero-btn--primary">
-              <span>Inspect Live Proof Desk</span>
-              <ArrowRight size={16} />
-            </a>
-            <Link to="/guidelines" className="hero-btn hero-btn--lg hero-btn--secondary">
-              <BookOpen size={16} />
-              <span>Explore Guidelines</span>
-            </Link>
-          </div>
-        </div>
-
-        {/* Centerpiece: Real Editorial Proof Desk */}
-        <div className="hero-container hero-plate-container" id="proof-desk">
-          <div className="hero-plate">
-            {/* Seamless one-direction scanning beam */}
-            <div className="hero-plate__scan-track" aria-hidden="true">
-              <div className="hero-plate__scan-beam" />
-            </div>
-
-            <div className="hero-plate__topbar">
-              <div className="hero-plate__doc-info">
-                <FileText size={15} />
-                <span className="hero-plate__doc-title">Aster &amp; Oak · Spring Collection Launch Plate</span>
-                <span className="hero-plate__doc-channel">Web Editorial · v1.4</span>
-                <span className="hero-plate__scan-status">
-                  <span className="hero-plate__scan-pulse" />
-                  Live Auditing
-                </span>
-              </div>
-
-              <div className="hero-plate__topbar-right">
-                <button
-                  type="button"
-                  className={`hero-plate__toggle-btn ${applied ? 'hero-plate__toggle-btn--active' : ''}`}
-                  onClick={handleToggle}
-                  aria-pressed={applied}
-                >
-                  <RotateCcw size={13} />
-                  <span>{applied ? 'Revert to Flagged Draft' : 'Apply Guideline Rules'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className="hero-plate__body">
-              {/* Left Pane: Copy Specimen */}
-              <div className="hero-plate__editor">
-                <div className="hero-plate__pane-head">
-                  <div className="hero-plate__pane-meta">
-                    <span className="hero-plate__channel-indicator">Draft Copy Specimen</span>
-                    <span className="hero-plate__meta-tags">
-                      {applied ? '✓ 0 issues detected' : '⚠️ 2 issues flagged'}
-                    </span>
-                  </div>
-                  <div className="hero-plate__legend">
-                    <span className="hero-legend-dot hero-legend-dot--warn" /> Flagged Buzzword
-                    <span className="hero-legend-dot hero-legend-dot--danger" /> Unverified Claim
-                  </div>
-                </div>
-
-                <div className="hero-plate__content-box">
-                  <p>
-                    Aster &amp; Oak creates thoughtful homeware with an organic sage aesthetic. Our
-                    new collection delivers{' '}
-                    {applied ? (
-                      <mark className="hero-highlight hero-highlight--approved">
-                        effortless cohesion
-                        <span className="hero-tooltip">✓ Approved: Aster &amp; Oak Calm Tone spec</span>
-                      </mark>
-                    ) : (
-                      <mark className="hero-highlight hero-highlight--warn">
-                        seamless
-                        <span className="hero-tooltip">⚠️ Flagged: Overused buzzword per Voice Guide §3.1</span>
-                      </mark>
-                    )}{' '}
-                    craftsmanship across both digital and physical living environments.
-                  </p>
-                  <p>
-                    Every vessel is fired in small batches to maintain{' '}
-                    {applied ? (
-                      <mark className="hero-highlight hero-highlight--approved">
-                        responsibly sourced and documented
-                        <span className="hero-tooltip">✓ Approved: Verified claim against FSC Certificate #2026-B</span>
-                      </mark>
-                    ) : (
-                      <mark className="hero-highlight hero-highlight--danger">
-                        eco-friendly
-                        <span className="hero-tooltip">🚫 Flagged: Unsubstantiated ESG claim per legal guide</span>
-                      </mark>
-                    )}{' '}
-                    integrity without compromise.
-                  </p>
-                </div>
-
-                <div className="hero-plate__editor-foot">
-                  <div className="hero-plate__word-count">
-                    <span>Length: 54 words</span>
-                    <span>·</span>
-                    <span>Reading time: 14 sec</span>
-                    <span>·</span>
-                    <span>Target Tone: Calm &amp; Grounded</span>
-                  </div>
-                  <div className="hero-plate__audit-pills">
-                    <span className="hero-audit-pill hero-audit-pill--good">Tone: 98% Consistent</span>
-                    <span
-                      className={`hero-audit-pill ${applied ? 'hero-audit-pill--good' : 'hero-audit-pill--clay'}`}
-                    >
-                      {applied ? 'All Checks Passed' : '2 Flags Pending'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Pane: Review Intelligence Desk */}
-              <div className="hero-plate__sidebar">
-                <div className="hero-plate__score-card">
-                  <div className="hero-score-header">
-                    <span className="hero-score-label">Brand Compliance Index</span>
-                    <span className={`hero-score-badge ${applied ? 'hero-score-badge--good' : 'hero-score-badge--clay'}`}>
-                      {applied ? 'Approved to Publish' : 'Action Required'}
-                    </span>
-                  </div>
-
-                  <div className="hero-score-num">
-                    <span>{scoreDisplay}</span>
-                    <small>/100</small>
-                  </div>
-
-                  <div className="hero-wake-slider-wrap" style={{ margin: '14px 0 10px', width: '100%', pointerEvents: 'none' }}>
-                    <WakeSlider
-                      value={scoreDisplay}
-                      min={0}
-                      max={100}
-                      step={1}
-                      bars={28}
-                      height={44}
-                      restHeight={10}
-                      gap={3}
-                      fillColor={applied ? 'var(--good, #22c55e)' : 'var(--clay, #b85b35)'}
-                      trackColor="rgba(32, 21, 15, 0.12)"
-                      sensitivity={1.1}
-                      reach={5}
-                      skew={0.6}
-                      glide={0.3}
-                      smoothing={100}
-                      readOnly={true}
-                    />
-                  </div>
-
-                  <p className="hero-score-note">
-                    {applied
-                      ? 'All voice, terminology, and legal claims meet Aster & Oak guidelines.'
-                      : '2 terms require editorial adjustments before publishing.'}
-                  </p>
-                </div>
-
-                <div className="hero-plate__rules">
-                  <span className="hero-rules-head">Evaluation Breakdown</span>
-                  <div className="hero-rule-row">
-                    <span>Voice &amp; Tone Register</span>
-                    <strong className="text-good">98%</strong>
-                  </div>
-                  <div className="hero-rule-row">
-                    <span>Approved Lexicon</span>
-                    <strong className={applied ? 'text-good' : 'text-clay'}>
-                      {applied ? '99%' : '74%'}
-                    </strong>
-                  </div>
-                  <div className="hero-rule-row">
-                    <span>ESG Claim Substantiation</span>
-                    <strong className={applied ? 'text-good' : 'text-danger'}>
-                      {applied ? '100%' : '65%'}
-                    </strong>
-                  </div>
-                  <div className="hero-rule-row">
-                    <span>Visual Asset Tokens</span>
-                    <strong className="text-good">100%</strong>
-                  </div>
-                </div>
-
-                <Link to="/reviews" className="hero-plate__cta">
-                  <span>Open Full Review Desk</span>
-                  <ChevronRight size={15} />
-                </Link>
-              </div>
-            </div>
-          </div>
+        <div className="hero-app" id="proof-desk">
+          <ReviewDemo getPath={getPath} />
+          <p className="hint mono">INTERACTIVE DEMO · Choose a draft, apply a suggestion, and compare the copy. Fictional brand; pre-written results.</p>
         </div>
       </section>
 
-      {/* Three Architectural Pillars */}
-      <section className="hero-pillars-section" id="pillars">
-        <div className="hero-container">
-          <div className="hero-section-head">
-            <span className="hero-section-pill">How Klarity Works</span>
-            <h2 className="hero-section-title">A Living Standard, Not a Shelf Document</h2>
-            <p className="hero-section-sub">
-              Most brand guidelines sit forgotten in static presentations. Klarity puts rules directly into
-              the publishing workflow where copy, images, and surfaces are created.
-            </p>
-          </div>
+      <section className="teams" aria-label="Brand checks">
+        <p>One clear standard, from the first draft to the final decision.</p>
+        <div className="brand-checks">{[{ icon: BookOpenText, label: 'Voice & tone' }, { icon: ShieldCheck, label: 'Facts & claims' }, { icon: FileText, label: 'Terminology' }, { icon: Images, label: 'Visual identity' }, { icon: Users, label: 'Human approval' }].map(({ icon: Icon, label }) => <span key={label}><Icon size={18} />{label}</span>)}</div>
+      </section>
 
-          <div className="hero-pillars-grid">
-            <div className="hero-pillar-card">
-              <div className="hero-pillar-icon">
-                <BookOpen size={22} />
-              </div>
-              <h3>Living Guidelines</h3>
-              <p>
-                Define tone parameters, banned jargon, approved phrasing, and mandatory legal disclosures.
-                When guidelines evolve, every desk and automated check updates instantly.
-              </p>
-              <Link to="/guidelines" className="hero-pillar-link">
-                <span>View Guidelines Spec</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
+      <section className="section" id="styles">
+        <SectionHead eyebrow="BRAND VOICE" description="Catch the phrase that sounds off. Suggest one that sounds like you. Keep the idea that made the draft worth writing.">Same thought, <em>your voice.</em></SectionHead>
+        <VoiceDemo />
+      </section>
 
-            <div className="hero-pillar-card">
-              <div className="hero-pillar-icon">
-                <Scale size={22} />
-              </div>
-              <h3>Line-by-Line Review Desk</h3>
-              <p>
-                Triage submitted campaign copy, press plates, and website launches. Automated scans highlight
-                unsubstantiated claims and voice drift with clear rationale and replacement suggestions.
-              </p>
-              <Link to="/reviews" className="hero-pillar-link">
-                <span>Explore Review Queue</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
+      <section className="section" id="projects">
+        <SectionHead eyebrow="YOUR SOURCE OF TRUTH" description="Bring guidelines, approved facts, terminology, and visual standards into one place. Every review starts with the rules your team agreed on.">Good feedback starts with <em>shared knowledge.</em></SectionHead>
+        <KnowledgeDemo />
+        <p className="fine">Select the example references to see how each one informs a review.</p>
+      </section>
 
-            <div className="hero-pillar-card">
-              <div className="hero-pillar-icon">
-                <Layers size={22} />
-              </div>
-              <h3>Token-Bound Brand Assets</h3>
-              <p>
-                Verify color hex codes, SVG typography marks, and campaign templates against single-source tokens.
-                Eliminates stale logos and unapproved palette variations across channels.
-              </p>
-              <Link to="/assets" className="hero-pillar-link">
-                <span>Inspect Asset Tokens</span>
-                <ArrowRight size={14} />
-              </Link>
-            </div>
-          </div>
+      <section className="section" id="uses">
+        <SectionHead eyebrow="FROM DRAFT TO DECISION" description="See what was flagged, which guideline it relates to, and how to fix it. Then let the right person make the call.">Shows its work, <em>every time.</em></SectionHead>
+        <UseCasesDemo />
+      </section>
+
+      <section className="section" id="product">
+        <SectionHead eyebrow="ONE CONNECTED WORKSPACE" description="Guidance, content, assets, and approvals belong together. Give the whole team a shared view of what good looks like.">Less back-and-forth. <em>More Klarity.</em></SectionHead>
+        <div className="bento">
+          <motion.article className="tile tile-wide" data-reveal {...lift}>
+            <div className="tile-visual longdoc" aria-hidden="true"><div className="pages">{Array.from({ length: 7 }, (_, i) => <motion.i key={i} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...spring, delay: 0.05 * i }} />)}</div><span><BookOpenText size={14} /> Voice guide · Naming · Approved claims</span></div>
+            <h3>Guidelines that stay close to the work</h3><p>A shared reference for tone, terminology, facts, and visual rules. Bring it into the review, where it matters.</p><Link to={getPath('/guidelines')} className="tile-link">Explore guidelines <ArrowRight size={13} /></Link>
+          </motion.article>
+          <motion.article className="tile tile-wide" data-reveal {...lift}>
+            <div className="tile-visual analysis" aria-hidden="true"><svg viewBox="0 0 300 110" preserveAspectRatio="none"><motion.path d="M0,90 C40,80 60,40 100,48 S160,85 200,52 S260,18 300,24" fill="none" stroke="var(--accent)" strokeWidth="2.5" initial={{ pathLength: 0 }} whileInView={{ pathLength: 1 }} viewport={{ once: true }} transition={{ duration: 1.4, ease: 'easeOut' }} vectorEffect="non-scaling-stroke" /><path d="M0,96 C50,94 90,78 140,82 S230,62 300,58" fill="none" stroke="var(--faint)" strokeDasharray="4 4" strokeWidth="1.5" /></svg><span className="an-note"><LineChart size={13} /> Spot the patterns behind repeat issues</span></div>
+            <h3>Learn from every review</h3><p>Follow brand health, review activity, and recurring issues. Use those patterns to make your next brief clearer.</p><Link to={getPath('/insights')} className="tile-link">Explore insights <ArrowRight size={13} /></Link>
+          </motion.article>
+          <motion.article className="tile" data-reveal {...lift}>
+            <div className="tile-visual memory" aria-hidden="true">{['Tone mismatch', 'Unverified claim', 'Suggested correction'].map((label, i) => <span key={label}><CheckCircle2 size={13} />{label}<small>{['Warning', 'Critical', 'Review'][i]}</small></span>)}</div>
+            <h3>A reason for every flag</h3><p>Read the severity, explanation, guideline, and suggested fix together.</p>
+          </motion.article>
+          <motion.article className="tile" data-reveal {...lift}>
+            <div className="tile-visual asset-visual" aria-hidden="true"><BrandMark size={48} /><div>{['var(--sage)', 'var(--brown-surface)', 'var(--cream-deep)', 'var(--clay)'].map(color => <i key={color} style={{ background: color }} />)}</div><span className="mono">ONE APPROVED IDENTITY</span></div>
+            <h3>The right assets, within reach</h3><p>Keep approved logos, palettes, and typography in the same workspace.</p>
+          </motion.article>
+          <motion.article className="tile" data-reveal {...lift}>
+            <div className="tile-visual honest" aria-hidden="true"><ShieldCheck size={21} /><strong>“Ready for your review.”</strong><span>Approve · Request changes · Reject</span></div>
+            <h3>Your team has the final say</h3><p>Keep review decisions, comments, and submission history together.</p>
+          </motion.article>
         </div>
       </section>
 
-      {/* Grounded Call to Action */}
-      <section className="hero-bottom-cta">
-        <div className="hero-container">
-          <div className="hero-cta-box">
-            <BrandMark size={40} />
-            <h2>Bring Discipline to Every Brand Touchpoint</h2>
-            <p>
-              Explore the Aster &amp; Oak workspace to see how live guidelines and automated reviews
-              maintain editorial excellence.
-            </p>
-            <div className="hero-cta-buttons">
-              <Link to="/reviews" className="hero-btn hero-btn--lg hero-btn--primary">
-                <span>Open Review Desk</span>
-                <ArrowRight size={16} />
-              </Link>
-              <Link to="/guidelines" className="hero-btn hero-btn--lg hero-btn--secondary">
-                <span>Browse Guidelines</span>
-              </Link>
-            </div>
-          </div>
-        </div>
+      <section className="section trust"><div className="trust-grid">
+        {[{ icon: BookOpenText, title: 'Evidence before opinion', body: 'Connect feedback to a specific guideline or approved source.' }, { icon: Sparkles, title: 'Keep the creator’s intent', body: 'Fix the issue without rewriting the idea out of the work.' }, { icon: Users, title: 'Human judgement, always', body: 'Suggestions support reviewers. The publishing decision stays with people.' }].map(({ icon: Icon, title, body }) => <div className="trust-item" key={title} data-reveal><span className="trust-icon"><Icon size={18} /></span><h3>{title}</h3><p>{body}</p></div>)}
+      </div></section>
+
+      <section className="section split" id="faq"><SectionHead eyebrow="A FEW THINGS TO KNOW">Clear answers. <em>Of course.</em></SectionHead>
+        <div className="faq" data-reveal>{faqs.map((faq, i) => { const open = openQuestion === i; return <div className="ui-accordion-item" key={faq.q}><h3 className="ui-accordion-header"><button type="button" id={`faq-question-${i}`} className="ui-accordion-trigger" aria-expanded={open} aria-controls={`faq-answer-${i}`} data-panel-open={open || undefined} onClick={() => setOpenQuestion(open ? null : i)}>{faq.q}<span className="ui-accordion-icon" aria-hidden="true" /></button></h3><div id={`faq-answer-${i}`} role="region" aria-labelledby={`faq-question-${i}`} hidden={!open}><div className="ui-accordion-content">{faq.a}</div></div></div> })}</div>
       </section>
 
-      {/* Editorial Footer */}
-      <footer className="hero-footer">
-        <div className="hero-container hero-footer__inner">
-          <div className="hero-footer__brand">
-            <BrandMark size={24} />
-            <span className="hero-footer__name">Klarity</span>
-            <span className="hero-footer__divider">·</span>
-            <small>© 2026 Klarity. Archival brand governance.</small>
-          </div>
-          <div className="hero-footer__links">
-            <Link to="/reviews">Reviews</Link>
-            <Link to="/guidelines">Guidelines</Link>
-            <Link to="/assets">Assets</Link>
-            <Link to="/calendar">Calendar</Link>
-            <Link to="/login">Sign In</Link>
-          </div>
-        </div>
-      </footer>
-    </div>
-  )
+      <section className="closing" data-reveal><span className="closing-mark" aria-hidden="true"><BrandMark size={44} /></span><h2>Make the next draft <em>feel like you.</em></h2><p>Bring your guidelines, your content, and your team. Give every piece of work the clarity it deserves.</p><div className="hero-ctas"><Link className="button button-lg" to={getPath('/reviews')}>Open your workspace <ArrowRight size={16} /></Link><Link className="button button-outline button-lg" to={getPath('/guidelines')}>Explore guidelines</Link></div></section>
+    </main>
+
+    <footer className="footer"><div className="footer-top"><a className="brand" href="#top"><BrandMark size={27} />Klarity</a><nav aria-label="Footer navigation"><Link to={getPath('/reviews')}>Reviews</Link><Link to={getPath('/guidelines')}>Guidelines</Link><Link to={getPath('/assets')}>Brand assets</Link><Link to={getPath('/calendar')}>Calendar</Link>{!user && <Link to="/login">Sign in</Link>}</nav></div><div className="footer-bottom"><p>© {new Date().getFullYear()} Klarity · Built by localhost:5000.</p><p>Every piece of content. One clear brand identity.</p></div></footer>
+  </div></MotionConfig>
 }

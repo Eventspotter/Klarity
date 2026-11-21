@@ -1324,16 +1324,45 @@ ol {
 
 html.dark .btn--primary,
 [data-theme="dark"] .btn--primary {
-  color: #ffffff;
+  color: #08131d;
   background: var(--sage);
+  font-weight: 800;
+  border-color: rgba(56, 189, 248, 0.4);
   box-shadow: 0 0 16px rgba(56, 189, 248, 0.25), 0 2px 4px rgba(0, 0, 0, 0.4);
 }
 
 html.dark .btn--primary:hover:not(:disabled),
 [data-theme="dark"] .btn--primary:hover:not(:disabled) {
-  background: var(--sage-strong);
+  background: #7dd3fc;
   box-shadow: 0 0 22px rgba(56, 189, 248, 0.38), 0 4px 8px rgba(0, 0, 0, 0.5);
+  color: #08131d;
+}
+
+.btn--good {
+  background: var(--good, #2e6d3c);
+  border-color: var(--good, #2e6d3c);
   color: #ffffff;
+}
+
+.btn--good:hover:not(:disabled) {
+  background: var(--good-deep, #1f5029);
+  border-color: var(--good-deep, #1f5029);
+  color: #ffffff;
+}
+
+html.dark .btn--good,
+[data-theme="dark"] .btn--good {
+  background: var(--good, #34d399) !important;
+  border-color: var(--good, #34d399) !important;
+  color: #08131d !important;
+  font-weight: 800 !important;
+  box-shadow: 0 0 14px rgba(52, 211, 153, 0.3);
+}
+
+html.dark .btn--good:hover:not(:disabled),
+[data-theme="dark"] .btn--good:hover:not(:disabled) {
+  background: #6ee7b7 !important;
+  color: #08131d !important;
 }
 
 .btn--secondary {
@@ -3487,8 +3516,9 @@ kbd {
   transition: transform 180ms ease, color 150ms ease;
 }
 
-/* Periodic realistic ringing chime animation */
-.topbar__notifications-btn:not(:hover) .bell-icon {
+/* Periodic realistic ringing chime animation only when unread notifications exist */
+.topbar__notifications-btn.has-indicator:not(:hover) .bell-icon,
+.topbar__notifications-btn.has-unread:not(:hover) .bell-icon {
   animation: bellRing 5.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) infinite;
 }
 
@@ -5000,8 +5030,8 @@ html.dark .insight-stat strong,
   gap: 10px;
   margin-top: 16px;
   padding: 11px 12px;
-  background: #f2eee2;
-  border: 1px solid rgba(59, 36, 24, 0.06);
+  background: var(--paper-raised, #f2eee2);
+  border: 1px solid var(--line, rgba(59, 36, 24, 0.06));
   border-radius: 12px;
   transition: background 150ms var(--ease-out);
 }
@@ -14006,16 +14036,17 @@ html.dark .btn-ai-generate-score:hover:not(:disabled),
 
 html.dark .btn-full-dark,
 [data-theme="dark"] .btn-full-dark {
-  background: var(--sage-deep, #0284c7) !important;
-  color: #ffffff !important;
-  border: 1px solid var(--sage, #38bdf8) !important;
-  box-shadow: 0 2px 10px rgba(14, 165, 233, 0.35);
+  background: var(--sage, #38bdf8) !important;
+  color: #08131d !important;
+  font-weight: 800 !important;
+  border: 1px solid rgba(56, 189, 248, 0.4) !important;
+  box-shadow: 0 2px 14px rgba(56, 189, 248, 0.3);
 }
 
 html.dark .btn-full-dark:hover,
 [data-theme="dark"] .btn-full-dark:hover {
-  background: var(--sage-strong, #0ea5e9) !important;
-  color: #ffffff !important;
+  background: #7dd3fc !important;
+  color: #08131d !important;
 }
 
 html.dark .btn-full-secondary,
@@ -16432,6 +16463,197 @@ html.dark .compliance-meter-track,
 html.dark .forge-rank-pill,
 [data-theme="dark"] .forge-rank-pill {
   border-color: var(--paper-raised);
+}
+
+/* =========================================================
+   CREATOR STUDIO & GENERAL DARK THEME COLOR & CONTRAST (WCAG AA)
+   - Normal text >= 4.5:1
+   - Large text / Headings >= 3:1
+   - Non-text UI (indicators, badges, meters, borders) >= 3:1
+   ========================================================= */
+
+/* Version / Channel Tag (e.g. "Web Editorial · v1.0") */
+html.dark .specimen-version-tag,
+[data-theme="dark"] .specimen-version-tag {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--ink-soft) !important;
+  border: 1px solid var(--line-strong) !important;
+}
+
+/* Green Status & Verification Pills (e.g. "Ready to publish") */
+html.dark .specimen-flag-pill--good,
+[data-theme="dark"] .specimen-flag-pill--good,
+html.dark .specimen-status-pill--green,
+[data-theme="dark"] .specimen-status-pill--green,
+html.dark .compliance-action-badge--good,
+[data-theme="dark"] .compliance-action-badge--good {
+  background: rgba(16, 185, 129, 0.16) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(52, 211, 153, 0.35) !important;
+}
+
+/* Warning Pills (e.g. "⚠️ X issues flagged", "X Flags Pending") */
+html.dark .specimen-flag-pill--warn,
+[data-theme="dark"] .specimen-flag-pill--warn,
+html.dark .specimen-status-pill--tan,
+[data-theme="dark"] .specimen-status-pill--tan,
+html.dark .compliance-action-badge,
+[data-theme="dark"] .compliance-action-badge {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+}
+
+/* Compliance Meter Progress Bar */
+html.dark .compliance-meter-fill.is-good,
+[data-theme="dark"] .compliance-meter-fill.is-good {
+  background: #34d399 !important;
+  box-shadow: 0 0 12px rgba(52, 211, 153, 0.4) !important;
+}
+
+html.dark .compliance-meter-fill.is-warn,
+[data-theme="dark"] .compliance-meter-fill.is-warn {
+  background: #f59e0b !important;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4) !important;
+}
+
+/* Evaluation Breakdown Numbers */
+html.dark .text-good,
+[data-theme="dark"] .text-good {
+  color: #34d399 !important;
+}
+
+html.dark .text-warn,
+[data-theme="dark"] .text-warn {
+  color: #fbbf24 !important;
+}
+
+html.dark .text-danger,
+[data-theme="dark"] .text-danger {
+  color: #f87171 !important;
+}
+
+/* Highlighted Specimen Buzzwords & Claims in Dark Mode */
+html.dark .specimen-highlight--buzzword,
+[data-theme="dark"] .specimen-highlight--buzzword {
+  background: rgba(245, 158, 11, 0.22) !important;
+  border-color: #f59e0b !important;
+  color: #fef08a !important;
+}
+
+html.dark .specimen-highlight--claim,
+[data-theme="dark"] .specimen-highlight--claim {
+  background: rgba(239, 68, 68, 0.22) !important;
+  border-color: #ef4444 !important;
+  color: #fecaca !important;
+}
+
+/* Textarea & Title Input Placeholders (Minimum 4.5:1 contrast) */
+html.dark .specimen-box__textarea::placeholder,
+[data-theme="dark"] .specimen-box__textarea::placeholder,
+html.dark .specimen-desk-card__title-input::placeholder,
+[data-theme="dark"] .specimen-desk-card__title-input::placeholder,
+html.dark textarea::placeholder,
+[data-theme="dark"] textarea::placeholder,
+html.dark input::placeholder,
+[data-theme="dark"] input::placeholder {
+  color: #9aa7b5 !important;
+  opacity: 1 !important;
+}
+
+/* Live Pre-flight Bar & Links */
+html.dark .writer-live-hint,
+[data-theme="dark"] .writer-live-hint {
+  color: var(--ink-soft) !important;
+  border-top-color: var(--line) !important;
+}
+
+html.dark .link-switch-preview,
+[data-theme="dark"] .link-switch-preview {
+  color: var(--sage, #38bdf8) !important;
+}
+
+html.dark .link-switch-preview:hover,
+[data-theme="dark"] .link-switch-preview:hover {
+  color: #ffffff !important;
+}
+
+/* Voice & Guidelines Badges in Dark Mode */
+html.dark .voice-card__badge--do,
+[data-theme="dark"] .voice-card__badge--do {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: #6ee7b7 !important;
+  border: 1px solid rgba(52, 211, 153, 0.35) !important;
+}
+
+html.dark .voice-card__badge--dont,
+[data-theme="dark"] .voice-card__badge--dont {
+  background: rgba(239, 68, 68, 0.18) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(239, 68, 68, 0.35) !important;
+}
+
+html.dark .voice-card__pill--warn,
+[data-theme="dark"] .voice-card__pill--warn {
+  background: rgba(245, 158, 11, 0.18) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(245, 158, 11, 0.3) !important;
+}
+
+/* Email & Message Tags */
+html.dark .email-status-pill,
+[data-theme="dark"] .email-status-pill {
+  background: rgba(245, 158, 11, 0.16) !important;
+  color: #fbbf24 !important;
+  border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+html.dark .message-item__tag,
+[data-theme="dark"] .message-item__tag {
+  background: var(--paper-raised) !important;
+  color: var(--ink-soft) !important;
+  border: 1px solid var(--line) !important;
+}
+
+/* Guideline Nudge & Live Indicator in Dark Mode */
+html.dark .guideline-nudge,
+[data-theme="dark"] .guideline-nudge {
+  background: var(--paper-raised, #1f252d) !important;
+  border: 1px solid var(--line-strong, #384351) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+}
+
+html.dark .guideline-nudge:hover,
+[data-theme="dark"] .guideline-nudge:hover {
+  background: var(--sage-wash, rgba(56, 189, 248, 0.08)) !important;
+  border-color: rgba(56, 189, 248, 0.25) !important;
+}
+
+html.dark .guideline-nudge__icon,
+[data-theme="dark"] .guideline-nudge__icon {
+  background: rgba(56, 189, 248, 0.12) !important;
+  color: var(--sage, #38bdf8) !important;
+  border: 1px solid rgba(56, 189, 248, 0.25) !important;
+}
+
+html.dark .guideline-nudge strong,
+[data-theme="dark"] .guideline-nudge strong {
+  color: var(--ink, #f3f6f9) !important;
+}
+
+html.dark .guideline-nudge small,
+[data-theme="dark"] .guideline-nudge small {
+  color: var(--ink-soft, #d8e0e8) !important;
+}
+
+html.dark .guideline-nudge > svg,
+[data-theme="dark"] .guideline-nudge > svg {
+  color: var(--ink-soft, #d8e0e8) !important;
+}
+
+html.dark .live-tag,
+[data-theme="dark"] .live-tag {
+  color: var(--sage, #38bdf8) !important;
 }
 
 /* 3. Hero CTA & Tooltip */
