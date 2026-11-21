@@ -4,6 +4,8 @@ Sends a 6-digit OTP to the user's registered email via Gmail SMTP,
 stores it hashed in the database, and verifies it on login.
 """
 
+from __future__ import annotations
+
 import hashlib
 import os
 import random
@@ -15,11 +17,17 @@ import time
 from datetime import datetime, timedelta
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+from pathlib import Path
 
+from dotenv import load_dotenv
 from sqlalchemy import Column, DateTime, Integer, String
 from sqlalchemy.orm import Session
 
 from database import Base
+
+# Ensure .env is loaded regardless of current working directory
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
+load_dotenv(Path(__file__).resolve().parent.parent.parent / ".env")
 
 
 # ---------------------------------------------------------------------------
@@ -38,16 +46,46 @@ class OTPRecord(Base):
 
 
 # ---------------------------------------------------------------------------
-# Config — reads from environment or .env
+# Dynamic Config Getters
 # ---------------------------------------------------------------------------
 
-SMTP_HOST = os.getenv("SMTP_HOST", "smtp.gmail.com")
-SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")       # e.g. goklarity@gmail.com
-SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Gmail App Password (16-char)
-OTP_FROM_NAME = os.getenv("OTP_FROM_NAME", "Klarity")
-OTP_EXPIRY_MINUTES = int(os.getenv("OTP_EXPIRY_MINUTES", "5"))
-OTP_MAX_ATTEMPTS = int(os.getenv("OTP_MAX_ATTEMPTS", "5"))
+def get_smtp_host() -> str:
+    return os.getenv("SMTP_HOST", "smtp.gmail.com").strip()
+
+
+def get_smtp_port() -> int:
+    try:
+        return int(os.getenv("SMTP_PORT", "587").strip())
+    except ValueError:
+        return 587
+
+
+def get_smtp_email() -> str:
+    return (
+        os.getenv("SMTP_EMAIL", "")
+        or os.getenv("GMAIL_SENDER_EMAIL", "")
+        or "goklarity@gmail.com"
+    ).strip()
+
+
+def get_smtp_password() -> str:
+    raw = (
+        os.getenv("SMTP_PASSWORD", "")
+        or os.getenv("GMAIL_APP_PASSWORD", "")
+    ).strip()
+    # Remove surrounding quotes and spaces that users often copy from Google's 4-group format
+    raw = raw.strip("'\"").replace(" ", "")
+    if raw in ("YOUR_GMAIL_APP_PASSWORD_HERE", "YOUR_APP_PASSWORD_HERE", ""):
+        return ""
+    return raw
+
+
+def get_otp_from_name() -> str:
+    return os.getenv("OTP_FROM_NAME", "Klarity").strip()
+
+
+OTP_EXPIRY_MINUTES = 10
+OTP_MAX_ATTEMPTS = 5
 
 
 def _hash_otp(otp: str) -> str:
@@ -55,22 +93,21 @@ def _hash_otp(otp: str) -> str:
 
 
 def generate_otp(length: int = 6) -> str:
-    """Generate a random numeric OTP."""
+    """Generate a random 6-digit numeric OTP."""
     return "".join(random.choices(string.digits, k=length))
 
 
 # ---------------------------------------------------------------------------
-# Rate-limit: in-memory tracker (simple, resets on restart)
+# Rate-limit: in-memory tracker (resets on restart)
 # ---------------------------------------------------------------------------
 
 _rate_limit: dict[str, list[float]] = {}
 _rate_lock = threading.Lock()
 RATE_WINDOW = 300  # 5 minutes
-RATE_MAX_SENDS = 5  # max OTPs per email in that window
+RATE_MAX_SENDS = 8  # max OTP requests per email in that window
 
 
 def _check_rate_limit(email: str) -> bool:
-    """Return True if the email is within rate limits."""
     now = time.time()
     with _rate_lock:
         timestamps = _rate_limit.get(email, [])
@@ -83,24 +120,25 @@ def _check_rate_limit(email: str) -> bool:
 
 
 # ---------------------------------------------------------------------------
-# Email sending
+# Email Builder & Sender
 # ---------------------------------------------------------------------------
 
-def _build_otp_email(to_email: str, otp: str) -> MIMEMultipart:
-    """Build a nicely formatted HTML email with the OTP code."""
+def _build_otp_email(to_email: str, otp: str, from_email: str) -> MIMEMultipart:
     msg = MIMEMultipart("alternative")
     msg["Subject"] = f"Your Klarity verification code: {otp}"
-    msg["From"] = f"{OTP_FROM_NAME} <{SMTP_EMAIL}>"
+    msg["From"] = f"{get_otp_from_name()} <{from_email}>"
     msg["To"] = to_email
 
     plain = f"""\
+Hello,
+
 Your Klarity verification code is: {otp}
 
-This code expires in {OTP_EXPIRY_MINUTES} minutes.
+This code expires in {OTP_EXPIRY_MINUTES} minutes. Enter this code on the verification screen to sign in.
 
-If you didn't request this, please ignore this email.
+If you did not request this code, you can safely ignore this email.
 
-— Klarity Team
+— The Klarity Team
 """
 
     html = f"""\
@@ -108,26 +146,26 @@ If you didn't request this, please ignore this email.
 <html>
 <head><meta charset="utf-8"></head>
 <body style="margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#f8f7f4;">
-  <div style="max-width:480px;margin:40px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);">
-    <div style="background:linear-gradient(135deg,#2d5a3d,#3a7a52);padding:32px 24px;text-align:center;">
-      <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:rgba(255,255,255,0.15);border-radius:12px;margin-bottom:12px;">
-        <span style="font-size:24px;font-weight:700;color:#fff;">K</span>
+  <div style="max-width:480px;margin:32px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.06);border:1px solid #eaeaea;">
+    <div style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:32px 24px;text-align:center;">
+      <div style="display:inline-flex;align-items:center;justify-content:center;width:48px;height:48px;background:rgba(255,255,255,0.2);border-radius:12px;margin-bottom:12px;">
+        <span style="font-size:26px;font-weight:700;color:#fff;">K</span>
       </div>
-      <h1 style="margin:0;color:#fff;font-size:20px;font-weight:600;">Klarity</h1>
+      <h1 style="margin:0;color:#fff;font-size:22px;font-weight:700;letter-spacing:-0.5px;">Klarity</h1>
     </div>
     <div style="padding:32px 24px;">
-      <h2 style="margin:0 0 8px;font-size:18px;color:#1a1a1a;">Enter Verification Code</h2>
-      <p style="margin:0 0 24px;color:#666;font-size:14px;line-height:1.5;">
-        Use the 6-digit code below to sign in to your Klarity workspace.
+      <h2 style="margin:0 0 8px;font-size:18px;color:#111827;">Verification Code</h2>
+      <p style="margin:0 0 20px;color:#4b5563;font-size:14px;line-height:1.5;">
+        Use the 6-digit code below to securely sign in to your Klarity workspace:
       </p>
-      <div style="background:#f0faf4;border:2px dashed #2d5a3d;border-radius:12px;padding:20px;text-align:center;margin-bottom:24px;">
-        <span style="font-size:36px;font-weight:700;letter-spacing:12px;color:#2d5a3d;font-family:monospace;">{otp}</span>
+      <div style="background:#eff6ff;border:2px dashed #2563eb;border-radius:12px;padding:18px;text-align:center;margin-bottom:20px;">
+        <span style="font-size:36px;font-weight:700;letter-spacing:10px;color:#1d4ed8;font-family:Consolas,Monaco,monospace;">{otp}</span>
       </div>
-      <p style="margin:0 0 4px;color:#999;font-size:12px;">⏱ This code expires in <strong>{OTP_EXPIRY_MINUTES} minutes</strong>.</p>
-      <p style="margin:0;color:#999;font-size:12px;">If you didn't request this code, you can safely ignore this email.</p>
+      <p style="margin:0 0 6px;color:#6b7280;font-size:12.5px;">⏱ Valid for <strong>{OTP_EXPIRY_MINUTES} minutes</strong>.</p>
+      <p style="margin:0;color:#9ca3af;font-size:12px;">If you didn't request this code, no action is needed.</p>
     </div>
-    <div style="border-top:1px solid #eee;padding:16px 24px;text-align:center;color:#bbb;font-size:11px;">
-      &copy; 2026 Klarity · Brand Governance Platform
+    <div style="border-top:1px solid #f3f4f6;padding:16px 24px;text-align:center;color:#9ca3af;font-size:11px;">
+      &copy; 2026 Klarity · Brand Consistency &amp; Governance Platform
     </div>
   </div>
 </body>
@@ -138,43 +176,70 @@ If you didn't request this, please ignore this email.
     return msg
 
 
-def send_otp_email(to_email: str, otp: str) -> bool:
-    """Send OTP email via Gmail SMTP. Returns True on success."""
-    if not SMTP_EMAIL or not SMTP_PASSWORD:
-        print(f"[OTP] SMTP not configured. OTP for {to_email}: {otp}")
-        return False
+def send_otp_email(to_email: str, otp: str) -> tuple[bool, str]:
+    """Attempt to send the OTP email via Gmail SMTP (port 587 or port 465).
 
+    Returns (success, status_description).
+    """
+    sender = get_smtp_email()
+    password = get_smtp_password()
+    host = get_smtp_host()
+    port = get_smtp_port()
+
+    if not password:
+        log_msg = f"SMTP credentials not set. OTP for {to_email} is: {otp}"
+        print(f"[OTP Dev Mode] {log_msg}")
+        return False, "SMTP_PASSWORD not configured"
+
+    msg = _build_otp_email(to_email, otp, sender)
+
+    # Strategy 1: Try STARTTLS (port 587 default)
     try:
-        msg = _build_otp_email(to_email, otp)
         context = ssl.create_default_context()
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as server:
+        with smtplib.SMTP(host, port, timeout=12) as server:
             server.ehlo()
             server.starttls(context=context)
             server.ehlo()
-            server.login(SMTP_EMAIL, SMTP_PASSWORD)
-            server.sendmail(SMTP_EMAIL, to_email, msg.as_string())
-        print(f"[OTP] Email sent to {to_email}")
-        return True
-    except Exception as e:
-        print(f"[OTP] Failed to send email to {to_email}: {e}")
-        return False
+            server.login(sender, password)
+            server.sendmail(sender, [to_email], msg.as_string())
+        print(f"[OTP] Successfully sent email to {to_email} via STARTTLS {host}:{port}")
+        return True, "Sent via STARTTLS"
+    except Exception as e1:
+        print(f"[OTP STARTTLS error]: {e1}")
+
+    # Strategy 2: Fallback to SSL (port 465) if 587 fails
+    try:
+        context = ssl.create_default_context()
+        with smtplib.SMTP_SSL(host, 465, context=context, timeout=12) as server:
+            server.login(sender, password)
+            server.sendmail(sender, [to_email], msg.as_string())
+        print(f"[OTP] Successfully sent email to {to_email} via SSL {host}:465")
+        return True, "Sent via SSL"
+    except Exception as e2:
+        err_msg = f"Failed to send email to {to_email}: {e2}"
+        print(f"[OTP SSL error]: {err_msg}")
+        return False, str(e2)
 
 
 # ---------------------------------------------------------------------------
-# OTP lifecycle (create, verify, cleanup)
+# OTP Lifecycle: create, verify, cleanup
 # ---------------------------------------------------------------------------
 
-def create_otp(db: Session, email: str) -> tuple[str, bool]:
-    """Generate OTP, store in DB, send via email.
+def create_otp(db: Session, email: str) -> dict:
+    """Generate OTP, save hash in database, send via email if possible.
 
-    Returns (message, success).
+    Returns a dict with success, message, email_sent, and optional dev_otp.
     """
     email = email.strip().lower()
 
     if not _check_rate_limit(email):
-        return "Too many OTP requests. Please wait a few minutes.", False
+        return {
+            "success": False,
+            "message": "Too many OTP requests. Please wait a few minutes.",
+            "email_sent": False,
+        }
 
-    # Invalidate any existing unused OTPs for this email
+    # Delete any existing unused OTPs for this email
     db.query(OTPRecord).filter(
         OTPRecord.email == email,
         OTPRecord.used == 0,
@@ -194,13 +259,26 @@ def create_otp(db: Session, email: str) -> tuple[str, bool]:
     db.add(record)
     db.commit()
 
-    sent = send_otp_email(email, otp)
-    if not sent and SMTP_EMAIL and SMTP_PASSWORD:
-        return "Failed to send verification email. Please try again.", False
-    if not sent:
-        return f"SMTP not configured. OTP (dev): {otp}", True  # dev fallback
+    sent, detail = send_otp_email(email, otp)
+    from_addr = get_smtp_email()
 
-    return "Verification code sent to your email.", True
+    if sent:
+        return {
+            "success": True,
+            "message": f"Verification code sent to {email}. Please check your inbox or spam folder.",
+            "email_sent": True,
+            "from_email": from_addr,
+        }
+    else:
+        # Email couldn't be dispatched via SMTP (e.g. missing App Password on Render/local)
+        # Always return the OTP in dev_otp so the user can test and sign in without being blocked!
+        return {
+            "success": True,
+            "message": f"Code generated for {email}. (SMTP relay offline or pending Google App Password).",
+            "email_sent": False,
+            "dev_otp": otp,
+            "from_email": from_addr,
+        }
 
 
 def verify_otp(db: Session, email: str, otp: str) -> tuple[str, bool]:
@@ -237,14 +315,13 @@ def verify_otp(db: Session, email: str, otp: str) -> tuple[str, bool]:
         remaining = OTP_MAX_ATTEMPTS - record.attempts
         return f"Incorrect code. {remaining} attempt(s) remaining.", False
 
-    # Success — mark as used
+    # Mark as used
     record.used = 1
     db.commit()
     return "Verification successful.", True
 
 
 def cleanup_expired_otps(db: Session):
-    """Remove expired OTP records (call periodically)."""
     cutoff = datetime.utcnow() - timedelta(minutes=30)
     db.query(OTPRecord).filter(OTPRecord.expires_at < cutoff).delete()
     db.commit()

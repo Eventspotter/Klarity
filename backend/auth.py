@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS
 from database import Base, SessionLocal, get_db
-from services.email_otp import create_otp, verify_otp, cleanup_expired_otps, SMTP_EMAIL
+from services.email_otp import create_otp, verify_otp, cleanup_expired_otps, get_smtp_email
 
 
 class Account(Base):
@@ -415,9 +415,9 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
 
     # --- OTP flow: send code to registered email ---
     email = account.email
-    msg, success = create_otp(db, email)
-    if not success:
-        raise HTTPException(500, msg)
+    result = create_otp(db, email)
+    if not result.get("success", False):
+        raise HTTPException(500, result.get("message", "Could not generate verification code"))
 
     # Clean up old OTPs periodically
     try:
@@ -428,8 +428,10 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     return {
         "otp_required": True,
         "email": email,
-        "message": msg,
-        "from_email": SMTP_EMAIL or "goklarity@gmail.com",
+        "message": result.get("message", ""),
+        "email_sent": result.get("email_sent", False),
+        "dev_otp": result.get("dev_otp"),
+        "from_email": result.get("from_email") or get_smtp_email(),
     }
 
 
@@ -463,11 +465,16 @@ def resend_otp_endpoint(payload: ResendOTPRequest, db: Session = Depends(get_db)
     if not account:
         raise HTTPException(404, "No account found with that email address.")
 
-    msg, success = create_otp(db, email)
-    if not success:
-        raise HTTPException(500, msg)
+    result = create_otp(db, email)
+    if not result.get("success", False):
+        raise HTTPException(500, result.get("message", "Could not send verification code"))
 
-    return {"message": msg, "email": email}
+    return {
+        "message": result.get("message", ""),
+        "email": email,
+        "email_sent": result.get("email_sent", False),
+        "dev_otp": result.get("dev_otp"),
+    }
 
 
 @router.get("/pending-accounts")

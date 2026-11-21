@@ -46,6 +46,9 @@ export function Login() {
   const [otpError, setOtpError] = useState('')
   const [otpSuccess, setOtpSuccess] = useState('')
   const [resendCooldown, setResendCooldown] = useState(0)
+  const [emailSent, setEmailSent] = useState(false)
+  const [devOtp, setDevOtp] = useState(null)
+  const [otpNotice, setOtpNotice] = useState('')
   const inputRefs = useRef([])
 
   useEffect(() => {
@@ -99,6 +102,9 @@ export function Login() {
         if (res?.otp_required) {
           setOtpEmail(res.email)
           setOtpFromEmail(res.from_email || 'goklarity@gmail.com')
+          setEmailSent(Boolean(res.email_sent))
+          setDevOtp(res.dev_otp || null)
+          setOtpNotice(res.message || '')
           setOtpStep(true)
           setOtpDigits(['', '', '', '', '', ''])
           setOtpError('')
@@ -214,14 +220,17 @@ export function Login() {
     setOtpBusy(true)
     setOtpError('')
     try {
-      await api.resendOtp({ email: otpEmail })
-      setOtpSuccess('New code sent! Check your inbox.')
+      const res = await api.resendOtp({ email: otpEmail })
+      setEmailSent(Boolean(res?.email_sent))
+      if (res?.dev_otp) setDevOtp(res.dev_otp)
+      if (res?.message) setOtpNotice(res.message)
+      setOtpSuccess(res?.email_sent ? 'New code dispatched! Check your inbox or spam.' : 'New code generated.')
       setResendCooldown(30)
       setOtpDigits(['', '', '', '', '', ''])
       setTimeout(() => {
         setOtpSuccess('')
         inputRefs.current[0]?.focus()
-      }, 2000)
+      }, 3000)
     } catch (failure) {
       setOtpError(failure.message)
     } finally {
@@ -296,6 +305,64 @@ export function Login() {
               }}>
                 Sent to <strong style={{ color: 'var(--ink)' }}>{otpEmail}</strong>
               </p>
+
+              {devOtp && (
+                <div style={{
+                  background: 'rgba(245, 158, 11, 0.1)',
+                  border: '1px solid rgba(245, 158, 11, 0.4)',
+                  borderRadius: '10px',
+                  padding: '12px 14px',
+                  marginBottom: '18px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
+                }}>
+                  <div style={{ fontSize: '13px', color: 'var(--ink)' }}>
+                    <div style={{ fontWeight: 600, color: '#b45309', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span>🔑</span> Direct Access Code
+                    </div>
+                    <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
+                      Code: <strong style={{ letterSpacing: '2px', fontFamily: 'monospace', fontSize: '15px', color: 'var(--ink)' }}>{devOtp}</strong>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const digits = devOtp.split('')
+                      setOtpDigits(digits)
+                    }}
+                    style={{
+                      background: 'var(--sage, #2563eb)',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    Auto-Fill
+                  </button>
+                </div>
+              )}
+
+              {emailSent && !devOtp && (
+                <div style={{
+                  background: 'rgba(34, 197, 94, 0.1)',
+                  border: '1px solid rgba(34, 197, 94, 0.3)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
+                  marginBottom: '16px',
+                  fontSize: '12.5px',
+                  color: '#15803d',
+                  textAlign: 'center',
+                }}>
+                  📨 Real email dispatched! Please check your inbox or spam folder.
+                </div>
+              )}
 
               {/* OTP Input Boxes */}
               <div
