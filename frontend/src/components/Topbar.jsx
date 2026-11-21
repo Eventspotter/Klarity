@@ -9,7 +9,6 @@ import {
   CircleDot,
   FileClock,
   LogOut,
-  Mail,
   Menu,
   Moon,
   Plus,
@@ -22,7 +21,6 @@ import {
 import { useApp } from '../context/AppContext'
 import { Avatar, Button, IconButton, Kbd, StatusDot } from './UI'
 import { CommandPalette } from './CommandPalette'
-import { MessagesDrawer } from './MessagesDrawer'
 import { actionLabel, cx, timeAgo } from '../lib/utils'
 import { gsap } from 'gsap'
 import { isReducedMotion } from '../lib/animations'
@@ -64,12 +62,11 @@ const kindIcon = {
 }
 
 export function Topbar({ onMenu, onNewReview, currentPath }) {
-  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead, isDark, toggleTheme } = useApp()
+  const { data, user, logout, toast, currentRole, switchRole, isOwner, isReviewer, isMember, isLead, activeBrand, theme, isDark, toggleTheme } = useApp()
   const navigate = useNavigate()
   const location = useLocation()
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [openMenu, setOpenMenu] = useState(null)
-  const [messagesOpen, setMessagesOpen] = useState(false)
   const barRef = useRef(null)
 
   const title = currentPath?.startsWith('/reviews/')
@@ -166,30 +163,22 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
 
         <div className="topbar__right">
           <IconButton
-            label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+            label={theme === 'dark' || isDark ? 'Switch to light mode' : 'Switch to dark mode'}
             onClick={toggleTheme}
             className="theme-toggle-btn"
           >
-            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+            {theme === 'dark' || isDark ? <Sun size={18} /> : <Moon size={18} />}
           </IconButton>
-
-          <IconButton
-            label="Messages & Editorial Mail"
-            className="has-indicator"
-            onClick={() => setMessagesOpen(true)}
-          >
-            <Mail size={18} />
-            <span className="indicator indicator--unread" />
           </IconButton>
 
           <div className="topbar__popover-wrap">
             <IconButton
               label="Notifications"
-              className={cx('has-indicator', openMenu === 'notifications' && 'is-active')}
+              className={cx('has-indicator topbar__notifications-btn', openMenu === 'notifications' && 'is-active')}
               onClick={() => setOpenMenu(openMenu === 'notifications' ? null : 'notifications')}
             >
-              <Bell size={18} />
-              <span className="indicator" />
+              <Bell size={18} className="bell-icon" />
+              <span className="indicator indicator--pulse" />
             </IconButton>
             {openMenu === 'notifications' ? (
               <AnimatedPopover className="popover popover--notifications">
@@ -245,7 +234,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
               <Avatar name={user.username} />
               <span className="user-chip__copy">
                 <strong>{user.username}</strong>
-                <small>{isOwner ? 'Stage 1 · Brand Owner' : isReviewer ? 'Stage 2 · Reviewer' : 'Stage 3 · Member'}</small>
+                <small>{isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Member'}</small>
               </span>
               <ChevronDown size={14} />
             </button>
@@ -259,35 +248,7 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                   </div>
                 </div>
 
-                <div className="popover__role-switch">
-                  <span className="popover__role-label">Governance Role:</span>
-                  <div className="role-switch-pills" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isOwner && 'is-active')}
-                      onClick={() => switchRole('owner')}
-                      title="Stage 1 · Full brand governance & sign-off"
-                    >
-                      Owner
-                    </button>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isReviewer && 'is-active')}
-                      onClick={() => switchRole('reviewer')}
-                      title="Stage 2 · Compliance checking & feedback"
-                    >
-                      Reviewer
-                    </button>
-                    <button
-                      type="button"
-                      className={cx('role-pill', isMember && 'is-active')}
-                      onClick={() => switchRole('member')}
-                      title="Stage 3 · Drafting & pre-flight checks"
-                    >
-                      Member
-                    </button>
-                  </div>
-                </div>
+
 
                 {isMember ? (
                   <button onClick={() => { setOpenMenu(null); navigate('/studio') }}>
@@ -308,8 +269,8 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
                   <LogOut size={15} /> Sign out
                 </button>
                 <div className="popover__meta">
-                  <span>Aster &amp; Oak</span>
-                  <span>{isOwner ? '1. Brand Owner' : isReviewer ? '2. Reviewer' : '3. Team Member'}</span>
+                  <span>{activeBrand?.brand_name || 'Workspace'}</span>
+                  <span>{isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member'}</span>
                 </div>
               </AnimatedPopover>
             ) : null}
@@ -318,7 +279,6 @@ export function Topbar({ onMenu, onNewReview, currentPath }) {
         </div>
       </header>
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
-      <MessagesDrawer open={messagesOpen} onClose={() => setMessagesOpen(false)} toast={toast} />
     </>
   )
 }

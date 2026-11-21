@@ -58,18 +58,32 @@ export const api = {
   brandDirectory: () => request('/auth/brand-directory'),
   switchBrand: (brand_name) =>
     request('/auth/switch-brand', { method: 'POST', body: JSON.stringify({ brand_name }) }),
-  workspaceSettings: () => request('/auth/workspace-settings'),
+  workspaceSettings: (brand_name) =>
+    request(`/auth/workspace-settings${brand_name ? `?brand_name=${encodeURIComponent(brand_name)}` : ''}`),
+  cleanWorkspace: () => request('/auth/clean-workspace', { method: 'POST' }),
   updateWorkspaceSettings: (payload) =>
     request('/auth/workspace-settings', { method: 'PATCH', body: JSON.stringify(payload) }),
-  pendingAccounts: () => request('/auth/pending-accounts'),
+  pendingAccounts: (brand_name) =>
+    request(`/auth/pending-accounts${brand_name ? `?brand_name=${encodeURIComponent(brand_name)}` : ''}`),
   verifyAccount: (payload) =>
     request('/auth/verify-account', { method: 'POST', body: JSON.stringify(payload) }),
+  teamMembers: (brand_name) =>
+    request(`/auth/team-members${brand_name ? `?brand_name=${encodeURIComponent(brand_name)}` : ''}`),
+  inviteTeamMember: (payload) =>
+    request('/auth/team-members', { method: 'POST', body: JSON.stringify(payload) }),
+  updateTeamMember: (id, payload) =>
+    request(`/auth/team-members/${id}`, { method: 'PATCH', body: JSON.stringify(payload) }),
+  deleteTeamMember: (id) =>
+    request(`/auth/team-members/${id}`, { method: 'DELETE' }),
   login: (payload) => request('/auth/login', { method: 'POST', body: JSON.stringify(payload) }),
   verifyOtp: (payload) => request('/auth/verify-otp', { method: 'POST', body: JSON.stringify(payload) }),
   resendOtp: (payload) => request('/auth/resend-otp', { method: 'POST', body: JSON.stringify(payload) }),
   forgotPassword: (payload) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify(payload) }),
   resetPassword: (payload) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify(payload) }),
   register: (payload) => request('/auth/register', { method: 'POST', body: JSON.stringify(payload) }),
+  forgotPassword: (payload) => request('/auth/forgot-password', { method: 'POST', body: JSON.stringify(payload) }),
+  verifyOtp: (payload) => request('/auth/verify-otp', { method: 'POST', body: JSON.stringify(payload) }),
+  resetPassword: (payload) => request('/auth/reset-password', { method: 'POST', body: JSON.stringify(payload) }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   bootstrap: () => request('/bootstrap'),
   getSubmission: (id) => request(`/submissions/${id}`),

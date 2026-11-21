@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, selectinload
 
 from database import get_db
-from auth import Account, current_account
+from auth import Account, current_account, optional_account
 from models import (
     ActionType,
     BrandGuideline,
@@ -37,7 +37,7 @@ STATUS_BY_ACTION = {
 }
 
 
-def _submission(db: Session, submission_id: int) -> ContentSubmission:
+def _submission(db: Session, submission_id: int, account = None) -> ContentSubmission:
     submission = (
         db.query(ContentSubmission)
         .options(
@@ -49,6 +49,14 @@ def _submission(db: Session, submission_id: int) -> ContentSubmission:
     )
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check:
+    # Non-admin users can only view or act on submissions within their brand workspace
+    if account:
+        is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        if not is_demo and submission.brand_name and submission.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You do not have access to this resource.")
     return submission
 
 
@@ -57,12 +65,20 @@ def list_submissions(
     status: str | None = Query(default=None),
     search: str | None = Query(default=None),
     limit: int = Query(default=60, ge=1, le=200),
+    account = Depends(optional_account),
     db: Session = Depends(get_db),
 ) -> list[ContentSubmission]:
     query = db.query(ContentSubmission).options(
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.issues),
         selectinload(ContentSubmission.reports).selectinload(ReviewReport.actions),
     )
+    from sqlalchemy import or_
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    if is_demo:
+        demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        query = query.filter(or_(ContentSubmission.brand_name == demo_brand, ContentSubmission.brand_name == "Aster & Oak", ContentSubmission.brand_name.is_(None)))
+    elif account and getattr(account, "brand_name", None):
+        query = query.filter(ContentSubmission.brand_name == account.brand_name)
     if status and status != "all":
         try:
             query = query.filter(ContentSubmission.status == SubmissionStatus(status))
@@ -75,8 +91,8 @@ def list_submissions(
 
 
 @router.get("/{submission_id}", response_model=ContentSubmissionDetail)
-def get_submission(submission_id: int, db: Session = Depends(get_db)) -> ContentSubmission:
-    return _submission(db, submission_id)
+def get_submission(submission_id: int, db: Session = Depends(get_db), account = Depends(optional_account)) -> ContentSubmission:
+    return _submission(db, submission_id, account=account)
 
 
 @router.post("", response_model=ContentSubmissionDetail, status_code=201)
@@ -86,11 +102,13 @@ def create_submission(payload: ContentSubmit, db: Session = Depends(get_db), acc
     except ValueError:
         raise HTTPException(status_code=422, detail="Unknown content type")
 
+    brand_name = getattr(account, "brand_name", None) or "Aster & Oak"
     submission = ContentSubmission(
         title=payload.title.strip(),
         content_type=content_type,
         content_text=payload.content_text.strip(),
         submitted_by=account.username,
+        brand_name=brand_name,
         status=SubmissionStatus.reviewing,
         submitted_at=datetime.utcnow(),
     )
@@ -133,7 +151,7 @@ def review_submission(
     account: Account = Depends(current_account),
     db: Session = Depends(get_db),
 ) -> ContentSubmission:
-    submission = _submission(db, submission_id)
+    submission = _submission(db, submission_id, account=account)
     if not submission.reports:
         raise HTTPException(status_code=409, detail="Submission has no review report yet")
 

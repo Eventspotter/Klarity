@@ -8,6 +8,8 @@ from models import BrandGuideline
 from schemas import GuidelineCreate, GuidelineOut, GuidelineUpdate
 from services.workspace import invalidate_bootstrap_cache
 
+from auth import optional_account
+
 router = APIRouter(prefix="/api/guidelines", tags=["guidelines"])
 
 
@@ -15,9 +17,17 @@ router = APIRouter(prefix="/api/guidelines", tags=["guidelines"])
 def list_guidelines(
     category: str | None = Query(default=None),
     search: str | None = Query(default=None),
+    account = Depends(optional_account),
     db: Session = Depends(get_db),
 ) -> list[BrandGuideline]:
     query = db.query(BrandGuideline)
+    from sqlalchemy import or_
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    if is_demo:
+        demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        query = query.filter(or_(BrandGuideline.brand_name == demo_brand, BrandGuideline.brand_name == "Aster & Oak", BrandGuideline.brand_name.is_(None)))
+    elif account and getattr(account, "brand_name", None):
+        query = query.filter(BrandGuideline.brand_name == account.brand_name)
     if category and category != "all":
         query = query.filter(BrandGuideline.category == category)
     if search:
@@ -35,12 +45,16 @@ def get_guideline(guideline_id: int, db: Session = Depends(get_db)) -> BrandGuid
 
 
 @router.post("", response_model=GuidelineOut, status_code=201)
-def create_guideline(payload: GuidelineCreate, db: Session = Depends(get_db)) -> BrandGuideline:
+def create_guideline(payload: GuidelineCreate, account = Depends(optional_account), db: Session = Depends(get_db)) -> BrandGuideline:
+    brand_name = getattr(account, "brand_name", None) if account else "Aster & Oak"
+    if not brand_name:
+        brand_name = "Aster & Oak"
     guideline = BrandGuideline(
         title=payload.title.strip(),
         category=payload.category,
         content=payload.content.strip(),
         priority=payload.priority,
+        brand_name=brand_name,
     )
     db.add(guideline)
     db.commit()
@@ -53,11 +67,20 @@ def create_guideline(payload: GuidelineCreate, db: Session = Depends(get_db)) ->
 def update_guideline(
     guideline_id: int,
     payload: GuidelineUpdate,
+    account = Depends(optional_account),
     db: Session = Depends(get_db),
 ) -> BrandGuideline:
     guideline = db.get(BrandGuideline, guideline_id)
     if not guideline:
         raise HTTPException(status_code=404, detail="Guideline not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check
+    if account and getattr(account, "role", "member") not in ("owner", "admin", "lead"):
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        is_demo = getattr(account, "is_demo", False)
+        if not is_demo and guideline.brand_name and guideline.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You cannot modify guidelines outside your brand.")
+
     updates = payload.model_dump(exclude_unset=True)
     for field, value in updates.items():
         setattr(guideline, field, value)
@@ -68,10 +91,18 @@ def update_guideline(
 
 
 @router.delete("/{guideline_id}", status_code=204)
-def delete_guideline(guideline_id: int, db: Session = Depends(get_db)) -> None:
+def delete_guideline(guideline_id: int, account = Depends(optional_account), db: Session = Depends(get_db)) -> None:
     guideline = db.get(BrandGuideline, guideline_id)
     if not guideline:
         raise HTTPException(status_code=404, detail="Guideline not found")
+    
+    # Broken Object-Level Authorization (BOLA) Check
+    if account and getattr(account, "role", "member") not in ("owner", "admin", "lead"):
+        account_brand = getattr(account, "brand_name", None) or "Aster & Oak"
+        is_demo = getattr(account, "is_demo", False)
+        if not is_demo and guideline.brand_name and guideline.brand_name != account_brand:
+            raise HTTPException(status_code=403, detail="Forbidden: You cannot delete guidelines outside your brand.")
+
     db.delete(guideline)
     db.commit()
     invalidate_bootstrap_cache()

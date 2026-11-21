@@ -11,10 +11,12 @@ import {
   Lock,
   Mail,
   Plus,
+  RotateCcw,
   Save,
   ShieldAlert,
   ShieldCheck,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
   UserCheck,
   UserPlus,
@@ -28,14 +30,15 @@ import { Avatar, Button, Drawer, Field, Panel, SectionHead, Select } from '../co
 import { api } from '../lib/api'
 import { cx } from '../lib/utils'
 import { animateSlidingPill } from '../lib/animations'
+import WakeSlider from '../components/WakeSlider'
 
-const STORAGE_KEY = 'klarity.settings.v1'
-const TEAM_STORAGE_KEY = 'klarity.team_roster.v1'
+const getSettingsKey = (name) => `klarity.settings.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
+const getTeamKey = (name) => `klarity.team_roster.v2_${(name || 'default').toLowerCase().replace(/[^a-z0-9]/g, '_')}`
 
 const roleOptions = [
-  'Stage 1 · Brand Owner',
-  'Stage 2 · Reviewer',
-  'Stage 3 · Team Member',
+  'Brand Owner',
+  'Reviewer',
+  'Team Member',
 ]
 
 const statusOptions = [
@@ -62,12 +65,12 @@ const defaultSettings = {
 }
 
 const defaultTeam = [
-  { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Stage 1 · Brand Owner', status: 'Active' },
-  { name: 'Kruthik Kamegaonkar', email: 'kruthik@localhost5000.dev', role: 'Stage 1 · Brand Owner', status: 'Active' },
-  { name: 'Maddi Abhinav', email: 'abhinav@localhost5000.dev', role: 'Stage 2 · Reviewer', status: 'Active' },
-  { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Stage 2 · Reviewer', status: 'Active' },
-  { name: 'G N Sreekar', email: 'sreekar@localhost5000.dev', role: 'Stage 3 · Team Member', status: 'Active' },
-  { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Stage 3 · Team Member', status: 'Invited' },
+  { name: 'Ashwik Saxena (Topper)', email: 'ashwik@topper', role: 'Brand Owner', status: 'Active' },
+  { name: 'Kruthik Kamegaonkar', email: 'kruthik@localhost5000.dev', role: 'Brand Owner', status: 'Active' },
+  { name: 'Maddi Abhinav', email: 'abhinav@localhost5000.dev', role: 'Reviewer', status: 'Active' },
+  { name: 'Maya Iyer', email: 'maya@asterandoak.studio', role: 'Reviewer', status: 'Active' },
+  { name: 'G N Sreekar', email: 'sreekar@localhost5000.dev', role: 'Team Member', status: 'Active' },
+  { name: 'Rohan Mehta', email: 'rohan@asterandoak.studio', role: 'Team Member', status: 'Invited' },
 ]
 
 function ToggleRow({ label, description, checked, onChange, disabled = false }) {
@@ -101,52 +104,172 @@ export function BrandControls() {
     isLead,
     isOwner,
     visibilitySettings,
-    updateRoleVisibility,
     setPendingApprovalsCount,
     activeBrand,
+    updateActiveBrand,
+    cleanWorkspace,
   } = useApp()
 
-  const [settings, setSettings] = useState(defaultSettings)
+  const currentBrandName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || 'Aster & Oak'
+  const currentBrandCode = activeBrand?.brand_code || activeBrand?.code || user?.brand_code || 'KLARITY-2026'
+  const currentBrandValues = activeBrand?.values || activeBrand?.brand_values || user?.brand_values || ''
+
+  const [settings, setSettings] = useState(() => {
+    try {
+      const stored = window.localStorage.getItem(getSettingsKey(currentBrandName))
+      if (stored) {
+        return { ...defaultSettings, ...JSON.parse(stored), workspace: currentBrandName }
+      }
+    } catch {}
+    return {
+      ...defaultSettings,
+      workspace: currentBrandName,
+      website: `${currentBrandName.toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+    }
+  })
   const [saved, setSaved] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [clearingWorkspace, setClearingWorkspace] = useState(false)
 
   const [pendingAccounts, setPendingAccounts] = useState([])
   const [loadingPending, setLoadingPending] = useState(false)
   const [verifyingId, setVerifyingId] = useState(null)
 
   const [brandMeta, setBrandMeta] = useState(() => ({
-    brand_name: activeBrand?.brand_name || 'Aster & Oak',
-    brand_values: activeBrand?.values || activeBrand?.brand_values || 'Authenticity, craft, sustainability, quiet confidence',
-    brand_code: activeBrand?.brand_code || activeBrand?.code || 'KLARITY-2026',
+    brand_name: currentBrandName,
+    brand_values: currentBrandValues,
+    brand_code: currentBrandCode,
   }))
 
   useEffect(() => {
     if (activeBrand) {
+      const bName = activeBrand.brand_name || activeBrand.name || currentBrandName
+      const bCode = activeBrand.brand_code || activeBrand.code || brandMeta.brand_code || ''
+      const bValues = activeBrand.values || activeBrand.brand_values || brandMeta.brand_values || ''
       setBrandMeta({
-        brand_name: activeBrand.brand_name || activeBrand.name,
-        brand_values: activeBrand.values || activeBrand.brand_values || '',
-        brand_code: activeBrand.brand_code || activeBrand.code || 'KLARITY-2026',
+        brand_name: bName,
+        brand_values: bValues,
+        brand_code: bCode,
       })
+      try {
+        const stored = window.localStorage.getItem(getSettingsKey(bName))
+        if (stored) {
+          setSettings(prev => ({ ...prev, ...JSON.parse(stored), workspace: bName }))
+          return
+        }
+      } catch {}
+      setSettings(prev => ({
+        ...prev,
+        workspace: bName || prev.workspace,
+        website: `${bName.toLowerCase().replace(/[^a-z0-9]/g, '')}.studio`,
+      }))
     }
-  }, [activeBrand])
+  }, [activeBrand?.brand_name, activeBrand?.name, activeBrand?.brand_code])
+
+  const handleClearWorkspace = async () => {
+    if (!window.confirm('Are you sure you want to clear all sample/demo review submissions? This will give you a completely clean review desk.')) {
+      return
+    }
+    setClearingWorkspace(true)
+    try {
+      await cleanWorkspace()
+    } finally {
+      setClearingWorkspace(false)
+    }
+  }
 
   // Team Governance Roster State
   const [team, setTeam] = useState(() => {
+    const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+    const bName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+    if (isDemo && bName.toLowerCase() === 'aster & oak') {
+      try {
+        const stored = window.localStorage.getItem(getTeamKey(bName))
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) return parsed
+        }
+      } catch {}
+      return defaultTeam
+    }
     try {
-      const stored = window.localStorage.getItem(TEAM_STORAGE_KEY)
+      const stored = window.localStorage.getItem(getTeamKey(bName))
       if (stored) {
         const parsed = JSON.parse(stored)
         if (Array.isArray(parsed) && parsed.length > 0) return parsed
       }
     } catch {}
-    return defaultTeam
+    if (user) {
+      const ownerName = user.name || (user.username?.replace?.(/_/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || user.username)
+      return [
+        {
+          id: user.id,
+          name: ownerName,
+          username: user.username,
+          email: user.email,
+          role: isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member',
+          status: 'Active',
+          is_approved: true,
+        },
+      ]
+    }
+    return []
   })
 
   const persistTeam = (updatedTeam) => {
     setTeam(updatedTeam)
     try {
-      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(updatedTeam))
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      window.localStorage.setItem(getTeamKey(targetBrand), JSON.stringify(updatedTeam))
     } catch {}
+  }
+
+  const fetchTeamRoster = async () => {
+    const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+    try {
+      const list = await api.teamMembers(targetBrand)
+      if (Array.isArray(list)) {
+        setTeam(list)
+        try {
+          window.localStorage.setItem(getTeamKey(targetBrand), JSON.stringify(list))
+        } catch {}
+        return
+      }
+    } catch {
+      // offline / fallback
+    }
+
+    const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+    if (isDemo && targetBrand.toLowerCase() === 'aster & oak') {
+      try {
+        const stored = window.localStorage.getItem(getTeamKey(targetBrand))
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setTeam(parsed)
+            return
+          }
+        }
+      } catch {}
+      setTeam(defaultTeam)
+    } else {
+      if (user) {
+        const ownerName = user.name || (user.username?.replace?.(/_/g, ' ')?.replace(/\b\w/g, (c) => c.toUpperCase()) || user.username)
+        setTeam([
+          {
+            id: user.id,
+            name: ownerName,
+            username: user.username,
+            email: user.email,
+            role: isOwner ? 'Brand Owner' : isReviewer ? 'Reviewer' : 'Team Member',
+            status: 'Active',
+            is_approved: true,
+          },
+        ])
+      } else {
+        setTeam([])
+      }
+    }
   }
 
   // Member Audit Drawer State
@@ -154,7 +277,7 @@ export function BrandControls() {
   const [auditForm, setAuditForm] = useState({
     name: '',
     email: '',
-    role: 'Stage 3 · Team Member',
+    role: 'Team Member',
     status: 'Active',
   })
 
@@ -163,38 +286,62 @@ export function BrandControls() {
     setAuditForm({
       name: member.name || '',
       email: member.email || '',
-      role: member.role || 'Stage 3 · Team Member',
+      role: member.role || 'Team Member',
       status: member.status || 'Active',
     })
   }
 
-  const handleSaveAudit = (e) => {
+  const handleSaveAudit = async (e) => {
     e?.preventDefault?.()
     if (!auditForm.name.trim() || !auditForm.email.trim()) {
       toast('Name and email are required.', 'warn')
       return
     }
-    const updated = [...team]
-    updated[auditTarget.index] = {
-      ...updated[auditTarget.index],
-      name: auditForm.name.trim(),
-      email: auditForm.email.trim(),
-      role: auditForm.role,
-      status: auditForm.status,
+    try {
+      if (auditTarget?.id) {
+        await api.updateTeamMember(auditTarget.id, {
+          name: auditForm.name.trim(),
+          role: auditForm.role,
+          status: auditForm.status,
+        })
+      }
+      toast(`Governance details updated for ${auditForm.name}.`, 'good')
+      setAuditTarget(null)
+      await fetchTeamRoster()
+    } catch {
+      const updated = [...team]
+      if (auditTarget?.index !== undefined) {
+        updated[auditTarget.index] = {
+          ...updated[auditTarget.index],
+          name: auditForm.name.trim(),
+          email: auditForm.email.trim(),
+          role: auditForm.role,
+          status: auditForm.status,
+        }
+        persistTeam(updated)
+      }
+      toast(`Governance details updated for ${auditForm.name}.`, 'good')
+      setAuditTarget(null)
     }
-    persistTeam(updated)
-    toast(`Governance details updated for ${auditForm.name}.`, 'good')
-    setAuditTarget(null)
   }
 
-  const handleDeleteMember = () => {
+  const handleDeleteMember = async () => {
     if (!auditTarget) return
     const confirmDelete = window.confirm(`Remove ${auditTarget.name} from the workspace governance roster?`)
     if (!confirmDelete) return
-    const updated = team.filter((_, idx) => idx !== auditTarget.index)
-    persistTeam(updated)
-    toast(`Removed ${auditTarget.name} from roster.`, 'good')
-    setAuditTarget(null)
+    try {
+      if (auditTarget.id) {
+        await api.deleteTeamMember(auditTarget.id)
+      }
+      toast(`Removed ${auditTarget.name} from roster.`, 'good')
+      setAuditTarget(null)
+      await fetchTeamRoster()
+    } catch {
+      const updated = team.filter((_, idx) => idx !== auditTarget.index)
+      persistTeam(updated)
+      toast(`Removed ${auditTarget.name} from roster.`, 'good')
+      setAuditTarget(null)
+    }
   }
 
   // Invite & Add Member Drawer State
@@ -202,7 +349,7 @@ export function BrandControls() {
   const [inviteForm, setInviteForm] = useState({
     name: '',
     email: '',
-    role: 'Stage 3 · Team Member',
+    role: 'Team Member',
     status: 'Active',
   })
 
@@ -210,13 +357,13 @@ export function BrandControls() {
     setInviteForm({
       name: '',
       email: '',
-      role: 'Stage 3 · Team Member',
+      role: 'Team Member',
       status: 'Active',
     })
     setIsInviteOpen(true)
   }
 
-  const handleAddMember = (e) => {
+  const handleAddMember = async (e) => {
     e?.preventDefault?.()
     if (!inviteForm.name.trim()) {
       toast('Please enter the member name.', 'warn')
@@ -234,17 +381,30 @@ export function BrandControls() {
       return
     }
 
-    const newMember = {
-      name: inviteForm.name.trim(),
-      email: inviteForm.email.trim(),
-      role: inviteForm.role,
-      status: inviteForm.status,
+    try {
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      const res = await api.inviteTeamMember({
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role: inviteForm.role,
+        status: inviteForm.status,
+        brand_name: targetBrand,
+      })
+      toast(res?.message || `Added ${inviteForm.name} directly to the brand roster!`, 'good')
+      setIsInviteOpen(false)
+      await fetchTeamRoster()
+    } catch {
+      const newMember = {
+        name: inviteForm.name.trim(),
+        email: inviteForm.email.trim(),
+        role: inviteForm.role,
+        status: inviteForm.status,
+      }
+      const updated = [newMember, ...team]
+      persistTeam(updated)
+      toast(`Added ${newMember.name} directly to the brand roster!`, 'good')
+      setIsInviteOpen(false)
     }
-
-    const updated = [newMember, ...team]
-    persistTeam(updated)
-    toast(`Added ${newMember.name} directly to the brand roster!`, 'good')
-    setIsInviteOpen(false)
   }
 
   const [activeSection, setActiveSection] = useState('brand-identity')
@@ -298,7 +458,8 @@ export function BrandControls() {
   const fetchPending = async () => {
     try {
       setLoadingPending(true)
-      const list = await api.pendingAccounts()
+      const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+      const list = await api.pendingAccounts(targetBrand)
       const arr = Array.isArray(list) ? list : []
       setPendingAccounts(arr)
       if (typeof setPendingApprovalsCount === 'function') {
@@ -313,33 +474,46 @@ export function BrandControls() {
 
   const fetchWorkspaceMeta = async () => {
     try {
-      const res = await api.workspaceSettings()
-      if (res?.brand_code) {
-        setBrandMeta(res)
+      const bName = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
+      const res = await api.workspaceSettings(bName)
+      if (res && res.brand_code) {
+        setBrandMeta({
+          brand_name: res.brand_name || bName,
+          brand_values: res.brand_values !== undefined ? res.brand_values : '',
+          brand_code: res.brand_code,
+        })
         setSettings((prev) => ({
           ...prev,
-          workspace: res.brand_name || prev.workspace,
+          workspace: res.brand_name || bName,
         }))
+        if (typeof updateActiveBrand === 'function') {
+          updateActiveBrand({
+            name: res.brand_name || bName,
+            brand_name: res.brand_name || bName,
+            code: res.brand_code,
+            brand_code: res.brand_code,
+            values: res.brand_values,
+            brand_values: res.brand_values,
+          })
+        }
       }
     } catch {
-      api.brandCodeHint().then((res) => {
-        if (res?.brand_code) {
-          setBrandMeta((prev) => ({ ...prev, ...res }))
-        }
-      }).catch(() => {})
+      // offline / demo fallback: keep current brandMeta
     }
   }
 
   useEffect(() => {
+    const targetBrand = activeBrand?.brand_name || activeBrand?.name || user?.brand_name || currentBrandName
     try {
-      const stored = window.localStorage.getItem(STORAGE_KEY)
-      if (stored) setSettings((prev) => ({ ...prev, ...JSON.parse(stored) }))
+      const stored = window.localStorage.getItem(getSettingsKey(targetBrand))
+      if (stored) setSettings((prev) => ({ ...prev, ...JSON.parse(stored), workspace: targetBrand }))
     } catch {
       // ignore malformed local settings
     }
     fetchPending()
     fetchWorkspaceMeta()
-  }, [])
+    fetchTeamRoster()
+  }, [activeBrand?.brand_name, activeBrand?.name, user?.username])
 
   const handleVerify = async (accountId, approve) => {
     try {
@@ -347,6 +521,7 @@ export function BrandControls() {
       const res = await api.verifyAccount({ account_id: accountId, approve })
       toast(res.message, approve ? 'good' : 'warn')
       await fetchPending()
+      await fetchTeamRoster()
     } catch (err) {
       toast(err.message, 'warn')
     } finally {
@@ -367,8 +542,19 @@ export function BrandControls() {
     setSaved(false)
   }
 
+  const generateNewCode = () => {
+    const slug = (brandMeta.brand_name || activeBrand?.brand_name || 'BRAND')
+      .replace(/[^a-zA-Z0-9]/g, '')
+      .slice(0, 6)
+      .toUpperCase() || 'BRAND'
+    const rand = Math.floor(1000 + Math.random() * 9000)
+    const newCode = `${slug}-${rand}`
+    updateBrandMeta('brand_code', newCode)
+    toast(`Generated unique brand code "${newCode}". Click "Save changes" to apply.`, 'good')
+  }
+
   const copyBrandCode = () => {
-    const code = brandMeta.brand_code || 'KLARITY-2026'
+    const code = brandMeta.brand_code || currentBrandCode || 'KLARITY-2026'
     navigator.clipboard.writeText(code)
     toast(`Brand Code "${code}" copied to clipboard!`, 'good')
   }
@@ -376,20 +562,42 @@ export function BrandControls() {
   const saveAll = async () => {
     try {
       setSaving(true)
+      const targetBrandName = activeBrand?.brand_name || activeBrand?.name || brandMeta.brand_name || currentBrandName
+      let savedMeta = { ...brandMeta }
       if (isOwner) {
         const res = await api.updateWorkspaceSettings({
-          brand_name: brandMeta.brand_name,
-          brand_code: brandMeta.brand_code,
-          brand_values: brandMeta.brand_values,
+          old_brand_name: targetBrandName,
+          brand_name: brandMeta.brand_name.trim(),
+          brand_code: brandMeta.brand_code.trim().toUpperCase(),
+          brand_values: brandMeta.brand_values.trim(),
         })
         if (res?.brand_code) {
-          setBrandMeta(res)
+          savedMeta = {
+            brand_name: res.brand_name || brandMeta.brand_name,
+            brand_code: res.brand_code,
+            brand_values: res.brand_values !== undefined ? res.brand_values : brandMeta.brand_values,
+          }
+          setBrandMeta(savedMeta)
         }
       }
-      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-      window.localStorage.setItem(TEAM_STORAGE_KEY, JSON.stringify(team))
+      const savedKey = (savedMeta.brand_name || targetBrandName).toLowerCase().replace(/[^a-z0-9]/g, '_')
+      window.localStorage.setItem(getSettingsKey(savedKey), JSON.stringify(settings))
+      window.localStorage.setItem(getTeamKey(savedKey), JSON.stringify(team))
+
+      if (typeof updateActiveBrand === 'function') {
+        updateActiveBrand({
+          old_brand_name: targetBrandName,
+          name: savedMeta.brand_name,
+          brand_name: savedMeta.brand_name,
+          code: savedMeta.brand_code,
+          brand_code: savedMeta.brand_code,
+          values: savedMeta.brand_values,
+          brand_values: savedMeta.brand_values,
+        })
+      }
+
       setSaved(true)
-      toast('Brand controls and workspace settings saved successfully.', 'good')
+      toast(`Brand controls and unique code (${savedMeta.brand_code}) saved successfully.`, 'good')
     } catch (err) {
       toast(err.message || 'Failed to save settings.', 'warn')
     } finally {
@@ -402,22 +610,8 @@ export function BrandControls() {
       {/* Top Header */}
       <section className="page-head">
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px' }}>
+          <div style={{ marginBottom: '4px' }}>
             <h1 style={{ margin: 0 }}>Brand Owner Controls</h1>
-            <span
-              style={{
-                fontSize: '11px',
-                padding: '3px 9px',
-                borderRadius: '12px',
-                background: isOwner ? 'var(--clay)' : 'var(--sage)',
-                color: '#fff',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-              }}
-            >
-              {isOwner ? 'Owner Exclusive' : 'Governance Desk'}
-            </span>
           </div>
           <p style={{ margin: 0, color: 'var(--ink-soft)', fontSize: '13.5px' }}>
             Master workspace configuration, review thresholds, account verification, team roles, and privacy governance.
@@ -426,37 +620,18 @@ export function BrandControls() {
 
         <div className="page-head__actions">
           {/* Brand Code Quick Pill */}
-          <div
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              padding: '6px 14px',
-              background: '#ffffff',
-              border: '1px solid var(--line-strong)',
-              borderRadius: '8px',
-              boxShadow: '0 2px 6px rgba(0,0,0,0.04)',
-            }}
-          >
-            <KeyRound size={14} color="var(--clay)" />
-            <span style={{ fontSize: '12px', color: 'var(--ink-soft)' }}>Brand Code:</span>
-            <strong style={{ fontFamily: 'monospace', letterSpacing: '0.05em', color: 'var(--clay-deep)', fontSize: '13px' }}>
+          <div className="brand-code-quick-pill">
+            <KeyRound size={14} className="brand-code-quick-pill__icon" />
+            <span className="brand-code-quick-pill__label">Brand Code:</span>
+            <strong className="brand-code-quick-pill__code">
               {brandMeta.brand_code || 'KLARITY-2026'}
             </strong>
             <button
               type="button"
               onClick={copyBrandCode}
               title="Copy Brand Code"
-              style={{
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                padding: '3px',
-                display: 'flex',
-                alignItems: 'center',
-                color: 'var(--ink-soft)',
-                borderRadius: '4px',
-              }}
+              className="brand-code-quick-pill__btn"
+              aria-label="Copy Brand Code"
             >
               <Copy size={13} />
             </button>
@@ -496,7 +671,7 @@ export function BrandControls() {
                 icon={Save}
                 onClick={() => {
                   try {
-                    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
+                    window.localStorage.setItem(getSettingsKey(brandMeta.brand_name || currentBrandName), JSON.stringify(settings))
                   } catch {}
                   setSaved(true)
                   toast('Personal notification preferences saved.', 'good')
@@ -583,21 +758,7 @@ export function BrandControls() {
             />
 
             {!isLead && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '9px',
-                  padding: '10px 14px',
-                  marginBottom: '16px',
-                  borderRadius: 'var(--radius-sm)',
-                  background: 'rgba(217, 119, 6, 0.08)',
-                  border: '1px solid rgba(217, 119, 6, 0.22)',
-                  color: '#92400e',
-                  fontSize: '12px',
-                  lineHeight: 1.4,
-                }}
-              >
+              <div className="lead-notice-banner">
                 <Lock size={16} style={{ flexShrink: 0 }} />
                 <span>
                   <strong>Read-only access:</strong> Workspace creation, custom domain configuration, and governance defaults are restricted to <strong>Brand Owners and Reviewers</strong>. Team members work within their assigned workspace.
@@ -614,40 +775,67 @@ export function BrandControls() {
                     disabled={!isOwner}
                     onChange={(e) => updateBrandMeta('brand_name', e.target.value)}
                     style={!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : undefined}
-                    placeholder="e.g. Aster & Oak"
+                    placeholder="e.g. Acme Corp, Lumina Studios"
                   />
                 </Field>
 
                 <Field
                   label="Brand Access Code (Required for Sign-up)"
                   htmlFor="ctrl-brand-code"
-                  hint="Shared with incoming team members and reviewers upon registration."
+                  hint="Unique workspace code shared with incoming team members and reviewers upon registration. Fully editable."
                 >
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <input
                       id="ctrl-brand-code"
+                      className="brand-code-input"
                       value={brandMeta.brand_code}
                       disabled={!isOwner}
                       onChange={(e) => updateBrandMeta('brand_code', e.target.value.toUpperCase())}
                       style={{
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        letterSpacing: '0.05em',
-                        color: 'var(--clay-deep)',
+                        flex: 1,
+                        minWidth: 0,
                         ...(!isOwner ? { cursor: 'not-allowed', background: 'var(--paper-deep)', opacity: 0.8 } : {}),
                       }}
-                      placeholder="e.g. KLARITY-2026"
+                      placeholder="e.g. GNR-2026"
                     />
                     <Button
                       type="button"
                       variant="secondary"
                       size="sm"
-                      icon={Copy}
                       onClick={copyBrandCode}
                       title="Copy code"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        textAlign: 'center',
+                        lineHeight: 'normal',
+                        padding: '0 16px',
+                        flexShrink: 0,
+                      }}
                     >
                       Copy
                     </Button>
+                    {isOwner && (
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={generateNewCode}
+                        title="Generate a new unique brand code"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          textAlign: 'center',
+                          lineHeight: 'normal',
+                          padding: '0 16px',
+                          flexShrink: 0,
+                        }}
+                      >
+                        Generate
+                      </Button>
+                    )}
                   </div>
                 </Field>
               </div>
@@ -756,16 +944,24 @@ export function BrandControls() {
                 }
               >
                 <div className="threshold-field">
-                  <input
-                    id="workspace-threshold"
-                    type="range"
-                    min="60"
-                    max="95"
-                    disabled={!isLead}
-                    value={settings.threshold}
-                    onChange={(event) => updateSetting('threshold', event.target.value)}
-                    style={!isLead ? { cursor: 'not-allowed', opacity: 0.7 } : undefined}
-                  />
+                  <div style={{ flex: 1, minWidth: 200, maxWidth: 360 }}>
+                    <WakeSlider
+                      value={Number(settings.threshold) || 85}
+                      min={60}
+                      max={95}
+                      step={1}
+                      bars={28}
+                      height={36}
+                      restHeight={8}
+                      gap={3}
+                      fillColor="var(--sage, #298EE4)"
+                      trackColor="rgba(41, 142, 228, 0.15)"
+                      disabled={!isLead}
+                      readOnly={!isLead}
+                      onChange={(val) => updateSetting('threshold', String(Math.round(val)))}
+                      ariaLabel="Publish Clearance Threshold"
+                    />
+                  </div>
                   <span>
                     <strong>{settings.threshold}</strong>
                     <small>/100</small>
@@ -833,18 +1029,7 @@ export function BrandControls() {
                 Checking for incoming registration requests…
               </div>
             ) : pendingAccounts.length === 0 ? (
-              <div
-                style={{
-                  padding: '24px 20px',
-                  background: 'rgba(255, 255, 255, 0.7)',
-                  borderRadius: '8px',
-                  border: '1px dashed var(--line-strong)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '14px',
-                  marginTop: '16px',
-                }}
-              >
+              <div className="empty-approvals-box">
                 <ShieldCheck size={26} color="var(--clay)" />
                 <div>
                   <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>
@@ -860,18 +1045,7 @@ export function BrandControls() {
                 {pendingAccounts.map((acc) => (
                   <div
                     key={acc.id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      flexWrap: 'wrap',
-                      gap: '12px',
-                      padding: '14px 18px',
-                      background: '#ffffff',
-                      borderRadius: '8px',
-                      border: '1px solid var(--line-strong)',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                    }}
+                    className="pending-account-card"
                   >
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                       <div
@@ -898,13 +1072,14 @@ export function BrandControls() {
                               fontSize: '10.5px',
                               padding: '2px 8px',
                               borderRadius: '4px',
-                              background: acc.role === 'reviewer' ? 'rgba(41, 142, 228, 0.12)' : 'rgba(169, 122, 50, 0.12)',
-                              color: acc.role === 'reviewer' ? '#1d4ed8' : 'var(--clay-deep)',
-                              fontWeight: 600,
+                              background: acc.role === 'reviewer' ? 'rgba(56, 189, 248, 0.14)' : 'rgba(169, 122, 50, 0.12)',
+                              color: acc.role === 'reviewer' ? 'var(--sage)' : 'var(--clay-deep)',
+                              border: acc.role === 'reviewer' ? '1px solid rgba(56, 189, 248, 0.3)' : '1px solid rgba(169, 122, 50, 0.22)',
+                              fontWeight: 700,
                               textTransform: 'uppercase',
                             }}
                           >
-                            Requested: {acc.role === 'reviewer' ? 'Stage 2 · Reviewer' : 'Stage 3 · Team Member'}
+                            Requested: {acc.role === 'reviewer' ? 'Reviewer' : 'Team Member'}
                           </span>
                         </div>
                         <span style={{ fontSize: '12px', color: 'var(--muted)' }}>
@@ -949,7 +1124,7 @@ export function BrandControls() {
               action={
                 isLead ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '11.5px', color: 'var(--muted)', background: 'var(--cream)', padding: '4px 8px', borderRadius: '4px', border: '1px solid var(--line)' }}>
+                    <span className="brand-code-badge">
                       Brand Code: <strong>{brandMeta.brand_code || 'KLARITY-2026'}</strong>
                     </span>
                     <Button
@@ -971,35 +1146,47 @@ export function BrandControls() {
             />
 
             <div className="team-list" style={{ marginTop: '16px' }}>
-              {team.map((member, index) => (
-                <div className="team-row" key={`${member.email}-${index}`}>
-                  <Avatar name={member.name} />
-                  <div className="team-row__identity">
-                    <strong>{member.name}</strong>
-                    <small>{member.email}</small>
-                  </div>
-                  <span className="team-row__role">{member.role}</span>
-                  <span
-                    className={cx(
-                      'team-row__status',
-                      member.status === 'Invited' && 'is-invited'
-                    )}
-                    style={member.status === 'Suspended' ? { color: '#dc2626' } : undefined}
-                  >
-                    <span style={member.status === 'Suspended' ? { background: '#dc2626' } : undefined} />
-                    {member.status}
-                  </span>
-                  {isLead && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleOpenAudit(member, index)}
-                    >
-                      Audit
-                    </Button>
-                  )}
+              {team.length === 0 ? (
+                <div style={{ padding: '32px 16px', textAlign: 'center', color: 'var(--ink-soft)' }}>
+                  <Users size={28} style={{ opacity: 0.4, margin: '0 auto 8px', display: 'block' }} />
+                  <p style={{ margin: 0, fontSize: '13.5px', fontWeight: 600, color: 'var(--ink)' }}>
+                    No team members on this brand yet
+                  </p>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)' }}>
+                    Share your Brand Access Code (<code>{brandMeta.brand_code || 'KLARITY-2026'}</code>) with reviewers or team members to let them join.
+                  </p>
                 </div>
-              ))}
+              ) : (
+                team.map((member, index) => (
+                  <div className="team-row" key={`${member.email}-${index}`}>
+                    <Avatar name={member.name} />
+                    <div className="team-row__identity">
+                      <strong>{member.name}</strong>
+                      <small>{member.email}</small>
+                    </div>
+                    <span className="team-row__role">{member.role}</span>
+                    <span
+                      className={cx(
+                        'team-row__status',
+                        member.status === 'Invited' && 'is-invited'
+                      )}
+                      style={member.status === 'Suspended' ? { color: '#dc2626' } : undefined}
+                    >
+                      <span style={member.status === 'Suspended' ? { background: '#dc2626' } : undefined} />
+                      {member.status}
+                    </span>
+                    {isLead && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleOpenAudit(member, index)}
+                      >
+                        Audit
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
             <div className="settings-note" style={{ marginTop: '16px' }}>
@@ -1032,10 +1219,10 @@ export function BrandControls() {
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
               {/* Reviewer / Admin Visibility */}
-              <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '16px' }}>
+              <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
-                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 2 · Reviewer (Admin)</strong>
+                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Reviewer (Admin)</strong>
                     <small style={{ color: 'var(--muted)', fontSize: '11px' }}>Compliance, audits &amp; approvals</small>
                   </div>
                   <span style={{ fontSize: '11px', background: 'var(--sage-soft)', color: 'var(--sage-deep)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Reviewer Access</span>
@@ -1088,10 +1275,10 @@ export function BrandControls() {
               </div>
 
               {/* Team Member Visibility */}
-              <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: '8px', padding: '16px' }}>
+              <div className="role-perm-card">
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--line)', paddingBottom: '10px', marginBottom: '12px' }}>
                   <div>
-                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Stage 3 · Team Member</strong>
+                    <strong style={{ fontSize: '13.5px', display: 'block', color: 'var(--ink)' }}>Team Member</strong>
                     <small style={{ color: 'var(--muted)', fontSize: '11px' }}>Content authoring &amp; pre-flight checks</small>
                   </div>
                   <span style={{ fontSize: '11px', background: 'var(--cream)', color: 'var(--ink-soft)', padding: '2px 8px', borderRadius: '4px', fontWeight: 600 }}>Member Access</span>
@@ -1219,6 +1406,33 @@ export function BrandControls() {
               </p>
             </div>
           </Panel>
+
+          {/* Clean Slate & Data Management */}
+          {isOwner && (
+            <Panel
+              title="Workspace Data Management"
+              badge="Owner Only"
+              description="Manage sample submissions and reset to a clean slate."
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', padding: '12px 0' }}>
+                <div>
+                  <strong style={{ fontSize: '13.5px', color: 'var(--ink)' }}>Clean Submissions Queue</strong>
+                  <p style={{ margin: '4px 0 0', fontSize: '12px', color: 'var(--muted)', lineHeight: 1.4 }}>
+                    Clear all sample/demo review submissions to start with a fresh, empty workspace for {activeBrand?.brand_name || 'your brand'}.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={clearingWorkspace}
+                  onClick={handleClearWorkspace}
+                  style={{ flexShrink: 0, color: '#dc2626', borderColor: 'rgba(220, 38, 38, 0.3)' }}
+                >
+                  {clearingWorkspace ? 'Clearing…' : 'Clear Sample Submissions'}
+                </Button>
+              </div>
+            </Panel>
+          )}
 
           {/* Page Footer */}
           <div className="settings-foot">
@@ -1368,7 +1582,7 @@ export function BrandControls() {
           <Field
             label="Governance Role"
             htmlFor="invite-role"
-            hint="Stage 1 owns brand config, Stage 2 reviews & audits, Stage 3 authors in Creator Studio."
+            hint="Brand Owners configure brand specs, Reviewers audit & inspect, Team Members draft in Creator Studio."
           >
             <Select
               id="invite-role"
@@ -1387,13 +1601,13 @@ export function BrandControls() {
             />
           </Field>
 
-          <div style={{ padding: '14px 16px', background: 'var(--cream)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <div className="invite-brand-code-box">
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <KeyRound size={15} color="var(--clay)" />
+                <KeyRound size={15} className="brand-code-quick-pill__icon" />
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--ink)' }}>Brand Access Code</span>
               </div>
-              <code style={{ fontSize: '13px', fontWeight: 700, color: 'var(--clay-deep)', background: '#fff', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--line)' }}>
+              <code className="brand-code-quick-pill__code">
                 {brandMeta.brand_code || 'KLARITY-2026'}
               </code>
             </div>

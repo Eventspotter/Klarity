@@ -93,6 +93,7 @@ class BrandGuideline(Base):
     category = Column(SAEnum(GuidelineCategory), nullable=False)
     content = Column(Text, nullable=False)
     priority = Column(Integer, nullable=False, default=1)  # 1-5
+    brand_name = Column(String(120), nullable=True, default="Aster & Oak", index=True)
     created_at = Column(DateTime, default=_utcnow)
     updated_at = Column(DateTime, default=_utcnow, onupdate=_utcnow)
 
@@ -109,6 +110,7 @@ class ContentSubmission(Base):
     content_text = Column(Text, nullable=False)
     status = Column(SAEnum(SubmissionStatus), nullable=False, default=SubmissionStatus.pending, index=True)
     submitted_by = Column(String(120), nullable=False)
+    brand_name = Column(String(120), nullable=True, default="Aster & Oak", index=True)
     submitted_at = Column(DateTime, default=_utcnow, index=True)
     reviewed_at = Column(DateTime, nullable=True)
     reviewer_notes = Column(Text, nullable=True)

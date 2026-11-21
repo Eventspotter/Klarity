@@ -1,6 +1,7 @@
 import { Suspense, lazy, useDeferredValue, useEffect, useState } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { BrandMark } from './components/BrandMark'
+import WakeSlider from './components/WakeSlider'
 import { Sidebar } from './components/Sidebar'
 import { Topbar } from './components/Topbar'
 import { ToastRegion } from './components/UI'
@@ -40,10 +41,26 @@ function LoadingScreen() {
         <BrandMark size={44} />
         <span>Klarity</span>
       </div>
-      <div className="loading-screen__bar">
-        <span />
+      <div style={{ width: 300, maxWidth: '85vw' }}>
+        <WakeSlider
+          autoLoop={true}
+          loopSpeed={1.3}
+          min={0}
+          max={100}
+          bars={30}
+          height={42}
+          restHeight={10}
+          gap={3}
+          fillColor="var(--sage, #298EE4)"
+          trackColor="rgba(41, 142, 228, 0.14)"
+          crestColor="var(--sage-soft, #e8f4fc)"
+          reach={6}
+          skew={0.65}
+        />
       </div>
-      <p>Opening the brand workspace…</p>
+      <p style={{ letterSpacing: '0.04em', fontSize: '13px', fontWeight: 500 }}>
+        Opening the brand workspace…
+      </p>
     </div>
   )
 }

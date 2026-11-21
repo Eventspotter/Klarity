@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -17,19 +17,29 @@ import {
   User,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
+import OtpInput from '../components/OtpInput'
 import { useApp } from '../context/AppContext'
-import { api, setStoredToken } from '../lib/api'
+import { api } from '../lib/api'
 
 export function Login() {
   const { user, data, authenticate } = useApp()
   const [register, setRegister] = useState(false)
+  const [forgotMode, setForgotMode] = useState(false) // false | 'email' | 'otp'
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [otpCode, setOtpCode] = useState('')
+  const [devCode, setDevCode] = useState('')
+  const [otpStatus, setOtpStatus] = useState('idle') // 'idle' | 'combining' | 'success' | 'error'
+  const [otpVerified, setOtpVerified] = useState(false)
+  const [newPassword, setNewPassword] = useState('')
+  const [showNewPassword, setShowNewPassword] = useState(false)
   const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState('owner')
   const [brandCode, setBrandCode] = useState('')
-  const [brandName, setBrandName] = useState('Aster & Oak')
-  const [brandValues, setBrandValues] = useState('Authenticity, craft, sustainability, quiet confidence')
+  const [brandName, setBrandName] = useState('')
+  const [brandValues, setBrandValues] = useState('')
+  const [cleanWorkspace, setCleanWorkspace] = useState(true)
   const [showPassword, setShowPassword] = useState(false)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -37,32 +47,11 @@ export function Login() {
   const [pendingNotice, setPendingNotice] = useState(false)
   const [availableBrands, setAvailableBrands] = useState([])
 
-  // OTP state
-  const [otpStep, setOtpStep] = useState(false)
-  const [otpEmail, setOtpEmail] = useState('')
-  const [otpFromEmail, setOtpFromEmail] = useState('goklarity@gmail.com')
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
-  const [otpBusy, setOtpBusy] = useState(false)
-  const [otpError, setOtpError] = useState('')
-  const [otpSuccess, setOtpSuccess] = useState('')
-  const [resendCooldown, setResendCooldown] = useState(0)
-  const [emailSent, setEmailSent] = useState(false)
-  const [devOtp, setDevOtp] = useState(null)
-  const [otpNotice, setOtpNotice] = useState('')
-  const inputRefs = useRef([])
-
   useEffect(() => {
     api.listBrands().then(res => {
       if (res?.brands) setAvailableBrands(res.brands)
     }).catch(() => {})
   }, [])
-
-  // Resend cooldown timer
-  useEffect(() => {
-    if (resendCooldown <= 0) return
-    const timer = setTimeout(() => setResendCooldown(c => c - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [resendCooldown])
 
   if (user && data) return <Navigate to="/" replace />
 
@@ -83,8 +72,9 @@ export function Login() {
           password,
           role,
           brand_code: isAdmin ? undefined : brandCode,
-          brand_name: isAdmin ? brandName : undefined,
-          brand_values: isAdmin ? brandValues : undefined,
+          brand_name: isAdmin ? (brandName.trim() || undefined) : undefined,
+          brand_values: isAdmin ? (brandValues.trim() || undefined) : undefined,
+          clean_workspace: isAdmin ? cleanWorkspace : false,
         })
 
         if (res?.is_approved) {
@@ -97,26 +87,7 @@ export function Login() {
         setRegister(false)
         setPassword('')
       } else {
-        // Step 1: Send credentials → server validates and sends OTP
-        const res = await api.login({ identifier: email.trim(), password })
-        if (res?.otp_required) {
-          setOtpEmail(res.email)
-          setOtpFromEmail(res.from_email || 'goklarity@gmail.com')
-          setEmailSent(Boolean(res.email_sent))
-          setDevOtp(res.dev_otp || null)
-          setOtpNotice(res.message || '')
-          setOtpStep(true)
-          setOtpDigits(['', '', '', '', '', ''])
-          setOtpError('')
-          setOtpSuccess('')
-          setResendCooldown(30)
-          // Auto-focus first input
-          setTimeout(() => inputRefs.current[0]?.focus(), 100)
-        } else if (res?.token) {
-          // Direct login (no OTP required — fallback)
-          setStoredToken(res.token)
-          await authenticate('me', {})
-        }
+        await authenticate('login', { identifier: email.trim(), password })
       }
     } catch (failure) {
       setError(failure.message)
@@ -125,355 +96,100 @@ export function Login() {
     }
   }
 
-  // Handle OTP digit input
-  const handleOtpChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return // Only digits
-    const newDigits = [...otpDigits]
-    
-    if (value.length > 1) {
-      // Handle paste: distribute digits across inputs
-      const digits = value.replace(/\D/g, '').slice(0, 6 - index)
-      digits.split('').forEach((d, i) => {
-        if (index + i < 6) newDigits[index + i] = d
-      })
-      setOtpDigits(newDigits)
-      const nextIdx = Math.min(index + digits.length, 5)
-      inputRefs.current[nextIdx]?.focus()
-      return
-    }
-
-    newDigits[index] = value
-    setOtpDigits(newDigits)
-
-    // Auto-advance to next input
-    if (value && index < 5) {
-      inputRefs.current[index + 1]?.focus()
-    }
-  }
-
-  const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus()
-    }
-  }
-
-  const handleOtpPaste = (e) => {
+  const handleSendOtp = async (e) => {
     e.preventDefault()
-    const paste = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    if (!paste) return
-    const newDigits = [...otpDigits]
-    paste.split('').forEach((d, i) => {
-      if (i < 6) newDigits[i] = d
-    })
-    setOtpDigits(newDigits)
-    const focusIdx = Math.min(paste.length, 5)
-    inputRefs.current[focusIdx]?.focus()
-  }
-
-  // Submit OTP verification
-  const submitOtp = async () => {
-    const code = otpDigits.join('')
-    if (code.length !== 6) {
-      setOtpError('Please enter all 6 digits.')
+    if (!forgotEmail.trim()) {
+      setError('Please enter your account email.')
       return
     }
-    setOtpBusy(true)
-    setOtpError('')
-    setOtpSuccess('')
-
+    setBusy(true)
+    setError('')
+    setSuccessMsg('')
+    setOtpCode('')
+    setOtpStatus('idle')
+    setOtpVerified(false)
     try {
-      const res = await api.verifyOtp({ email: otpEmail, otp: code })
-      if (res?.token) {
-        setOtpSuccess('Verified! Signing you in...')
-        setStoredToken(res.token)
-        // Small delay for the success animation
-        setTimeout(async () => {
-          try {
-            const me = await api.me()
-            const bootstrap = await api.bootstrap()
-            // Force page reload to pick up the new session
-            window.location.reload()
-          } catch {
-            window.location.reload()
-          }
-        }, 800)
+      const res = await api.forgotPassword({ email: forgotEmail.trim() })
+      setSuccessMsg(res?.message || 'Verification code sent to your email!')
+      setForgotMode('otp')
+      if (res?.dev_code) {
+        setDevCode(res.dev_code)
       }
-    } catch (failure) {
-      setOtpError(failure.message)
-      setOtpDigits(['', '', '', '', '', ''])
-      setTimeout(() => inputRefs.current[0]?.focus(), 100)
+    } catch (err) {
+      setError(err.message || 'Failed to send verification code.')
     } finally {
-      setOtpBusy(false)
+      setBusy(false)
     }
   }
 
-  // Auto-submit when all digits filled
-  useEffect(() => {
-    if (otpStep && otpDigits.every(d => d !== '') && !otpBusy) {
-      submitOtp()
-    }
-  }, [otpDigits, otpStep])
+  const handleOtpComplete = async (code) => {
+    if (!code || code.length !== 6) return
+    setOtpStatus('combining')
+    setError('')
+    setSuccessMsg('')
 
-  // Resend OTP
-  const resendOtp = async () => {
-    if (resendCooldown > 0) return
-    setOtpBusy(true)
-    setOtpError('')
+    // Allow the combine boxes animation to visually slide into the center
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
     try {
-      const res = await api.resendOtp({ email: otpEmail })
-      setEmailSent(Boolean(res?.email_sent))
-      if (res?.dev_otp) setDevOtp(res.dev_otp)
-      if (res?.message) setOtpNotice(res.message)
-      setOtpSuccess(res?.email_sent ? 'New code dispatched! Check your inbox or spam.' : 'New code generated.')
-      setResendCooldown(30)
-      setOtpDigits(['', '', '', '', '', ''])
+      // Validate OTP with backend
+      await api.verifyOtp({
+        email: forgotEmail.trim(),
+        otp: code.trim(),
+      })
+      // OTP is valid! Show success tick in the central combined badge
+      setOtpStatus('success')
+      setOtpVerified(true)
+      setSuccessMsg('Code verified! Please set your new password below.')
+    } catch (err) {
+      // Wrong or expired OTP! Show red cross in central combined badge, shake, then expand back
+      setOtpStatus('error')
+      setError(err.message || 'Incorrect verification code. Please check and try again.')
       setTimeout(() => {
-        setOtpSuccess('')
-        inputRefs.current[0]?.focus()
-      }, 3000)
-    } catch (failure) {
-      setOtpError(failure.message)
-    } finally {
-      setOtpBusy(false)
+        setOtpStatus('idle')
+        setOtpCode('')
+        setOtpVerified(false)
+      }, 1600)
     }
   }
 
-  // Cancel OTP → go back to login form
-  const cancelOtp = () => {
-    setOtpStep(false)
-    setOtpEmail('')
-    setOtpDigits(['', '', '', '', '', ''])
-    setOtpError('')
-    setOtpSuccess('')
-    setPassword('')
+  const handleResetPassword = async (e) => {
+    e.preventDefault()
+    if (!otpCode.trim() || otpCode.trim().length !== 6 || !newPassword) {
+      setError('Please provide the 6-digit verification code and new password.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    setSuccessMsg('')
+    try {
+      const res = await api.resetPassword({
+        email: forgotEmail.trim(),
+        otp: otpCode.trim(),
+        new_password: newPassword,
+      })
+      setSuccessMsg(res?.message || 'Password reset successful! You can now sign in.')
+      setForgotMode(false)
+      setRegister(false)
+      setPassword('')
+      setEmail(forgotEmail.trim())
+      setForgotEmail('')
+      setOtpCode('')
+      setOtpStatus('idle')
+      setOtpVerified(false)
+      setNewPassword('')
+    } catch (err) {
+      setOtpStatus('error')
+      setTimeout(() => {
+        setOtpStatus('idle')
+        setOtpVerified(false)
+      }, 1500)
+      setError(err.message || 'Failed to reset password.')
+    } finally {
+      setBusy(false)
+    }
   }
 
-  // ─── OTP Verification Screen ──────────────────────────────────────
-  if (otpStep) {
-    return (
-      <div className="login-page">
-        <div className="login-nav">
-          <Link to="/hero" className="login-back-link">
-            <ArrowLeft size={16} />
-            Back to Product Overview
-          </Link>
-        </div>
-        <div className="login-container">
-          <div className="login-card" style={{ maxWidth: '480px' }}>
-            <div className="login-card__header">
-              <Link to="/hero" className="login-brand">
-                <BrandMark size={42} />
-                <span className="login-brand__name">Klarity</span>
-              </Link>
-              <h1 className="login-title">Sign in to your workspace</h1>
-              <p className="login-subtitle">Enter your username or email and password.</p>
-            </div>
-
-            <div style={{
-              background: 'var(--paper)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '24px',
-              marginBottom: '8px',
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <KeyRound size={18} color="var(--sage)" />
-                <h2 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: 'var(--ink)' }}>
-                  Enter Verification Code
-                </h2>
-              </div>
-              <p style={{ margin: '0 0 16px', fontSize: '13px', color: 'var(--muted)', lineHeight: 1.4 }}>
-                Check your inbox for the 6-digit OTP code sent from{' '}
-                <strong style={{ color: 'var(--ink)' }}>{otpFromEmail}</strong>
-              </p>
-
-              <p style={{
-                textAlign: 'center',
-                fontSize: '12px',
-                fontWeight: 700,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-                color: 'var(--muted)',
-                marginBottom: '6px',
-              }}>
-                ENTER 6-DIGIT CODE
-              </p>
-              <p style={{
-                textAlign: 'center',
-                fontSize: '13px',
-                color: 'var(--muted)',
-                marginBottom: '16px',
-              }}>
-                Sent to <strong style={{ color: 'var(--ink)' }}>{otpEmail}</strong>
-              </p>
-
-              {devOtp && (
-                <div style={{
-                  background: 'rgba(245, 158, 11, 0.1)',
-                  border: '1px solid rgba(245, 158, 11, 0.4)',
-                  borderRadius: '10px',
-                  padding: '12px 14px',
-                  marginBottom: '18px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: '12px',
-                }}>
-                  <div style={{ fontSize: '13px', color: 'var(--ink)' }}>
-                    <div style={{ fontWeight: 600, color: '#b45309', marginBottom: '2px', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                      <span>🔑</span> Direct Access Code
-                    </div>
-                    <div style={{ color: 'var(--muted)', fontSize: '12px' }}>
-                      Code: <strong style={{ letterSpacing: '2px', fontFamily: 'monospace', fontSize: '15px', color: 'var(--ink)' }}>{devOtp}</strong>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const digits = devOtp.split('')
-                      setOtpDigits(digits)
-                    }}
-                    style={{
-                      background: 'var(--sage, #2563eb)',
-                      color: '#fff',
-                      border: 'none',
-                      borderRadius: '6px',
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    Auto-Fill
-                  </button>
-                </div>
-              )}
-
-              {emailSent && !devOtp && (
-                <div style={{
-                  background: 'rgba(34, 197, 94, 0.1)',
-                  border: '1px solid rgba(34, 197, 94, 0.3)',
-                  borderRadius: '8px',
-                  padding: '10px 14px',
-                  marginBottom: '16px',
-                  fontSize: '12.5px',
-                  color: '#15803d',
-                  textAlign: 'center',
-                }}>
-                  📨 Real email dispatched! Please check your inbox or spam folder.
-                </div>
-              )}
-
-              {/* OTP Input Boxes */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'center',
-                  gap: '10px',
-                  marginBottom: '16px',
-                }}
-                onPaste={handleOtpPaste}
-              >
-                {otpDigits.map((digit, i) => (
-                  <input
-                    key={i}
-                    ref={el => inputRefs.current[i] = el}
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={1}
-                    value={digit}
-                    onChange={e => handleOtpChange(i, e.target.value)}
-                    onKeyDown={e => handleOtpKeyDown(i, e)}
-                    disabled={otpBusy}
-                    style={{
-                      width: '48px',
-                      height: '56px',
-                      textAlign: 'center',
-                      fontSize: '22px',
-                      fontWeight: 700,
-                      fontFamily: 'monospace',
-                      border: `2px solid ${otpError ? '#ef4444' : otpSuccess ? '#16a34a' : digit ? 'var(--sage)' : 'var(--line-strong)'}`,
-                      borderRadius: '12px',
-                      background: otpSuccess ? '#f0fdf4' : 'var(--surface)',
-                      color: 'var(--ink)',
-                      outline: 'none',
-                      transition: 'border-color 0.2s, box-shadow 0.2s, background 0.2s',
-                      boxShadow: digit ? '0 0 0 3px rgba(45,90,61,0.08)' : 'none',
-                    }}
-                    onFocus={e => {
-                      e.target.style.borderColor = 'var(--sage)'
-                      e.target.style.boxShadow = '0 0 0 3px rgba(45,90,61,0.12)'
-                    }}
-                    onBlur={e => {
-                      e.target.style.borderColor = digit ? 'var(--sage)' : 'var(--line-strong)'
-                      e.target.style.boxShadow = digit ? '0 0 0 3px rgba(45,90,61,0.08)' : 'none'
-                    }}
-                  />
-                ))}
-              </div>
-
-              <p style={{ textAlign: 'center', fontSize: '12px', color: 'var(--muted)', margin: '0 0 16px' }}>
-                Enter the 6-digit code above to proceed.
-              </p>
-
-              {otpError && (
-                <div className="login-alert-error" role="alert" style={{ marginBottom: '12px' }}>
-                  <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: '1px' }} />
-                  <div style={{ fontSize: '13px' }}>{otpError}</div>
-                </div>
-              )}
-
-              {otpSuccess && (
-                <div className="login-alert-success" role="status" style={{ marginBottom: '12px' }}>
-                  <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '1px', color: '#16a34a' }} />
-                  <div style={{ fontSize: '13px' }}>{otpSuccess}</div>
-                </div>
-              )}
-
-              {/* Resend + Cancel buttons */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '8px' }}>
-                <button
-                  type="button"
-                  onClick={resendOtp}
-                  disabled={resendCooldown > 0 || otpBusy}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: resendCooldown > 0 ? 'var(--muted)' : 'var(--sage)',
-                    cursor: resendCooldown > 0 ? 'default' : 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    padding: '4px 0',
-                    textDecoration: resendCooldown > 0 ? 'none' : 'underline',
-                  }}
-                >
-                  {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : 'Resend code'}
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelOtp}
-                  disabled={otpBusy}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--muted)',
-                    cursor: 'pointer',
-                    fontSize: '13px',
-                    fontWeight: 500,
-                    padding: '4px 0',
-                  }}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
-  }
-
-  // ─── Normal Login / Register Form ─────────────────────────────────
   return (
     <div className="login-page">
       <div className="login-nav">
@@ -499,7 +215,7 @@ export function Login() {
             </p>
           </div>
 
-          {successMsg && (
+          {successMsg && (!forgotMode || forgotMode === 'email') && (
             <div className="login-alert-success" role="status" style={{ marginBottom: '18px' }}>
               {pendingNotice ? (
                 <Clock size={20} style={{ flexShrink: 0, marginTop: '2px', color: '#b45309' }} />
@@ -518,14 +234,205 @@ export function Login() {
             </div>
           )}
 
-          {error && (
+          {error && (!forgotMode || forgotMode === 'email') && (
             <div className="login-alert-error" role="alert" style={{ marginBottom: '18px' }}>
               <ShieldAlert size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>{error}</div>
             </div>
           )}
 
-          <form className="login-form" onSubmit={submit}>
+          {forgotMode ? (
+            <div className="login-forgot-panel">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <KeyRound size={20} color="var(--sage, #298EE4)" />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', color: 'var(--ink)' }}>
+                    {forgotMode === 'otp' ? 'Enter Verification Code' : 'Reset Your Password'}
+                  </h3>
+                  <small style={{ color: 'var(--muted)' }}>
+                    {forgotMode === 'otp'
+                      ? 'Check your inbox for the 6-digit OTP code sent from goklarity@gmail.com'
+                      : 'We will send a 6-digit verification code to your email address.'}
+                  </small>
+                </div>
+              </div>
+
+              {forgotMode === 'email' ? (
+                <form className="login-form" onSubmit={handleSendOtp}>
+                  <div className="login-field">
+                    <label htmlFor="forgot-email">Account Email</label>
+                    <div className="login-input-wrap">
+                      <Mail size={16} className="login-input-icon" />
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        placeholder="you@company.com"
+                        autoCapitalize="none"
+                        autoCorrect="off"
+                        enterKeyHint="send"
+                        required
+                        autoFocus
+                      />
+                    </div>
+                  </div>
+
+                  <button type="submit" className="login-submit-btn" disabled={busy}>
+                    <span>{busy ? 'Sending OTP…' : 'Send Verification Code'}</span>
+                    <ArrowRight size={16} />
+                  </button>
+
+                  <button
+                    type="button"
+                    className="login-sso-btn"
+                    onClick={() => {
+                      setForgotMode(false)
+                      setError('')
+                      setSuccessMsg('')
+                    }}
+                  >
+                    Back to Sign in
+                  </button>
+                </form>
+              ) : (
+                <form className="login-form" onSubmit={handleResetPassword}>
+                  <div className="login-field" style={{ textAlign: 'center', marginBottom: '8px' }}>
+                    <label style={{ display: 'block', marginBottom: '4px' }}>Enter 6-Digit Code</label>
+                    <small style={{ color: 'var(--muted)', display: 'block', marginBottom: '12px' }}>
+                      Sent to <strong>{forgotEmail}</strong>
+                    </small>
+                    
+                    {/* Animated OTP Input Component with glowing boxes, collapse and tick/cross */}
+                    <OtpInput
+                      length={6}
+                      value={otpCode}
+                      onChange={(val) => {
+                        setOtpCode(val)
+                        if (otpStatus !== 'idle') setOtpStatus('idle')
+                        if (error) setError('')
+                      }}
+                      onComplete={handleOtpComplete}
+                      status={otpStatus}
+                      disabled={busy}
+                    />
+
+                    {/* Error alert displayed immediately below the OTP boxes */}
+                    {error && (
+                      <div
+                        className="login-alert-error"
+                        role="alert"
+                        style={{
+                          marginTop: '12px',
+                          marginBottom: '4px',
+                          textAlign: 'left',
+                          animation: 'fadeIn 0.25s ease-out'
+                        }}
+                      >
+                        <ShieldAlert size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                        <div>{error}</div>
+                      </div>
+                    )}
+
+                    {/* Success notification below the OTP boxes */}
+                    {successMsg && otpVerified && (
+                      <div
+                        className="login-alert-success"
+                        role="status"
+                        style={{
+                          marginTop: '12px',
+                          marginBottom: '4px',
+                          textAlign: 'left',
+                          animation: 'fadeIn 0.25s ease-out'
+                        }}
+                      >
+                        <CheckCircle2 size={18} style={{ flexShrink: 0, marginTop: '2px', color: '#16a34a' }} />
+                        <div>{successMsg}</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Only reveal New Password form AFTER OTP is verified */}
+                  {otpVerified && (
+                    <div className="login-field" style={{ marginTop: '14px', animation: 'fadeIn 0.35s ease-out' }}>
+                      <label htmlFor="new-password">New Password</label>
+                      <div className="login-input-wrap">
+                        <Lock size={16} className="login-input-icon" />
+                        <input
+                          id="new-password"
+                          type={showNewPassword ? 'text' : 'password'}
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                          minLength={8}
+                          maxLength={128}
+                          placeholder="At least 8 characters"
+                          required
+                          autoFocus
+                        />
+                        <button
+                          type="button"
+                          className="login-pw-toggle"
+                          onClick={() => setShowNewPassword(!showNewPassword)}
+                        >
+                          {showNewPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {otpVerified ? (
+                    <button
+                      type="submit"
+                      className="login-submit-btn"
+                      disabled={busy || !newPassword}
+                      style={{ marginTop: '14px' }}
+                    >
+                      <span>{busy ? 'Saving Password…' : 'Save New Password'}</span>
+                      <ArrowRight size={16} />
+                    </button>
+                  ) : (
+                    <div style={{ textAlign: 'center', marginTop: '12px' }}>
+                      <p style={{ margin: 0, fontSize: '12px', color: 'var(--muted)' }}>
+                        {otpStatus === 'combining'
+                          ? 'Verifying code…'
+                          : otpStatus === 'error'
+                          ? 'Invalid code. Resetting boxes…'
+                          : 'Enter the 6-digit code above to proceed.'}
+                      </p>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', color: 'var(--sage, #38bdf8)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      onClick={() => {
+                        setForgotMode('email')
+                        setOtpStatus('idle')
+                        setOtpCode('')
+                      }}
+                    >
+                      Resend code
+                    </button>
+                    <button
+                      type="button"
+                      style={{ background: 'none', border: 'none', color: 'var(--muted)', fontSize: '12px', cursor: 'pointer', padding: 0 }}
+                      onClick={() => {
+                        setForgotMode(false)
+                        setError('')
+                        setSuccessMsg('')
+                        setOtpStatus('idle')
+                        setOtpCode('')
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+          ) : (
+            <form className="login-form" onSubmit={submit}>
             {register && (
               <div className="login-field">
                 <label>Account Role &amp; Permission Tier</label>
@@ -539,7 +446,7 @@ export function Login() {
                       <Crown size={14} color={role === 'owner' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>Admin</span>
                     </div>
-                    <small>Stage 1 · Creates Workspace</small>
+                    <small>Brand Owner · Creates Workspace</small>
                   </button>
                   <button
                     type="button"
@@ -550,7 +457,7 @@ export function Login() {
                       <FileCheck2 size={14} color={role === 'reviewer' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>Reviewer</span>
                     </div>
-                    <small>Stage 2 · Editorial Auditor</small>
+                    <small>Reviewer · Editorial Auditor</small>
                   </button>
                   <button
                     type="button"
@@ -561,7 +468,7 @@ export function Login() {
                       <User size={14} color={role === 'member' ? 'var(--sage)' : 'var(--muted)'} />
                       <span>User</span>
                     </div>
-                    <small>Stage 3 · Team Member</small>
+                    <small>Team Member · Content Creator</small>
                   </button>
                 </div>
               </div>
@@ -577,6 +484,9 @@ export function Login() {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     autoComplete="username"
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    enterKeyHint="next"
                     minLength={3}
                     maxLength={80}
                     pattern="[a-zA-Z0-9_.-]+"
@@ -597,6 +507,9 @@ export function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   autoComplete={register ? 'email' : 'username'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  enterKeyHint="next"
                   maxLength={254}
                   placeholder={register ? 'you@company.com' : 'username or email'}
                   required
@@ -605,7 +518,23 @@ export function Login() {
             </div>
 
             <div className="login-field">
-              <label htmlFor="login-password">Password</label>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                <label htmlFor="login-password" style={{ margin: 0 }}>Password</label>
+                {!register && (
+                  <button
+                    type="button"
+                    style={{ background: 'none', border: 'none', color: 'var(--sage, #298EE4)', fontSize: '11.5px', fontWeight: 600, cursor: 'pointer', padding: 0 }}
+                    onClick={() => {
+                      setForgotMode('email')
+                      setForgotEmail(email || '')
+                      setError('')
+                      setSuccessMsg('')
+                    }}
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
               <div className="login-input-wrap">
                 <Lock size={16} className="login-input-icon" />
                 <input
@@ -678,7 +607,8 @@ export function Login() {
                     type="text"
                     value={brandName}
                     onChange={(e) => setBrandName(e.target.value)}
-                    placeholder="e.g. Aster & Oak"
+                    placeholder="e.g. Acme Corp, Lumina Studios"
+                    required
                   />
                 </div>
                 <div>
@@ -688,8 +618,32 @@ export function Login() {
                     rows={2}
                     value={brandValues}
                     onChange={(e) => setBrandValues(e.target.value)}
-                    placeholder="e.g. Authenticity, craftsmanship, quiet confidence..."
+                    placeholder="e.g. Authenticity, craft, excellence, quiet confidence..."
                   />
+                </div>
+                <div className={`clean-workspace-toggle-card ${cleanWorkspace ? 'is-active' : ''}`}>
+                  <label htmlFor="clean-workspace-chk" className="clean-workspace-toggle-row">
+                    <div className="clean-workspace-toggle-info">
+                      <div className="clean-workspace-toggle-title">
+                        <Sparkles size={13} className="clean-workspace-sparkle" />
+                        <span>Start with a clean workspace</span>
+                        <span className="clean-workspace-badge">Recommended</span>
+                      </div>
+                      <p className="clean-workspace-toggle-sub">
+                        Empty review queue, zero pre-loaded guidelines, and fresh asset directory right off the bat.
+                      </p>
+                    </div>
+                    <div className="clean-workspace-switch-wrap">
+                      <input
+                        id="clean-workspace-chk"
+                        type="checkbox"
+                        checked={cleanWorkspace}
+                        onChange={(e) => setCleanWorkspace(e.target.checked)}
+                        className="clean-workspace-checkbox"
+                      />
+                      <span className="clean-workspace-slider" />
+                    </div>
+                  </label>
                 </div>
               </div>
             )}
@@ -713,6 +667,7 @@ export function Login() {
               {register ? 'Already have an account? Sign in' : 'Create an account'}
             </button>
           </form>
+          )}
         </div>
       </div>
     </div>

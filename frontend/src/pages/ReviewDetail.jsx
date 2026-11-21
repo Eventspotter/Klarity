@@ -103,15 +103,17 @@ function HighlightedContent({ text = '', issues = [] }) {
   }
 }
 
-function VisualPreview({ submission }) {
+function VisualPreview({ submission, activeBrand }) {
+  const brandName = activeBrand?.brand_name || activeBrand?.name || 'Brand'
+  const brandMark = activeBrand?.mark || brandName.slice(0, 2).toUpperCase() || 'KL'
   return (
     <div className="visual-preview" aria-label="Synthetic visual asset preview">
       <div className="visual-preview__frame">
         <span className="visual-preview__shape visual-preview__shape--one" />
         <span className="visual-preview__shape visual-preview__shape--two" />
-        <span className="visual-preview__mark">A&amp;O</span>
+        <span className="visual-preview__mark">{brandMark}</span>
         <div className="visual-preview__copy">
-          <span>Aster &amp; Oak</span>
+          <span>{brandName}</span>
           <strong>{submission.title}</strong>
           <small>4:5 · synthetic preview</small>
         </div>
@@ -123,7 +125,7 @@ function VisualPreview({ submission }) {
 
 export function ReviewDetail() {
   const { id } = useParams()
-  const { data, reviewSubmission, toast, isLead } = useApp()
+  const { data, reviewSubmission, toast, isLead, activeBrand } = useApp()
   const submissionFromData = (data?.submissions || []).find((item) => String(item.id) === String(id))
   const [remoteSubmission, setRemoteSubmission] = useState(null)
   const [loadingRemote, setLoadingRemote] = useState(false)
@@ -276,7 +278,7 @@ export function ReviewDetail() {
           </div>
 
           {submission.content_type === 'image' ? (
-            <VisualPreview submission={submission} />
+            <VisualPreview submission={submission} activeBrand={activeBrand} />
           ) : (
             <div className="content-body">
               {submission.content_type === 'html' ? (
@@ -284,7 +286,7 @@ export function ReviewDetail() {
                   <span />
                   <span />
                   <span />
-                  <small>asterandoak.studio/preview</small>
+                  <small>{(activeBrand?.brand_name || 'brand').toLowerCase().replace(/[^a-z0-9]/g, '')}.studio/preview</small>
                 </div>
               ) : submission.content_type === 'document' ? (
                 <div className="content-body__browser">

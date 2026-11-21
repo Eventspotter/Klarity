@@ -52,7 +52,7 @@ const CATEGORY_VOICE_DEFAULTS = {
       'Use: linen, flax, maker, repair, keep, lived-in, considered, patina, tactile.',
     avoid:
       'Avoid: seamless, game-changing, revolutionary, eco-friendly, utilize, leverage, best-in-class.',
-    soundsTip: 'Specific observations unique to Aster & Oak craftsmanship.',
+    soundsTip: 'Specific observations unique to brand craftsmanship.',
     avoidTip: 'Interchangeable corporate filler words that erode editorial voice.',
   },
   facts: {
@@ -382,6 +382,9 @@ export function Guidelines() {
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Search guidelines"
                 aria-label="Search guidelines"
+                autoCapitalize="none"
+                autoCorrect="off"
+                enterKeyHint="search"
               />
             </label>
             <Tabs
@@ -414,6 +417,20 @@ export function Guidelines() {
                   <ArrowUpRight size={14} className="guideline-item__arrow" />
                 </button>
               ))
+            ) : (data?.guidelines || []).length === 0 ? (
+              <EmptyState
+                compact
+                icon={BookOpen}
+                title="Zero guidelines"
+                description="Your brand guidelines start completely clean right off the bat."
+                action={
+                  isLead ? (
+                    <Button variant="primary" size="sm" icon={Plus} onClick={openNew}>
+                      Create guideline
+                    </Button>
+                  ) : null
+                }
+              />
             ) : (
               <EmptyState
                 compact

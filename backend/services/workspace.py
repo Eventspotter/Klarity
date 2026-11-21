@@ -62,8 +62,10 @@ def _submission_query(db: Session):
     )
 
 
-def load_submissions(db: Session, since: datetime | None = None) -> list[ContentSubmission]:
+def load_submissions(db: Session, since: datetime | None = None, brand_name: str | None = None) -> list[ContentSubmission]:
     query = _submission_query(db).order_by(ContentSubmission.submitted_at.desc())
+    if brand_name is not None:
+        query = query.filter(ContentSubmission.brand_name == brand_name)
     if since is not None:
         query = query.filter(ContentSubmission.submitted_at >= since)
     return query.all()
@@ -109,8 +111,10 @@ def build_stats(
         score_delta = round(mean(current_scores) - mean(previous_scores), 1)
 
     current_approval = _approval_rate(current)
-    previous_approval = _approval_rate(previous)
-    approval_delta = round(current_approval - previous_approval, 1)
+    approval_delta = 0.0
+    if previous:
+        previous_approval = _approval_rate(previous)
+        approval_delta = round(current_approval - previous_approval, 1)
 
     open_issues = sum(
         len(reports[item.id].issues)
@@ -236,19 +240,53 @@ def build_activity(submissions: list[ContentSubmission], reports: Dict[int, Revi
     return items[:16]
 
 
-def build_bootstrap(db: Session) -> BootstrapOut:
-    cached = _BOOTSTRAP_CACHE.get(DATABASE_URL)
+def build_bootstrap(db: Session, account=None) -> BootstrapOut:
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless") if account else True
+    user_brand = getattr(account, "brand_name", None) if account else None
+
+    cache_key = f"{DATABASE_URL}:demo" if is_demo else f"{DATABASE_URL}:{user_brand or 'custom'}"
+    cached = _BOOTSTRAP_CACHE.get(cache_key)
     if cached and cached[0] > time.monotonic():
         return cached[1]
 
+    if not is_demo and user_brand:
+        submissions = load_submissions(db, brand_name=user_brand)
+        guidelines = (
+            db.query(BrandGuideline)
+            .filter(BrandGuideline.brand_name == user_brand)
+            .order_by(BrandGuideline.priority.desc(), BrandGuideline.title.asc())
+            .all()
+        )
+        reports = latest_report_map(submissions)
+        payload = BootstrapOut.model_validate(
+            {
+                "stats": build_stats(guidelines, submissions, reports),
+                "submissions": submissions[:56],
+                "guidelines": guidelines,
+                "activity": build_activity(submissions, reports),
+                "trends": build_trends(submissions, reports),
+                "issue_breakdown": build_issue_breakdown(reports),
+                "coverage": build_coverage(guidelines, reports),
+                "demo_data": False,
+            }
+        )
+        _BOOTSTRAP_CACHE[cache_key] = (time.monotonic() + _BOOTSTRAP_TTL_SECONDS, payload)
+        return payload
+
     now = datetime.utcnow()
     window_start = now - timedelta(days=65)
-    submissions = load_submissions(db, since=window_start)
-    if not submissions:
-        submissions = load_submissions(db)
+    from sqlalchemy import or_
+    demo_brand = getattr(account, "brand_name", None) or "Aster & Oak"
     guidelines = (
         db.query(BrandGuideline)
+        .filter(or_(BrandGuideline.brand_name == demo_brand, BrandGuideline.brand_name == "Aster & Oak", BrandGuideline.brand_name.is_(None)))
         .order_by(BrandGuideline.priority.desc(), BrandGuideline.title.asc())
+        .all()
+    )
+    submissions = (
+        _submission_query(db)
+        .filter(or_(ContentSubmission.brand_name == demo_brand, ContentSubmission.brand_name == "Aster & Oak", ContentSubmission.brand_name.is_(None)))
+        .order_by(ContentSubmission.submitted_at.desc())
         .all()
     )
     reports = latest_report_map(submissions)
@@ -264,5 +302,5 @@ def build_bootstrap(db: Session) -> BootstrapOut:
             "demo_data": SEED_DEMO_DATA,
         }
     )
-    _BOOTSTRAP_CACHE[DATABASE_URL] = (time.monotonic() + _BOOTSTRAP_TTL_SECONDS, payload)
+    _BOOTSTRAP_CACHE[cache_key] = (time.monotonic() + _BOOTSTRAP_TTL_SECONDS, payload)
     return payload

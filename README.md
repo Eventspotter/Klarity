@@ -6,11 +6,11 @@
 
 ---
 
-## 🔍 The Problem Statement
+## 🔍 The Problem
 
 Growing organisations publish content through multiple employees, agencies, and AI tools, making it difficult to maintain a consistent and trustworthy brand identity. Incorrect claims, outdated information, inconsistent language, and off-brand visuals can damage credibility before anyone notices the problem.
 
-| # | Challenge | Description |
+|S.No| Challenge | Description |
 |---|-----------|-------------|
 | 1 | **Inconsistent Messaging** | Different tones, terminology, and communication styles across content |
 | 2 | **Incorrect Information** | Outdated facts, incorrect details, and unsupported claims |

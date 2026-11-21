@@ -6,7 +6,6 @@ import {
   ChartNoAxesCombined,
   Check,
   ChevronsUpDown,
-  Copy,
   FileClock,
   Images,
   LayoutDashboard,
@@ -32,6 +31,7 @@ const items = [
 
 export function Sidebar({ open, onClose, onNewReview }) {
   const {
+    user,
     data,
     toast,
     isLead,
@@ -43,8 +43,9 @@ export function Sidebar({ open, onClose, onNewReview }) {
     allBrands = [],
     switchBrand,
   } = useApp()
+  const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+  const canSwitchBrands = isDemo && allBrands.length > 1
   const [brandsOpen, setBrandsOpen] = useState(false)
-  const [copiedCode, setCopiedCode] = useState(null)
   const location = useLocation()
   const queue = isLead
     ? (data?.stats?.pending_reviews ?? 0)
@@ -58,24 +59,28 @@ export function Sidebar({ open, onClose, onNewReview }) {
 
   const navRef = useRef(null)
   const pillRef = useRef(null)
+  const hoverPillRef = useRef(null)
   const initialRef = useRef(false)
-  const brandDropdownRef = useRef(null)
+  const hoverInitialRef = useRef(false)
+  const switchWrapRef = useRef(null)
 
   useEffect(() => {
     if (!brandsOpen) return
     const handleClickOutside = (e) => {
-      if (brandDropdownRef.current && !brandDropdownRef.current.contains(e.target)) {
+      if (switchWrapRef.current && !switchWrapRef.current.contains(e.target)) {
         setBrandsOpen(false)
       }
     }
-    const handleKeyDown = (e) => {
+    const handleEscape = (e) => {
       if (e.key === 'Escape') setBrandsOpen(false)
     }
     document.addEventListener('mousedown', handleClickOutside)
-    document.addEventListener('keydown', handleKeyDown)
+    document.addEventListener('keydown', handleEscape)
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
-      document.removeEventListener('keydown', handleKeyDown)
+      document.removeEventListener('keydown', handleEscape)
+    }
+  }, [brandsOpen])
     }
   }, [brandsOpen])
 
@@ -89,6 +94,40 @@ export function Sidebar({ open, onClose, onNewReview }) {
     })
   }
 
+  const handleNavItemMouseEnter = (e) => {
+    const target = e.currentTarget
+    if (!target || target.classList.contains('is-active')) {
+      if (hoverPillRef.current) {
+        animateSlidingPill({
+          containerEl: navRef.current,
+          pillEl: hoverPillRef.current,
+          targetEl: null,
+          isVertical: true,
+        })
+      }
+      return
+    }
+    animateSlidingPill({
+      containerEl: navRef.current,
+      pillEl: hoverPillRef.current,
+      targetEl: target,
+      isInitialRef: hoverInitialRef,
+      isVertical: true,
+    })
+  }
+
+  const handleNavMouseLeave = () => {
+    hoverInitialRef.current = false
+    if (hoverPillRef.current) {
+      animateSlidingPill({
+        containerEl: navRef.current,
+        pillEl: hoverPillRef.current,
+        targetEl: null,
+        isVertical: true,
+      })
+    }
+  }
+
   useLayoutEffect(() => {
     const timer = requestAnimationFrame(() => {
       updatePill()
@@ -100,18 +139,6 @@ export function Sidebar({ open, onClose, onNewReview }) {
       window.removeEventListener('resize', handleResize)
     }
   }, [location.pathname])
-
-  const handleCopyCode = (e, code, brandName) => {
-    e.stopPropagation()
-    try {
-      navigator.clipboard?.writeText(code)
-      setCopiedCode(code)
-      toast(`Copied code: ${code} (${brandName})`, 'good')
-      setTimeout(() => setCopiedCode(null), 2000)
-    } catch {
-      toast(`Code: ${code}`, 'info')
-    }
-  }
 
   const handleSelectBrand = (brand) => {
     switchBrand(brand)
@@ -130,13 +157,16 @@ export function Sidebar({ open, onClose, onNewReview }) {
           <span className="brand-lockup__word">Klarity</span>
         </NavLink>
 
-        <div className="workspace-switch-wrap" ref={brandDropdownRef} style={{ position: 'relative' }}>
+        <div ref={switchWrapRef} className="workspace-switch-wrap" style={{ position: 'relative' }}>
           <button
-            className={cx('workspace-switch', brandsOpen && 'is-expanded')}
+            className={cx('workspace-switch', canSwitchBrands && brandsOpen && 'is-expanded')}
             type="button"
-            onClick={() => setBrandsOpen(prev => !prev)}
-            title="Click to check brands and switch workspace"
-            aria-expanded={brandsOpen}
+            onClick={() => {
+              if (canSwitchBrands) setBrandsOpen(prev => !prev)
+            }}
+            title={canSwitchBrands ? "Click to check brands and switch workspace" : `Workspace: ${currentBrandName}`}
+            style={{ cursor: canSwitchBrands ? 'pointer' : 'default' }}
+            aria-expanded={canSwitchBrands ? brandsOpen : undefined}
           >
             <span
               className="workspace-switch__mark"
@@ -148,23 +178,25 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <strong>{currentBrandName}</strong>
               <small>{isLead ? 'Brand workspace' : 'Assigned workspace'}</small>
             </span>
-            <ChevronsUpDown
-              size={15}
-              style={{
-                marginLeft: 'auto',
-                opacity: 0.65,
-                transform: brandsOpen ? 'rotate(180deg)' : 'none',
-                transition: 'transform 180ms ease',
-              }}
-            />
+            {canSwitchBrands && (
+              <ChevronsUpDown
+                size={15}
+                style={{
+                  marginLeft: 'auto',
+                  opacity: 0.65,
+                  transform: brandsOpen ? 'rotate(180deg)' : 'none',
+                  transition: 'transform 180ms ease',
+                }}
+              />
+            )}
           </button>
 
-          {brandsOpen && (
+          {canSwitchBrands && brandsOpen && (
             <div className="sidebar-brands-dropdown" role="menu">
               <div className="sidebar-brands-dropdown__header">
                 <div>
                   <strong>Brand Directory</strong>
-                  <p>Check codes &amp; switch workspace</p>
+                  <p>Switch workspace</p>
                 </div>
                 <span className="sidebar-brands-dropdown__count">{allBrands.length} brands</span>
               </div>
@@ -172,17 +204,21 @@ export function Sidebar({ open, onClose, onNewReview }) {
               <div className="sidebar-brands-dropdown__list">
                 {allBrands.map((brand) => {
                   const isActive = (brand.brand_name || brand.name) === currentBrandName
-                  const code = brand.brand_code || brand.code || 'KLARITY-2026'
                   const bName = brand.brand_name || brand.name
                   const bMark = brand.mark || bName.slice(0, 2).toUpperCase()
                   const bColor = brand.color || 'var(--sage)'
-                  const isCopied = copiedCode === code
 
                   return (
                     <div
-                      key={code}
+                      key={bName}
                       className={cx('sidebar-brand-item', isActive && 'is-active')}
                       onClick={() => handleSelectBrand(brand)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          handleSelectBrand(brand)
+                        }
+                      }}
                       role="menuitem"
                       tabIndex={0}
                     >
@@ -192,24 +228,8 @@ export function Sidebar({ open, onClose, onNewReview }) {
                       >
                         {bMark}
                       </span>
-                      <div className="sidebar-brand-item__info">
-                        <div className="sidebar-brand-item__name">
-                          <span>{bName}</span>
-                          {isActive && <Check size={13} className="sidebar-brand-item__check" />}
-                        </div>
-                        <div className="sidebar-brand-item__code-row">
-                          <code className="sidebar-brand-item__code">{code}</code>
-                          <button
-                            type="button"
-                            className="sidebar-brand-item__copy-btn"
-                            title={`Copy code ${code}`}
-                            onClick={(e) => handleCopyCode(e, code, bName)}
-                          >
-                            {isCopied ? <Check size={11} color="#22c55e" /> : <Copy size={11} />}
-                            <span>{isCopied ? 'Copied' : 'Copy'}</span>
-                          </button>
-                        </div>
-                      </div>
+                      <span className="sidebar-brand-item__name">{bName}</span>
+                      {isActive && <Check size={14} className="sidebar-brand-item__check" />}
                     </div>
                   )
                 })}
@@ -219,8 +239,13 @@ export function Sidebar({ open, onClose, onNewReview }) {
         </div>
       </div>
 
-      <nav className="sidebar__nav sidebar__nav--animated" ref={navRef}>
+      <nav
+        className="sidebar__nav sidebar__nav--animated"
+        ref={navRef}
+        onMouseLeave={handleNavMouseLeave}
+      >
         <div className="nav-highlight-pill" ref={pillRef} aria-hidden="true" />
+        <div className="nav-hover-pill" ref={hoverPillRef} aria-hidden="true" />
         <p className="sidebar__label">Workspace</p>
         {items.filter(item => canViewModule(item.key)).map((item) => {
           const Icon = item.icon
@@ -232,6 +257,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
               end={item.to === '/'}
               className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
               onClick={onClose}
+              onMouseEnter={handleNavItemMouseEnter}
             >
               <Icon size={18} strokeWidth={1.8} />
               <span className="reserved-bold" data-text={label}>{label}</span>
@@ -246,6 +272,7 @@ export function Sidebar({ open, onClose, onNewReview }) {
             to="/brand-controls"
             className={({ isActive }) => cx('nav-item', isActive && 'is-active')}
             onClick={onClose}
+            onMouseEnter={handleNavItemMouseEnter}
             title="Brand Owner Command & Access Controls"
           >
             <ShieldCheck size={18} strokeWidth={1.8} />
@@ -280,7 +307,15 @@ export function Sidebar({ open, onClose, onNewReview }) {
           <div className="rail-health__track">
             <span style={{ width: `${score}%` }} />
           </div>
-          <p>Up 1.6 points over the last 30 days</p>
+          <p>
+            {data?.stats?.total_submissions > 0
+              ? (data?.stats?.score_delta > 0
+                  ? `Up ${data.stats.score_delta.toFixed(1)} points over the last 30 days`
+                  : data?.stats?.score_delta < 0
+                    ? `Down ${Math.abs(data.stats.score_delta).toFixed(1)} points over the last 30 days`
+                    : 'Score holding steady over the last 30 days')
+              : 'Awaiting first review'}
+          </p>
         </NavLink>
       </div>
     </aside>

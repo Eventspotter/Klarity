@@ -157,6 +157,9 @@ export function Reviews({ onNewReview }) {
                 }}
                 placeholder="Search title or owner"
                 aria-label="Search reviews"
+                autoCapitalize="none"
+                autoCorrect="off"
+                enterKeyHint="search"
               />
               {query ? (
                 <button type="button" onClick={() => setQuery('')} aria-label="Clear search">
@@ -308,6 +311,17 @@ export function Reviews({ onNewReview }) {
               </div>
             </div>
           </>
+        ) : (data?.submissions || []).length === 0 ? (
+          <EmptyState
+            icon={FileText}
+            title="Zero reviews submitted yet"
+            description="Your brand workspace starts clean right off the bat. Submit drafts to trigger automated brand compliance reviews."
+            action={
+              <Button variant="primary" icon={Plus} onClick={onNewReview}>
+                New review
+              </Button>
+            }
+          />
         ) : (
           <EmptyState
             icon={Search}

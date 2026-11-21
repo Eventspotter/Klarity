@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import {
   ArrowUpRight,
   Check,
@@ -16,7 +17,9 @@ import {
   Pipette,
   Plus,
   RotateCcw,
+  Sliders,
   Sparkles,
+  Tag,
   Trash2,
   Type,
   Upload,
@@ -53,29 +56,7 @@ import {
   parseSwatchesFromText,
 } from '../lib/colorUtils'
 
-const ASSETS_MAP_STORAGE_KEY = 'klarity_brand_assets_map_v6'
-
-function getStoredBrandAssets(brandKey) {
-  try {
-    const raw = localStorage.getItem(ASSETS_MAP_STORAGE_KEY)
-    if (raw) {
-      const parsed = JSON.parse(raw)
-      if (parsed && parsed[brandKey] && Array.isArray(parsed[brandKey]) && parsed[brandKey].length > 0) {
-        return parsed[brandKey]
-      }
-    }
-  } catch {}
-  return null
-}
-
-function saveStoredBrandAssets(brandKey, assets) {
-  try {
-    const raw = localStorage.getItem(ASSETS_MAP_STORAGE_KEY)
-    const map = raw ? JSON.parse(raw) : {}
-    map[brandKey] = assets
-    localStorage.setItem(ASSETS_MAP_STORAGE_KEY, JSON.stringify(map))
-  } catch {}
-}
+const STORAGE_KEY = 'klarity_brand_assets_v3'
 
 const swatches = [
   { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
@@ -86,58 +67,38 @@ const swatches = [
   { name: 'Blue wash', hex: '#D7EAFB', role: 'Highlight' },
 ]
 
-function LogoPlate({ dark = false, brandName = 'Aster & Oak', brand = null }) {
-  const bColor = brand?.color || '#298EE4'
-  const bMark = brand?.mark || brandName.slice(0, 2).toUpperCase()
-  const darkBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('text') || s.role?.toLowerCase().includes('ink') || s.role?.toLowerCase().includes('dark'))?.hex || '#18181B'
-  const lightBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('background') || s.role?.toLowerCase().includes('surface'))?.hex || '#F8FAFC'
-  const bg = dark ? darkBg : lightBg
-  const textColor = dark ? '#FFFFFF' : (brand?.swatches?.find(s => s.role?.toLowerCase().includes('text') || s.role?.toLowerCase().includes('ink'))?.hex || '#111827')
-
+function LogoPlate({ dark = false, brandName = 'Brand' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${brandName} logo lockup`}>
-      <rect width="320" height="200" fill={bg} />
-      <g transform="translate(160, 68)">
-        <rect x="-20" y="-20" width="40" height="40" rx="9" fill={bColor} />
-        <text x="0" y="5.5" textAnchor="middle" fill="#FFFFFF" style={{ fontSize: '13px', fontWeight: 800 }}>
-          {bMark}
-        </text>
-      </g>
+      <rect width="320" height="200" fill={dark ? '#3B2418' : '#F6F1E6'} />
       <text
         x="160"
-        y="122"
+        y="96"
         textAnchor="middle"
         dominantBaseline="middle"
-        fill={textColor}
+        fill={dark ? '#F6F1E6' : '#3B2418'}
         className="asset-svg__wordmark"
-        style={{ fontSize: brandName.length > 15 ? '17px' : '20px', fontWeight: 700, letterSpacing: '-0.02em' }}
+        style={{ fontSize: brandName.length > 15 ? '19px' : '23px', fontWeight: 700 }}
       >
         {brandName}
       </text>
-      <text x="24" y="174" fill={dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)'} className="asset-svg__caption">
+      <text x="24" y="168" fill={dark ? '#B9C3B4' : '#5F675C'} className="asset-svg__caption">
         PRIMARY LOCKUP · HORIZONTAL
-      </text>
-      <text x="296" y="174" textAnchor="end" fill={bColor} className="asset-svg__caption" style={{ fontWeight: 700 }}>
-        {brand?.brand_code || brand?.code || 'VERIFIED'}
       </text>
     </svg>
   )
 }
 
-function MonogramPlate({ mark = 'A&O', color = '#3B2418', bg = '#FBF8F1', brand = null }) {
-  const brandCode = brand?.brand_code || brand?.code || 'DIGITAL ONLY'
-  const displayBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('background') || s.role?.toLowerCase().includes('surface'))?.hex || bg
-  const displayColor = brand?.color || color
-
+function MonogramPlate({ mark = 'A&O', color = '#3B2418', bg = '#FBF8F1' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${mark} monogram`}>
-      <rect width="320" height="200" fill={displayBg} />
-      <circle cx="160" cy="88" r="50" fill={displayColor} />
-      <text x="160" y="99" textAnchor="middle" fill="#FFFFFF" className="asset-svg__monogram" style={{ fontSize: '22px', fontWeight: 800 }}>
+      <rect width="320" height="200" fill={bg} />
+      <circle cx="160" cy="88" r="54" fill={color} />
+      <text x="160" y="101" textAnchor="middle" fill="#FFFFFF" className="asset-svg__monogram">
         {mark}
       </text>
-      <text x="160" y="168" textAnchor="middle" fill="#5F675C" className="asset-svg__caption">
-        MONOGRAM · {brandCode}
+      <text x="160" y="170" textAnchor="middle" fill="#5F675C" className="asset-svg__caption">
+        MONOGRAM · DIGITAL ONLY
       </text>
     </svg>
   )
@@ -145,11 +106,45 @@ function MonogramPlate({ mark = 'A&O', color = '#3B2418', bg = '#FBF8F1', brand 
 
 export function DynamicPalettePlate({ swatches: inputSwatches = [], title = 'COLOUR PALETTE' }) {
   const displaySwatches =
-    inputSwatches && inputSwatches.length > 0 ? inputSwatches.slice(0, 6) : swatches.slice(0, 4)
+    inputSwatches && inputSwatches.length > 0 ? inputSwatches.slice(0, 6) : []
   const count = displaySwatches.length
   const width = 320
   const height = 200
   const padding = 16
+
+  if (count === 0) {
+    return (
+      <svg viewBox={`0 0 ${width} ${height}`} className="asset-svg" role="img" aria-label={title}>
+        <rect width={width} height={height} fill="#FBF8F1" />
+        <rect
+          x={padding}
+          y={28}
+          width={width - padding * 2}
+          height={116}
+          rx={8}
+          fill="none"
+          stroke="rgba(32, 21, 15, 0.12)"
+          strokeDasharray="4 4"
+        />
+        <text x={width / 2} y={82} textAnchor="middle" fill="#8C827A" style={{ fontSize: '11px', fontWeight: 600 }}>
+          No colors configured
+        </text>
+        <text x={width / 2} y={102} textAnchor="middle" fill="#A89F91" style={{ fontSize: '9px' }}>
+          Upload a palette asset to define tokens
+        </text>
+        <text
+          x={padding}
+          y={186}
+          fill="#5F675C"
+          className="asset-svg__caption"
+          style={{ fontSize: '8.5px', letterSpacing: '0.06em', textTransform: 'uppercase' }}
+        >
+          {title.toUpperCase()} · 0 TOKENS
+        </text>
+      </svg>
+    )
+  }
+
   const gap = count > 5 ? 6 : 8
   const availableWidth = width - padding * 2 - (count - 1) * gap
   const chipWidth = Math.max(30, Math.floor(availableWidth / count))
@@ -228,101 +223,102 @@ function PalettePlate() {
   return <DynamicPalettePlate swatches={swatches} title="Core palette" />
 }
 
-function TypePlate({ displayFont = 'Bricolage Grotesque', bodyFont = 'Manrope', sentence = 'Fewer pieces. Kept longer.', brand = null }) {
-  const textColor = brand?.swatches?.find(s => s.role?.toLowerCase().includes('text') || s.role?.toLowerCase().includes('ink'))?.hex || '#1E1B4B'
-  const bg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('background') || s.role?.toLowerCase().includes('surface'))?.hex || '#F6F1E6'
-  const accent = brand?.color || '#298EE4'
-
+function TypePlate({ displayFont = 'Bricolage Grotesque', bodyFont = 'Manrope', sentence = 'Fewer pieces. Kept longer.' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Typography specimen">
-      <rect width="320" height="200" fill={bg} />
-      <text x="24" y="106" fill={accent} className="asset-svg__aa" style={{ fontSize: '68px', fontWeight: 800, opacity: 0.9 }}>
+      <rect width="320" height="200" fill="#F6F1E6" />
+      <text x="22" y="112" fill="#3B2418" className="asset-svg__aa">
         Aa
       </text>
-      <text x="135" y="54" fill={textColor} className="asset-svg__type-name" style={{ fontSize: '15px', fontWeight: 700 }}>
+      <text x="135" y="58" fill="#3B2418" className="asset-svg__type-name" style={{ fontSize: '15px' }}>
         {displayFont}
       </text>
-      <text x="135" y="74" fill="#5F675C" className="asset-svg__caption">
+      <text x="135" y="78" fill="#5F675C" className="asset-svg__caption">
         DISPLAY · 700 / 800
       </text>
-      <text x="135" y="108" fill={textColor} className="asset-svg__type-name asset-svg__type-name--body" style={{ fontSize: '13.5px', fontWeight: 500 }}>
+      <text x="135" y="112" fill="#3B2418" className="asset-svg__type-name asset-svg__type-name--body" style={{ fontSize: '14px' }}>
         {bodyFont}
       </text>
-      <text x="135" y="128" fill="#5F675C" className="asset-svg__caption">
+      <text x="135" y="132" fill="#5F675C" className="asset-svg__caption">
         UI &amp; BODY · 400–700
       </text>
-      <text x="24" y="174" fill={textColor} className="asset-svg__sentence" style={{ fontSize: '11px', opacity: 0.85 }}>
+      <text x="22" y="176" fill="#3B2418" className="asset-svg__sentence" style={{ fontSize: '11px' }}>
         {sentence}
       </text>
     </svg>
   )
 }
 
-function CampaignPlate({ variant = 1, brand = null }) {
-  const brandName = brand?.brand_name || brand?.name || 'Aster & Oak'
-  const brandColor = brand?.color || '#298EE4'
-  const tagline = brand?.tagline || 'A slower morning.'
-  const darkBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('text') || s.role?.toLowerCase().includes('ink'))?.hex || '#18181B'
-  const lightBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('background') || s.role?.toLowerCase().includes('surface'))?.hex || '#F8FAFC'
-  const secColor = brand?.swatches?.find(s => s.role?.toLowerCase().includes('secondary') || s.role?.toLowerCase().includes('highlight'))?.hex || '#F97316'
-
+function CampaignPlate({ variant = 1 }) {
   if (variant === 2) {
     return (
-      <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${brandName} campaign plate`}>
-        <rect width="320" height="200" fill={darkBg} />
-        <path d="M206 0h114v200H182c22-31 27-62 22-96-3-24 3-59 2-104Z" fill={brandColor} opacity=".65" />
-        <path d="M218 0v200M236 0v200M254 0v200M272 0v200" stroke="#FFFFFF" strokeOpacity=".14" />
-        <text x="22" y="70" fill="#FFFFFF" className="asset-svg__campaign" style={{ fontSize: '19px', fontWeight: 700 }}>
-          {brandName}
+      <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="The washed edge campaign plate">
+        <rect width="320" height="200" fill="#3B2418" />
+        <path d="M206 0h114v200H182c22-31 27-62 22-96-3-24 3-59 2-104Z" fill="#298EE4" opacity=".65" />
+        <path d="M218 0v200M236 0v200M254 0v200M272 0v200" stroke="#F6F1E6" strokeOpacity=".14" />
+        <text x="22" y="70" fill="#F6F1E6" className="asset-svg__campaign">
+          The washed
         </text>
-        <text x="22" y="98" fill="#FFFFFF" opacity="0.8" className="asset-svg__campaign" style={{ fontSize: '12.5px' }}>
-          {tagline}
+        <text x="22" y="98" fill="#F6F1E6" className="asset-svg__campaign">
+          edge.
         </text>
-        <text x="22" y="174" fill="#FFFFFF" opacity="0.5" className="asset-svg__caption">
-          CAMPAIGN PLATE · 2026
+        <text x="22" y="174" fill="#B9C3B4" className="asset-svg__caption">
+          AUTUMN CAMPAIGN · 2026
+        </text>
+      </svg>
+    )
+  }
+  if (variant === 3) {
+    return (
+      <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Oak and linen campaign plate">
+        <rect width="320" height="200" fill="#FBF8F1" />
+        <path d="M38 172V83c0-28 22-50 50-50h36v139H38Z" fill="#DDE5D6" />
+        <path d="M124 172V70h74v102h-74Z" fill="#A97A32" opacity=".84" />
+        <circle cx="240" cy="98" r="46" fill="#298EE4" />
+        <path d="M80 96h52M80 116h34" stroke="#3B2418" strokeWidth="1.4" />
+        <text x="22" y="188" fill="#3B2418" className="asset-svg__campaign asset-svg__campaign--small">
+          Oak &amp; linen
         </text>
       </svg>
     )
   }
   return (
-    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label={`${brandName} campaign artboard`}>
-      <rect width="320" height="200" fill={lightBg} />
-      <circle cx="236" cy="84" r="54" fill={brandColor} opacity="0.9" />
-      <circle cx="210" cy="116" r="32" fill={secColor} opacity="0.75" />
-      <path d="M30 48h40M30 60h24" stroke={darkBg} strokeWidth="2" opacity="0.3" />
-      <text x="24" y="112" fill={darkBg} className="asset-svg__campaign" style={{ fontSize: '20px', fontWeight: 800 }}>
-        {brandName}
+    <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="A slower morning campaign plate">
+      <rect width="320" height="200" fill="#F6F1E6" />
+      <path
+        d="M186 14c40-5 76 14 92 43 17 31 11 69-15 93-27 25-67 31-101 17-34-14-55-44-51-78 3-30 24-56 49-68 9-4 18-6 26-7Z"
+        fill="#298EE4"
+      />
+      <path d="M62 58h68M62 72h44M62 86h58" stroke="#3B2418" strokeWidth="1.4" />
+      <text x="22" y="138" fill="#3B2418" className="asset-svg__campaign">
+        A slower
       </text>
-      <text x="24" y="136" fill={darkBg} opacity="0.75" className="asset-svg__campaign" style={{ fontSize: '12px', fontWeight: 500 }}>
-        {tagline}
+      <text x="22" y="164" fill="#3B2418" className="asset-svg__campaign">
+        morning.
       </text>
-      <text x="24" y="176" fill={darkBg} opacity="0.5" className="asset-svg__caption">
-        OFFICIAL HERO ARTBOARD · 2026
+      <text x="224" y="178" fill="#F6F1E6" className="asset-svg__caption asset-svg__caption--light">
+        SPRING / 26
       </text>
     </svg>
   )
 }
 
-function SocialPlate({ handle = '@BRAND', accentColor = '#298EE4', brand = null }) {
-  const brandName = brand?.brand_name || brand?.name || 'Brand'
-  const darkBg = brand?.swatches?.find(s => s.role?.toLowerCase().includes('text') || s.role?.toLowerCase().includes('ink'))?.hex || '#18181B'
-  const tagline = brand?.tagline || 'Keep the good things.'
-
+function SocialPlate({ handle = '@BRAND', accentColor = '#298EE4' }) {
   return (
     <svg viewBox="0 0 320 200" className="asset-svg" role="img" aria-label="Social template">
-      <rect width="320" height="200" fill={darkBg} />
+      <rect width="320" height="200" fill="#3B2418" />
       <circle cx="236" cy="74" r="58" fill={accentColor} />
-      <path d="M0 152c64-28 122-34 172-20 42 12 90 14 148 4v64H0v-48Z" fill="#FFFFFF" opacity="0.1" />
-      <text x="24" y="38" fill="#FFFFFF" opacity="0.7" className="asset-svg__caption asset-svg__caption--light">
+      <path d="M0 152c64-28 122-34 172-20 42 12 90 14 148 4v64H0v-48Z" fill="#F6F1E6" />
+      <text x="24" y="38" fill="#F6F1E6" className="asset-svg__caption asset-svg__caption--light">
         {handle}
       </text>
-      <text x="24" y="96" fill="#FFFFFF" className="asset-svg__campaign asset-svg__campaign--social" style={{ fontSize: '19px', fontWeight: 700 }}>
-        {brandName}
+      <text x="24" y="96" fill="#F6F1E6" className="asset-svg__campaign asset-svg__campaign--social">
+        Keep
       </text>
-      <text x="24" y="122" fill="#FFFFFF" opacity="0.8" className="asset-svg__campaign asset-svg__campaign--social" style={{ fontSize: '12px' }}>
-        {tagline}
+      <text x="24" y="122" fill="#F6F1E6" className="asset-svg__campaign asset-svg__campaign--social">
+        the good things.
       </text>
-      <text x="24" y="180" fill="#FFFFFF" opacity="0.45" className="asset-svg__caption">
+      <text x="24" y="180" fill="#3B2418" className="asset-svg__caption">
         STORY TEMPLATE · 16:10 PREVIEW
       </text>
     </svg>
@@ -455,9 +451,9 @@ const defaultAssets = [
 ]
 
 function renderAssetPreview(asset, large = false, brand = null) {
-  const bName = brand?.brand_name || brand?.name || 'Aster & Oak'
+  const bName = brand?.brand_name || brand?.name || 'Brand'
   const bMark = brand?.mark || bName.slice(0, 2).toUpperCase()
-  const bColor = brand?.color || '#298EE4'
+  const bColor = brand?.color || '#3B2418'
   const bDisplayFont = brand?.displayFont || 'Bricolage Grotesque'
   const bBodyFont = brand?.bodyFont || 'Manrope'
   const bSwatches = brand?.swatches || swatches
@@ -474,38 +470,25 @@ function renderAssetPreview(asset, large = false, brand = null) {
   }
   switch (asset.plateType) {
     case 'logo-primary':
-      return <LogoPlate dark={large} brandName={bName} brand={brand} />
+      return <LogoPlate dark={large} brandName={bName} />
     case 'logo-mono':
-      return <MonogramPlate mark={bMark} color={bColor} brand={brand} />
+      return <MonogramPlate mark={bMark} color={bColor} />
     case 'palette':
       return <DynamicPalettePlate swatches={asset.swatches || bSwatches} title={asset.title} />
     case 'type':
-      return (
-        <TypePlate
-          displayFont={bDisplayFont}
-          bodyFont={bBodyFont}
-          sentence={brand?.tagline || brand?.values || 'Fewer pieces. Kept longer.'}
-          brand={brand}
-        />
-      )
+      return <TypePlate displayFont={bDisplayFont} bodyFont={bBodyFont} />
     case 'campaign-1':
-      return <CampaignPlate variant={1} brand={brand} />
+      return <CampaignPlate variant={1} />
     case 'campaign-2':
-      return <CampaignPlate variant={2} brand={brand} />
+      return <CampaignPlate variant={2} />
     case 'campaign-3':
-      return <CampaignPlate variant={3} brand={brand} />
+      return <CampaignPlate variant={3} />
     case 'social':
-      return (
-        <SocialPlate
-          handle={`@${bName.replace(/[\s&]+/g, '').toUpperCase()}`}
-          accentColor={bColor}
-          brand={brand}
-        />
-      )
+      return <SocialPlate handle={`@${bName.replace(/[\s&]+/g, '').toUpperCase()}`} accentColor={bColor} />
     default:
       return (
         <div className="asset-card__image-wrap">
-          <FileCheck2 size={36} style={{ color: bColor || 'var(--sage)' }} />
+          <FileCheck2 size={36} style={{ color: 'var(--sage)' }} />
         </div>
       )
   }
@@ -527,21 +510,26 @@ const categoryOptions = [
 ]
 
 export function Assets() {
-  const { toast, activeBrand } = useApp()
-  const currentBrand = useMemo(() => {
-    if (!activeBrand) return DEFAULT_BRANDS[0]
-    const match = DEFAULT_BRANDS.find(
-      (b) => b.brand_name === activeBrand.brand_name || b.name === activeBrand.name
-    )
-    return match ? { ...match, ...activeBrand } : activeBrand
-  }, [activeBrand])
-
-  const brandKey = currentBrand.brand_name || currentBrand.name || 'Aster & Oak'
+  const { user, toast, activeBrand, allBrands = DEFAULT_BRANDS, switchBrand } = useApp()
+  const isDemo = Boolean(user?.is_demo || ['ashwik', 'sunless'].includes(user?.username))
+  const currentBrand = activeBrand || DEFAULT_BRANDS[0]
+  const brandStorageKey = `klarity_brand_assets_v4_${currentBrand.id || currentBrand.brand_name}`
 
   const [filter, setFilter] = useState('all')
   const [selected, setSelected] = useState(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editForm, setEditForm] = useState(null)
+
+  // Brand Specs Edit Drawer
+  const [brandEditOpen, setBrandEditOpen] = useState(false)
+  const [brandEditForm, setBrandEditForm] = useState({
+    brand_name: currentBrand.brand_name || currentBrand.name || '',
+    brand_code: currentBrand.brand_code || currentBrand.code || '',
+    mark: currentBrand.mark || '',
+    color: currentBrand.color || '#298EE4',
+    tagline: currentBrand.tagline || '',
+    values: currentBrand.values || currentBrand.brand_values || '',
+  })
 
   // Upload Drawer State
   const [uploadOpen, setUploadOpen] = useState(false)
@@ -555,17 +543,26 @@ export function Assets() {
     owner: `${currentBrand.brand_name || 'Brand'} team`,
   })
 
+  const activeSwatches = useMemo(() => {
+    if (isDemo) {
+      return currentBrand.swatches && currentBrand.swatches.length > 0
+        ? currentBrand.swatches
+        : swatches
+    }
+    if (!currentBrand.swatches || currentBrand.swatches.length === 0) return []
+    const isLegacyMock =
+      currentBrand.swatches.length === 6 &&
+      currentBrand.swatches.every((s) =>
+        ['#FFFFFF', '#111827', '#298EE4', '#64748B', '#F8FAFC', '#E0F2FE'].includes(s.hex)
+      )
+    if (isLegacyMock) return []
+    return currentBrand.swatches
+  }, [currentBrand.swatches, isDemo])
+
   // Palette Studio State
   const [paletteTab, setPaletteTab] = useState('builder') // 'builder' | 'paste' | 'extract'
   const [paletteSwatches, setPaletteSwatches] = useState(() => {
-    return currentBrand.swatches && currentBrand.swatches.length > 0
-      ? [...currentBrand.swatches]
-      : [
-          { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
-          { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
-          { name: 'Klarity Blue', hex: '#298EE4', role: 'Primary Accent' },
-          { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
-        ]
+    return isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches]
   })
   const [pasteText, setPasteText] = useState('')
   const [extractedThumb, setExtractedThumb] = useState(null)
@@ -583,25 +580,59 @@ export function Assets() {
   const drawerPreviewRef = useRef(null)
   const gridRef = useRef(null)
 
-  // Initialize assets from brand-scoped store or default brand assets
+  // Initialize assets from brand-scoped localStorage or defaults
   const [assetsList, setAssetsList] = useState(() => {
-    return getStoredBrandAssets(brandKey) || getBrandAssets(currentBrand)
+    try {
+      const saved = localStorage.getItem(brandStorageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          return parsed
+        }
+      }
+    } catch {}
+    return isDemo ? getBrandAssets(currentBrand) : []
   })
 
-  // Whenever activeBrand changes from the sidebar, instantly update the assets list!
+  // Synchronize when current brand switches
   useEffect(() => {
-    const loaded = getStoredBrandAssets(brandKey) || getBrandAssets(currentBrand)
-    setAssetsList(loaded)
-    if (currentBrand.swatches && currentBrand.swatches.length > 0) {
-      setPaletteSwatches([...currentBrand.swatches])
-    }
-    setUploadForm((prev) => ({
-      ...prev,
-      owner: `${currentBrand.brand_name || 'Brand'} team`,
-    }))
-    setSelected(null)
-    setIsEditing(false)
-  }, [brandKey, currentBrand])
+    try {
+      const saved = localStorage.getItem(brandStorageKey)
+      if (saved) {
+        const parsed = JSON.parse(saved)
+        if (Array.isArray(parsed)) {
+          setAssetsList(parsed)
+          setBrandEditForm({
+            brand_name: currentBrand.brand_name || currentBrand.name || '',
+            brand_code: currentBrand.brand_code || currentBrand.code || '',
+            mark: currentBrand.mark || '',
+            color: currentBrand.color || '#298EE4',
+            tagline: currentBrand.tagline || '',
+            values: currentBrand.values || currentBrand.brand_values || '',
+          })
+          setPaletteSwatches(isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches])
+          return
+        }
+      }
+    } catch {}
+    setAssetsList(isDemo ? getBrandAssets(currentBrand) : [])
+    setBrandEditForm({
+      brand_name: currentBrand.brand_name || currentBrand.name || '',
+      brand_code: currentBrand.brand_code || currentBrand.code || '',
+      mark: currentBrand.mark || '',
+      color: currentBrand.color || '#298EE4',
+      tagline: currentBrand.tagline || '',
+      values: currentBrand.values || currentBrand.brand_values || '',
+    })
+    setPaletteSwatches(isDemo ? [...swatches.slice(0, 4)] : [...activeSwatches])
+  }, [currentBrand.id, currentBrand.brand_name, brandStorageKey, isDemo, activeSwatches])
+
+  // Persist assets to brand-scoped localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(brandStorageKey, JSON.stringify(assetsList))
+    } catch {}
+  }, [assetsList, brandStorageKey])
 
   useLayoutEffect(() => {
     if (gridRef.current) {
@@ -656,17 +687,19 @@ export function Assets() {
 
   const handleApplyPreset = (presetName) => {
     if (presetName === 'core') {
-      const coreSwatches =
+      setPaletteSwatches(
         currentBrand.swatches && currentBrand.swatches.length > 0
           ? [...currentBrand.swatches]
           : [
-              { name: 'Cream', hex: '#F6F1E6', role: 'Background' },
-              { name: 'Brown / Ink', hex: '#3B2418', role: 'Text / Ink' },
-              { name: 'Klarity Blue', hex: '#298EE4', role: 'Accent / Action' },
-              { name: 'Clay', hex: '#A97A32', role: 'Secondary' },
+              { name: 'Pure White', hex: '#FFFFFF', role: 'Surface' },
+              { name: 'Core Onyx', hex: '#111827', role: 'Text / Ink' },
+              { name: 'Primary Accent', hex: currentBrand.color || '#298EE4', role: 'Primary Accent' },
+              { name: 'Cool Slate', hex: '#64748B', role: 'Secondary' },
+              { name: 'Soft Surface', hex: '#F8FAFC', role: 'Background' },
+              { name: 'Highlight Wash', hex: '#E0F2FE', role: 'Highlight' },
             ]
-      setPaletteSwatches(coreSwatches)
-      toast(`Loaded ${currentBrand.brand_name} Core tokens.`, 'good')
+      )
+      toast(`Loaded ${currentBrand.brand_name || 'Brand'} Core tokens.`, 'good')
     } else if (presetName === 'earth') {
       setPaletteSwatches([
         { name: 'Warm Linen', hex: '#F7F3E9', role: 'Background' },
@@ -866,11 +899,7 @@ export function Assets() {
       isCustom: true,
     }
 
-    setAssetsList((prev) => {
-      const next = [newAsset, ...prev]
-      saveStoredBrandAssets(brandKey, next)
-      return next
-    })
+    setAssetsList((prev) => [newAsset, ...prev])
     toast(`Asset "${newAsset.title}" added to library.`, 'good')
     setUploadOpen(false)
     setUploadFile(null)
@@ -881,7 +910,7 @@ export function Assets() {
       type: 'SVG',
       description: '',
       usage: 'Digital + print',
-      owner: `${currentBrand.brand_name || 'Brand'} team`,
+      owner: 'Brand team',
     })
   }
 
@@ -922,8 +951,8 @@ export function Assets() {
     const finalSwatches = isPalette && editSwatches.length > 0 ? editSwatches : undefined
     const finalSize = isPalette && editSwatches.length > 0 ? `${editSwatches.length} tokens` : editForm.size
 
-    setAssetsList((prev) => {
-      const next = prev.map((item) =>
+    setAssetsList((prev) =>
+      prev.map((item) =>
         item.id === selected.id
           ? {
               ...item,
@@ -935,10 +964,8 @@ export function Assets() {
               updated: 'Today',
             }
           : item,
-      )
-      saveStoredBrandAssets(brandKey, next)
-      return next
-    })
+      ),
+    )
 
     setSelected((prev) => ({
       ...prev,
@@ -956,11 +983,7 @@ export function Assets() {
 
   // Delete asset
   const handleDeleteAsset = (id) => {
-    setAssetsList((prev) => {
-      const next = prev.filter((item) => item.id !== id)
-      saveStoredBrandAssets(brandKey, next)
-      return next
-    })
+    setAssetsList((prev) => prev.filter((item) => item.id !== id))
     setSelected(null)
     toast('Asset removed from library.', 'good')
   }
@@ -970,8 +993,34 @@ export function Assets() {
     const defaults = getBrandAssets(currentBrand)
     setAssetsList(defaults)
     setSelected(null)
-    saveStoredBrandAssets(brandKey, defaults)
+    try {
+      localStorage.setItem(brandStorageKey, JSON.stringify(defaults))
+    } catch {}
     toast(`Asset library for ${currentBrand.brand_name} reset to defaults.`, 'good')
+  }
+
+  // Save Brand Specs
+  const handleSaveBrandSpecs = (e) => {
+    e?.preventDefault?.()
+    if (!brandEditForm.brand_name.trim()) {
+      toast('Brand name cannot be empty.', 'warn')
+      return
+    }
+    if (!brandEditForm.brand_code.trim()) {
+      toast('Brand code cannot be empty.', 'warn')
+      return
+    }
+
+    const updatedBrand = {
+      ...currentBrand,
+      ...brandEditForm,
+      brand_name: brandEditForm.brand_name.trim(),
+      brand_code: brandEditForm.brand_code.trim().toUpperCase(),
+      mark: (brandEditForm.mark || brandEditForm.brand_name.slice(0, 2)).toUpperCase(),
+    }
+    switchBrand(updatedBrand)
+    setBrandEditOpen(false)
+    toast(`Saved brand details for ${updatedBrand.brand_name}.`, 'good')
   }
 
   // Download asset (real file or serialized SVG)
@@ -1014,24 +1063,43 @@ export function Assets() {
   return (
     <div className="assets-page">
       {/* Global Drag-and-Drop Overlay */}
-      {isDraggingPage && (
-        <div className="asset-global-overlay">
-          <div className="asset-global-overlay__box">
-            <UploadCloud size={48} style={{ color: 'var(--sage)' }} />
-            <h3>Drop brand file to upload</h3>
-            <p>Release anywhere to add directly to the {currentBrand.brand_name} asset library</p>
-          </div>
-        </div>
-      )}
+      {isDraggingPage &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div className="asset-global-overlay" role="dialog" aria-modal="true" aria-label="Drop brand file to upload">
+            <div className="asset-global-overlay__card">
+              <div className="asset-global-overlay__zone">
+                <div className="asset-global-overlay__badge">
+                  <Sparkles size={12} />
+                  <span>{currentBrand.brand_name || currentBrand.name || 'Brand'} · Asset Library</span>
+                </div>
+                <div className="asset-global-overlay__icon-tile">
+                  <FileUp size={28} strokeWidth={2} />
+                </div>
+                <div className="asset-global-overlay__copy">
+                  <h3>Drop brand file to import</h3>
+                  <p>Release anywhere to stage artwork, extract color palettes, or link guidelines.</p>
+                </div>
+                <div className="asset-global-overlay__formats">
+                  <span>SVG</span>
+                  <span>PNG</span>
+                  <span>JPG</span>
+                  <span>WEBP</span>
+                  <span>PDF</span>
+                  <span>ASE</span>
+                  <span>JSON</span>
+                </div>
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
 
       {/* Page Header */}
       <section className="page-head">
         <div>
           <h1>Brand assets</h1>
-          <p>
-            Approved marks, palette, typography, and plates for{' '}
-            <strong style={{ color: 'var(--ink)' }}>{currentBrand.brand_name}</strong>. Switch brands from the sidebar.
-          </p>
+          <p>The approved marks, palette, type, and campaign plates. One library, no stray exports.</p>
         </div>
         <div className="page-head__actions">
           <div className="asset-stat-group">
@@ -1048,7 +1116,7 @@ export function Assets() {
             </button>
           </div>
           <Button icon={Upload} variant="primary" onClick={() => setUploadOpen(true)}>
-            Upload asset
+            Upload Asset
           </Button>
         </div>
       </section>
@@ -1088,6 +1156,17 @@ export function Assets() {
             </button>
           ))}
         </div>
+      ) : assetsList.length === 0 ? (
+        <EmptyState
+          icon={Images}
+          title="No brand assets uploaded yet"
+          description={`Your workspace for ${currentBrand.brand_name || 'your brand'} is clean. Upload your logo lockups, color palettes, fonts, or campaign plates to start governing.`}
+          action={
+            <Button variant="primary" icon={Upload} onClick={() => setUploadOpen(true)}>
+              Upload first asset
+            </Button>
+          }
+        />
       ) : (
         <EmptyState
           icon={Images}
@@ -1102,35 +1181,37 @@ export function Assets() {
       )}
 
       {/* Core Palette Section */}
-      <section className="palette-section">
-        <div className="palette-section__head">
-          <div>
-            <h2>Core palette · {currentBrand.brand_name}</h2>
-            <p>Click any swatch to copy its hex value.</p>
+      {activeSwatches.length > 0 && (
+        <section className="palette-section">
+          <div className="palette-section__head">
+            <div>
+              <h2>Core palette · {currentBrand.brand_name}</h2>
+              <p>Click any swatch to copy its hex value.</p>
+            </div>
+            <span>
+              <Palette size={15} /> {activeSwatches.length} tokens
+            </span>
           </div>
-          <span>
-            <Palette size={15} /> {(currentBrand.swatches || swatches).length} tokens
-          </span>
-        </div>
-        <div className="swatch-grid">
-          {(currentBrand.swatches || swatches).map((swatch) => (
-            <button
-              key={swatch.hex}
-              type="button"
-              className="swatch"
-              onClick={() => copy(swatch.hex, swatch.name)}
-              aria-label={`Copy ${swatch.name} ${swatch.hex}`}
-            >
-              <span className="swatch__chip" style={{ background: swatch.hex }} aria-hidden="true" />
-              <span className="swatch__meta">
-                <strong>{swatch.name}</strong>
-                <span>{swatch.hex}</span>
-                <Copy size={12} aria-hidden="true" />
-              </span>
-            </button>
-          ))}
-        </div>
-      </section>
+          <div className="swatch-grid">
+            {activeSwatches.map((swatch) => (
+              <button
+                key={swatch.hex}
+                type="button"
+                className="swatch"
+                onClick={() => copy(swatch.hex, swatch.name)}
+                aria-label={`Copy ${swatch.name} ${swatch.hex}`}
+              >
+                <span className="swatch__chip" style={{ background: swatch.hex }} aria-hidden="true" />
+                <span className="swatch__meta">
+                  <strong>{swatch.name}</strong>
+                  <span>{swatch.hex}</span>
+                  <Copy size={12} aria-hidden="true" />
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Asset Guidelines Link Section */}
       <section className="asset-guidelines">
@@ -1145,15 +1226,17 @@ export function Assets() {
           </p>
         </div>
         <div className="asset-guidelines__links">
-          <button type="button" onClick={() => copy(`${currentBrand.brand_name} primary lockup`, 'Asset name')}>
+          <button type="button" onClick={() => copy(`${currentBrand.brand_name || currentBrand.name || 'Brand'} primary lockup`, 'Asset name')}>
             <Image size={15} /> Copy asset reference
           </button>
           <button type="button" onClick={() => copy(`${currentBrand.displayFont || 'Bricolage Grotesque'} / ${currentBrand.bodyFont || 'Manrope'}`, 'Type pairing')}>
             <Type size={15} /> Copy type pairing
           </button>
-          <button type="button" onClick={() => copy((currentBrand.swatches || swatches).map(s => s.hex).join(', '), 'Palette')}>
-            <Palette size={15} /> Copy palette tokens
-          </button>
+          {activeSwatches.length > 0 && (
+            <button type="button" onClick={() => copy(activeSwatches.map(s => s.hex).join(', '), 'Palette')}>
+              <Palette size={15} /> Copy palette tokens
+            </button>
+          )}
         </div>
       </section>
 
@@ -1316,7 +1399,7 @@ export function Assets() {
                         className="palette-studio__preset-tag"
                         onClick={() => handleApplyPreset('core')}
                       >
-                        {currentBrand.brand_name} Core
+                        {currentBrand.brand_name || currentBrand.name || 'Brand'} Core
                       </button>
                       <button
                         type="button"
@@ -1825,122 +1908,136 @@ export function Assets() {
               </div>
 
               {/* Palette Interactive Tokens Grid & Export Bar */}
-              {(selected.kind === 'colour' || (selected.swatches && selected.swatches.length > 0)) && (
-                <div style={{ marginTop: '16px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      marginBottom: '8px',
-                    }}
-                  >
-                    <span
+              {(() => {
+                const assetDetailSwatches =
+                  selected.swatches && selected.swatches.length > 0
+                    ? selected.swatches
+                    : isDemo
+                    ? swatches
+                    : []
+                if (
+                  assetDetailSwatches.length === 0 ||
+                  (selected.kind !== 'colour' && (!selected.swatches || selected.swatches.length === 0))
+                ) {
+                  return null
+                }
+                return (
+                  <div style={{ marginTop: '16px' }}>
+                    <div
                       style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: 'var(--muted)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.04em',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: '8px',
                       }}
                     >
-                      Token Swatches (Click to copy)
-                    </span>
-                    <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
-                      {(selected.swatches || currentBrand.swatches || swatches).length} tokens
-                    </span>
-                  </div>
+                      <span
+                        style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: 'var(--muted)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.04em',
+                        }}
+                      >
+                        Token Swatches (Click to copy)
+                      </span>
+                      <span style={{ fontSize: '11px', color: 'var(--muted)' }}>
+                        {assetDetailSwatches.length} tokens
+                      </span>
+                    </div>
 
-                  <div className="palette-tokens-grid">
-                    {(selected.swatches || currentBrand.swatches || swatches).map((swatch, idx) => {
-                      const rgb = hexToRgb(swatch.hex).str
-                      return (
-                        <div
-                          key={`${swatch.hex}-${idx}`}
-                          className="palette-token-card"
-                          onClick={() => copy(swatch.hex, `${swatch.name} (${swatch.hex})`)}
-                          title="Click to copy hex"
-                        >
-                          <div className="palette-token-chip" style={{ background: swatch.hex }}>
-                            <span
-                              style={{
-                                background: 'rgba(0,0,0,0.5)',
-                                color: '#fff',
-                                fontSize: '10px',
-                                padding: '2px 5px',
-                                borderRadius: '3px',
-                                fontWeight: 700,
-                              }}
-                            >
-                              {swatch.hex}
-                            </span>
+                    <div className="palette-tokens-grid">
+                      {assetDetailSwatches.map((swatch, idx) => {
+                        const rgb = hexToRgb(swatch.hex).str
+                        return (
+                          <div
+                            key={`${swatch.hex}-${idx}`}
+                            className="palette-token-card"
+                            onClick={() => copy(swatch.hex, `${swatch.name} (${swatch.hex})`)}
+                            title="Click to copy hex"
+                          >
+                            <div className="palette-token-chip" style={{ background: swatch.hex }}>
+                              <span
+                                style={{
+                                  background: 'rgba(0,0,0,0.5)',
+                                  color: '#fff',
+                                  fontSize: '10px',
+                                  padding: '2px 5px',
+                                  borderRadius: '3px',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                {swatch.hex}
+                              </span>
+                            </div>
+                            <div className="palette-token-body">
+                              <span className="palette-token-name">{swatch.name}</span>
+                              <span className="palette-token-role">{swatch.role || `Token ${idx + 1}`}</span>
+                              <span className="palette-token-copy">
+                                <Copy size={10} /> {rgb}
+                              </span>
+                            </div>
                           </div>
-                          <div className="palette-token-body">
-                            <span className="palette-token-name">{swatch.name}</span>
-                            <span className="palette-token-role">{swatch.role || `Token ${idx + 1}`}</span>
-                            <span className="palette-token-copy">
-                              <Copy size={10} /> {rgb}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
+                        )
+                      })}
+                    </div>
 
-                  <div className="palette-export-bar" style={{ marginTop: '16px' }}>
-                    <Button
-                      variant="secondary"
-                      icon={Code}
-                      onClick={() =>
-                        copy(generateCssVariables(selected.swatches || currentBrand.swatches || swatches), 'CSS variables')
-                      }
-                    >
-                      Copy CSS (:root)
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={FileCode}
-                      onClick={() =>
-                        copy(generateTailwindConfig(selected.swatches || currentBrand.swatches || swatches), 'Tailwind config')
-                      }
-                    >
-                      Copy Tailwind
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={Copy}
-                      onClick={() =>
-                        copy(generateTokensJson(selected.swatches || currentBrand.swatches || swatches), 'Tokens JSON')
-                      }
-                    >
-                      Copy JSON
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      icon={Download}
-                      onClick={() => {
-                        const cssContent = generateCssVariables(selected.swatches || swatches)
-                        const blob = new Blob([cssContent], { type: 'text/css' })
-                        const url = URL.createObjectURL(blob)
-                        const a = document.createElement('a')
-                        a.href = url
-                        a.download = `${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`
-                        a.click()
-                        URL.revokeObjectURL(url)
-                        toast('Downloaded CSS token variables.', 'good')
-                      }}
-                    >
-                      Export .css
-                    </Button>
-                  </div>
+                    <div className="palette-export-bar" style={{ marginTop: '16px' }}>
+                      <Button
+                        variant="secondary"
+                        icon={Code}
+                        onClick={() =>
+                          copy(generateCssVariables(assetDetailSwatches), 'CSS variables')
+                        }
+                      >
+                        Copy CSS (:root)
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={FileCode}
+                        onClick={() =>
+                          copy(generateTailwindConfig(assetDetailSwatches), 'Tailwind config')
+                        }
+                      >
+                        Copy Tailwind
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={Copy}
+                        onClick={() =>
+                          copy(generateTokensJson(assetDetailSwatches), 'Tokens JSON')
+                        }
+                      >
+                        Copy JSON
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        icon={Download}
+                        onClick={() => {
+                          const cssContent = generateCssVariables(assetDetailSwatches)
+                          const blob = new Blob([cssContent], { type: 'text/css' })
+                          const url = URL.createObjectURL(blob)
+                          const a = document.createElement('a')
+                          a.href = url
+                          a.download = `${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`
+                          a.click()
+                          URL.revokeObjectURL(url)
+                          toast('Downloaded CSS token variables.', 'good')
+                        }}
+                      >
+                        Export .css
+                      </Button>
+                    </div>
 
-                  <CodeBlock
-                    filename={`${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`}
-                    language="css"
-                    code={generateCssVariables(selected.swatches || swatches)}
-                  />
-                </div>
-              )}
+                    <CodeBlock
+                      filename={`${selected.title.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-tokens.css`}
+                      language="css"
+                      code={generateCssVariables(assetDetailSwatches)}
+                    />
+                  </div>
+                )
+              })()}
 
               <div className="asset-drawer__facts" style={{ marginTop: '16px' }}>
                 <div>
@@ -1963,6 +2060,95 @@ export function Assets() {
             </div>
           )
         ) : null}
+      </Drawer>
+
+      {/* Brand Specs Drawer */}
+      <Drawer
+        open={brandEditOpen}
+        onClose={() => setBrandEditOpen(false)}
+        title={`Edit Brand Specs: ${currentBrand.brand_name}`}
+        description="Modify the brand name, value verification code, monogram, and identity specs."
+        footer={
+          <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end', width: '100%' }}>
+            <Button variant="secondary" onClick={() => setBrandEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" icon={Check} onClick={handleSaveBrandSpecs}>
+              Save Brand Changes
+            </Button>
+          </div>
+        }
+      >
+        <form onSubmit={handleSaveBrandSpecs} className="asset-drawer-form" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <Field label="Brand / Organization Name" required>
+            <input
+              type="text"
+              value={brandEditForm.brand_name}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, brand_name: e.target.value }))}
+              placeholder="e.g. Nova Athletics"
+              required
+            />
+          </Field>
+
+          <Field label="Brand Value Code" hint="Used for team onboarding and workspace authorization" required>
+            <input
+              type="text"
+              className="brand-code-input"
+              value={brandEditForm.brand_code}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, brand_code: e.target.value.toUpperCase() }))}
+              placeholder="e.g. NOVA-4821"
+              required
+            />
+          </Field>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+            <Field label="Monogram Initials">
+              <input
+                type="text"
+                maxLength={4}
+                value={brandEditForm.mark}
+                onChange={(e) => setBrandEditForm(prev => ({ ...prev, mark: e.target.value.toUpperCase() }))}
+                placeholder="e.g. NA"
+              />
+            </Field>
+
+            <Field label="Accent Color">
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="color"
+                  value={brandEditForm.color}
+                  onChange={(e) => setBrandEditForm(prev => ({ ...prev, color: e.target.value }))}
+                  style={{ width: '40px', height: '36px', padding: '2px', border: '1px solid var(--line)', borderRadius: '6px', cursor: 'pointer' }}
+                />
+                <input
+                  type="text"
+                  value={brandEditForm.color}
+                  onChange={(e) => setBrandEditForm(prev => ({ ...prev, color: e.target.value }))}
+                  placeholder="#E11D48"
+                  style={{ flex: 1 }}
+                />
+              </div>
+            </Field>
+          </div>
+
+          <Field label="Tagline / Short Descriptor">
+            <input
+              type="text"
+              value={brandEditForm.tagline}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, tagline: e.target.value }))}
+              placeholder="e.g. High-Performance Activewear"
+            />
+          </Field>
+
+          <Field label="Core Brand Values & Tone Guidance">
+            <textarea
+              rows={3}
+              value={brandEditForm.values}
+              onChange={(e) => setBrandEditForm(prev => ({ ...prev, values: e.target.value }))}
+              placeholder="e.g. Performance, innovation, bold energy, inclusivity"
+            />
+          </Field>
+        </form>
       </Drawer>
     </div>
   )

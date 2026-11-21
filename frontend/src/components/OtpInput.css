@@ -1,0 +1,246 @@
+/* Warm theme styled OTP Input matching Klarity brand aesthetic */
+
+.otp-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 0 6px;
+  width: 100%;
+}
+
+.otp-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  min-height: 60px;
+  perspective: 800px;
+}
+
+/* Individual Digit Box matching Klarity's warm cream/paper & dark ink aesthetic */
+.otp-box {
+  position: relative;
+  width: 48px;
+  height: 54px;
+  background: var(--paper, #fbf8f1);
+  border-radius: var(--radius-sm, 12px);
+  border: 1.5px solid var(--line-strong, #d2c8b4);
+  box-shadow: 
+    0 2px 4px rgba(32, 21, 15, 0.04),
+    0 1px 2px rgba(32, 21, 15, 0.02);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), 
+              opacity 0.3s ease, 
+              border-color 0.2s ease, 
+              box-shadow 0.2s ease,
+              background-color 0.2s ease;
+  cursor: text;
+}
+
+.otp-box:hover {
+  border-color: var(--sage, #298ee4);
+  background: var(--paper-raised, #fffdf8);
+  box-shadow: 
+    0 3px 8px -2px rgba(41, 142, 228, 0.25),
+    0 1px 3px rgba(32, 21, 15, 0.05);
+}
+
+.otp-box:focus-within {
+  border-color: var(--sage, #298ee4);
+  background: var(--paper-raised, #fffdf8);
+  box-shadow: 
+    0 0 0 3px rgba(41, 142, 228, 0.2),
+    0 4px 12px -2px rgba(41, 142, 228, 0.25);
+  transform: translateY(-2px);
+}
+
+.otp-box.has-value {
+  border-color: var(--sage, #298ee4);
+  background: var(--paper-raised, #fffdf8);
+  box-shadow: 0 2px 6px -1px rgba(41, 142, 228, 0.2);
+}
+
+/* Digit text inside the box */
+.otp-input {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  color: var(--ink, #20150f);
+  font-family: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  caret-color: var(--sage, #298ee4);
+  padding: 0;
+  border-radius: inherit;
+}
+
+/* Merging / Combining animation */
+.otp-box.merging {
+  transform: translateX(var(--merge-x)) scale(0.92);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.otp-container.collapsed .otp-box {
+  animation: collapseFade 0.45s forwards;
+}
+
+@keyframes collapseFade {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  60% {
+    transform: translateX(var(--merge-x)) scale(0.95);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateX(var(--merge-x)) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Central badge that appears in place of the collapsed boxes */
+.otp-central-badge {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.7);
+  width: 56px;
+  height: 56px;
+  background: var(--paper-raised, #fffdf8);
+  border-radius: var(--radius-md, 14px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  opacity: 0;
+  box-shadow: 0 10px 25px -5px rgba(32, 21, 15, 0.15);
+  animation: popIn 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+@keyframes popIn {
+  0% {
+    transform: translate(-50%, -50%) scale(0.5);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Status variants for the single combined central box */
+.otp-central-badge.combining {
+  border: 2px solid var(--sage, #298ee4);
+  box-shadow: 
+    0 0 0 4px rgba(41, 142, 228, 0.15),
+    0 8px 20px -4px rgba(41, 142, 228, 0.3);
+}
+
+.otp-central-badge.success {
+  border: 2.5px solid var(--good, #2e6d3c);
+  background: var(--good-soft, #e2eedc);
+  box-shadow: 
+    0 0 0 4px rgba(46, 109, 60, 0.18),
+    0 8px 24px -4px rgba(46, 109, 60, 0.3);
+  animation: popSuccess 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+/* Intense horizontal vibrating shake animation when code is incorrect */
+.otp-central-badge.error {
+  border: 2.5px solid var(--danger, #e04b4b);
+  background: var(--danger-soft, #fce8e8);
+  box-shadow: 
+    0 0 0 5px rgba(224, 75, 75, 0.22),
+    0 8px 25px -3px rgba(224, 75, 75, 0.4);
+  animation: vibrateShake 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+@keyframes vibrateShake {
+  0%, 100% {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+  10%, 90% {
+    transform: translate(calc(-50% - 12px), -50%) rotate(-3deg);
+  }
+  20%, 80% {
+    transform: translate(calc(-50% + 12px), -50%) rotate(3deg);
+  }
+  30%, 50%, 70% {
+    transform: translate(calc(-50% - 8px), -50%) rotate(-2deg);
+  }
+  40%, 60% {
+    transform: translate(calc(-50% + 8px), -50%) rotate(2deg);
+  }
+}
+
+@keyframes popSuccess {
+  0% {
+    transform: translate(-50%, -50%) scale(0.7);
+    opacity: 0;
+  }
+  70% {
+    transform: translate(-50%, -50%) scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* Tick icon styling matching Klarity theme */
+.otp-icon-tick {
+  width: 30px;
+  height: 30px;
+  stroke: var(--good, #2e6d3c);
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawTick 0.35s 0.18s ease-out forwards;
+}
+
+@keyframes drawTick {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Cross icon styling matching Klarity danger theme */
+.otp-icon-cross {
+  width: 30px;
+  height: 30px;
+  stroke: var(--danger, #e04b4b);
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: drawCross 0.3s 0.1s ease-out forwards;
+}
+
+@keyframes drawCross {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Spinner during verification */
+.otp-spinner {
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid rgba(41, 142, 228, 0.2);
+  border-top-color: var(--sage, #298ee4);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

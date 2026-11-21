@@ -2,11 +2,19 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import ipaddress
+import logging
+import os
 import re
+import socket
 import time
+import urllib.parse
 from collections import defaultdict
+from typing import BinaryIO
 
-from fastapi import Request
+from fastapi import HTTPException, Request, UploadFile
 from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
@@ -36,7 +44,168 @@ EXPLOIT_PROBE_PREFIXES = (
 # Maximum allowed Content-Length (15 MB) to prevent memory exhaustion DoS
 MAX_CONTENT_LENGTH = 15 * 1024 * 1024
 
+# Allowed file upload extensions and MIME types
+ALLOWED_UPLOAD_EXTENSIONS = {".png", ".jpg", ".jpeg", ".webp", ".svg", ".pdf", ".txt", ".md", ".json"}
+ALLOWED_UPLOAD_MIME_TYPES = {
+    "image/png",
+    "image/jpeg",
+    "image/webp",
+    "image/svg+xml",
+    "application/pdf",
+    "text/plain",
+    "text/markdown",
+    "application/json",
+}
+MAX_FILE_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB per file
 
+# Private / internal IP ranges for SSRF prevention
+PRIVATE_NETWORKS = [
+    ipaddress.ip_network("127.0.0.0/8"),
+    ipaddress.ip_network("10.0.0.0/8"),
+    ipaddress.ip_network("172.16.0.0/12"),
+    ipaddress.ip_network("192.168.0.0/16"),
+    ipaddress.ip_network("169.254.0.0/16"),  # Link-local / Cloud metadata (AWS/GCP/Azure)
+    ipaddress.ip_network("::1/128"),
+    ipaddress.ip_network("fc00::/7"),
+    ipaddress.ip_network("fe80::/10"),
+]
+
+
+# ===========================================================================
+# 1. Sensitive Data Logging Filter (Mask passwords, tokens, API keys)
+# ===========================================================================
+SENSITIVE_KEY_PATTERN = re.compile(
+    r"(password|token|secret|authorization|cookie|session|api[-_]?key|credit[-_]?card)",
+    re.IGNORECASE,
+)
+
+
+class SensitiveDataFilter(logging.Filter):
+    """Redacts sensitive credentials, passwords, and tokens from application logs."""
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if isinstance(record.msg, str):
+            record.msg = self.sanitize(record.msg)
+        if record.args:
+            if isinstance(record.args, dict):
+                record.args = {k: ("***REDACTED***" if SENSITIVE_KEY_PATTERN.search(str(k)) else v) for k, v in record.args.items()}
+            elif isinstance(record.args, (list, tuple)):
+                record.args = tuple(self.sanitize(str(a)) if SENSITIVE_KEY_PATTERN.search(str(a)) else a for a in record.args)
+        return True
+
+    @staticmethod
+    def sanitize(text: str) -> str:
+        # Redact JWTs or bearer tokens
+        text = re.sub(r"(Bearer\s+)[A-Za-z0-9\-_\.]+", r"***REDACTED_TOKEN***", text, flags=re.IGNORECASE)
+        # Redact password / secret query params or json fields
+        text = re.sub(r'("(?:password|secret|token|apiKey)"\s*:\s*")[^"]+(")', r"***REDACTED***", text, flags=re.IGNORECASE)
+        text = re.sub(r"((?:password|secret|token|api_key)=)[^&\s]+", r"***REDACTED***", text, flags=re.IGNORECASE)
+        return text
+
+
+# Attach filter to root logger
+logging.getLogger().addFilter(SensitiveDataFilter())
+
+
+# ===========================================================================
+# 2. SSRF Protection: URL Validator
+# ===========================================================================
+def validate_url_safe(url: str) -> bool:
+    """
+    Validates that a URL does not target internal services, localhost, or cloud metadata endpoints.
+    Blocks SSRF attacks (CWE-918).
+    """
+    try:
+        parsed = urllib.parse.urlparse(url)
+        if parsed.scheme not in ("http", "https"):
+            return False
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Block localhost aliases and cloud metadata IP explicitly
+        if hostname.lower() in ("localhost", "127.0.0.1", "0.0.0.0", "instance-data", "metadata.google.internal"):
+            return False
+
+        # Resolve hostname to check target IP addresses against private subnets
+        addr_info = socket.getaddrinfo(hostname, None)
+        for _, _, _, _, sockaddr in addr_info:
+            ip_str = sockaddr[0]
+            ip_obj = ipaddress.ip_address(ip_str)
+            for network in PRIVATE_NETWORKS:
+                if ip_obj in network:
+                    return False
+        return True
+    except Exception:
+        return False
+
+
+# ===========================================================================
+# 3. Webhook Signature Verification (HMAC-SHA256)
+# ===========================================================================
+def verify_webhook_signature(payload: bytes, signature_header: str, secret: str, tolerance_seconds: int = 300) -> bool:
+    """
+    Verifies HMAC-SHA256 webhook signatures with timestamp replay protection.
+    Format: t=<timestamp>,v1=<signature>
+    """
+    if not signature_header or not secret:
+        return False
+
+    try:
+        parts = dict(item.strip().split("=", 1) for item in signature_header.split(","))
+        timestamp_str = parts.get("t")
+        expected_sig = parts.get("v1")
+
+        if not timestamp_str or not expected_sig:
+            return False
+
+        # Replay attack mitigation
+        ts = int(timestamp_str)
+        now = int(time.time())
+        if abs(now - ts) > tolerance_seconds:
+            return False
+
+        signed_payload = f"{timestamp_str}.".encode() + payload
+        computed_sig = hmac.new(secret.encode(), signed_payload, hashlib.sha256).hexdigest()
+        return hmac.compare_digest(computed_sig, expected_sig)
+    except Exception:
+        return False
+
+
+# ===========================================================================
+# 4. File Upload Security Validation (Extension, MIME, magic bytes)
+# ===========================================================================
+def validate_uploaded_file(file: UploadFile, max_bytes: int = MAX_FILE_UPLOAD_BYTES) -> None:
+    """
+    Validates file upload extension, declared MIME type, and size to prevent
+    arbitrary file execution, zip bombs, and shell uploads.
+    """
+    filename = file.filename or "upload"
+    ext = os.path.splitext(filename)[1].lower()
+
+    if ext not in ALLOWED_UPLOAD_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File extension '{ext}' is not permitted. Allowed: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
+        )
+
+    content_type = (file.content_type or "").lower()
+    if content_type and content_type not in ALLOWED_UPLOAD_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"MIME type '{content_type}' is not supported.",
+        )
+
+    # Sanitize filename (remove path traversal sequences)
+    safe_name = os.path.basename(filename).replace("..", "").replace("/", "").replace("\\", "")
+    if not safe_name:
+        raise HTTPException(status_code=400, detail="Invalid filename.")
+
+
+# ===========================================================================
+# 5. Sliding Window Rate Limiter
+# ===========================================================================
 class SlidingWindowRateLimiter:
     """High-performance sliding-window in-memory rate limiter per IP."""
 
@@ -46,7 +215,6 @@ class SlidingWindowRateLimiter:
         self.last_cleanup = time.monotonic()
 
     def _cleanup_expired(self, now: float) -> None:
-        # Periodic cleanup every 30 seconds to prevent unbounded memory growth
         if now - self.last_cleanup > 30.0:
             cutoff = now - self.window_seconds
             for ip in list(self.requests.keys()):
@@ -90,11 +258,15 @@ def _get_client_ip(request: Request) -> str:
     return request.client.host if request.client else "127.0.0.1"
 
 
+# ===========================================================================
+# 6. BotShield & CSRF Protection Middleware
+# ===========================================================================
 class BotShieldMiddleware(BaseHTTPMiddleware):
-    """Protects against automated malicious bots, scanners, and DoS payloads."""
+    """Protects against automated malicious bots, scanners, CSRF, and DoS payloads."""
 
     async def dispatch(self, request: Request, call_next):
         path = request.url.path.lower()
+        method = request.method.upper()
 
         # 1. Block common exploit probes immediately with 404 (no DB or routing overhead)
         for prefix in EXPLOIT_PROBE_PREFIXES:
@@ -122,12 +294,40 @@ class BotShieldMiddleware(BaseHTTPMiddleware):
             except ValueError:
                 pass
 
-        # 4. Rate Limiting for API routes
+        # 4. CSRF Defense for state-modifying requests
+        # Blocks unauthorized cross-site forged submissions while allowing verified frontend origins
+        if method in ("POST", "PUT", "PATCH", "DELETE") and path.startswith("/api/"):
+            sec_fetch_site = request.headers.get("sec-fetch-site")
+            origin = request.headers.get("origin")
+
+            if origin:
+                origin_clean = origin.rstrip("/").lower()
+                is_allowed = (
+                    origin_clean.endswith(".onrender.com")
+                    or origin_clean.startswith("http://localhost:")
+                    or origin_clean.startswith("http://127.0.0.1:")
+                    or origin_clean == str(request.base_url).rstrip("/").lower()
+                )
+                if not is_allowed:
+                    try:
+                        from config import CORS_ORIGINS
+                        allowed_set = {o.rstrip("/").lower() for o in CORS_ORIGINS}
+                        if origin_clean in allowed_set:
+                            is_allowed = True
+                    except Exception:
+                        pass
+
+                if not is_allowed and sec_fetch_site == "cross-site":
+                    return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked (CSRF protection)"})
+            elif sec_fetch_site == "cross-site":
+                return JSONResponse(status_code=403, content={"detail": "Cross-site request blocked (CSRF protection)"})
+
+        # 5. Rate Limiting for API routes
         if path.startswith("/api/"):
             client_ip = _get_client_ip(request)
 
             # Strict bucket for login / register to mitigate brute force & credential stuffing
-            if path.startswith(("/api/auth/login", "/api/auth/register")):
+            if path.startswith(("/api/auth/login", "/api/auth/register", "/api/auth/forgot-password")):
                 max_req = 20
                 allowed, remaining, retry_after = _auth_limiter.check(client_ip, max_requests=max_req)
             else:

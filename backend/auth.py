@@ -17,7 +17,6 @@ from sqlalchemy.orm import Session
 
 from config import CORS_ORIGINS
 from database import Base, SessionLocal, get_db
-from services.email_otp import create_otp, verify_otp, cleanup_expired_otps, get_smtp_email
 
 
 class Account(Base):
@@ -28,6 +27,9 @@ class Account(Base):
     password_hash = Column(String(256), nullable=False)
     role = Column(String(30), nullable=False, default="owner")
     is_approved = Column(Boolean, nullable=False, default=True)
+    brand_name = Column(String(120), nullable=True)
+    is_demo = Column(Boolean, nullable=False, default=False)
+    full_name = Column(String(120), nullable=True)
 
 
 class WorkspaceSettings(Base):
@@ -53,6 +55,16 @@ class LoginSession(Base):
     expires_at = Column(DateTime, nullable=False)
 
 
+class PasswordResetOTP(Base):
+    __tablename__ = "password_reset_otps"
+    id = Column(Integer, primary_key=True)
+    email = Column(String(255), nullable=False, index=True)
+    otp_code = Column(String(10), nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    used = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def hash_password(password, salt=None):
     salt = salt or secrets.token_hex(16)
     digest = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 600_000).hex()
@@ -65,15 +77,22 @@ def seed_test_account():
             or_(Account.username == "ashwik", Account.email == "ashwik@topper.local", Account.email == "ashwik@topper", Account.email == "ashwik@klarity.local")
         ).first()
         if not ashwik:
-            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner"))
+            db.add(Account(username="ashwik", email="ashwik@topper", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="owner", brand_name="Aster & Oak", is_demo=True))
         else:
             ashwik.username = "ashwik"
             ashwik.email = "ashwik@topper"
-            ashwik.password_hash = hash_password("klarity")
+            default_pass = os.getenv("DEMO_ADMIN_PASSWORD", "klarity")
+            ashwik.password_hash = hash_password(default_pass)
             ashwik.role = "owner"
+            ashwik.brand_name = "Aster & Oak"
+            ashwik.is_demo = True
 
-        if not db.query(Account).filter_by(username="sunless").first():
-            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password("klarity"), role="reviewer"))
+        sunless = db.query(Account).filter_by(username="sunless").first()
+        if not sunless:
+            db.add(Account(username="sunless", email="sunless@klarity.local", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="reviewer", brand_name="Aster & Oak", is_demo=True))
+        else:
+            sunless.brand_name = "Aster & Oak"
+            sunless.is_demo = True
 
         # Seed brands
         default_brands = [
@@ -121,6 +140,8 @@ def _cache_account(token_hash: str, account, session_expires_at: datetime) -> Si
         email=account.email,
         role=getattr(account, "role", "owner") or "owner",
         is_approved=getattr(account, "is_approved", True),
+        brand_name=getattr(account, "brand_name", None),
+        is_demo=getattr(account, "is_demo", False),
     )
     remaining = max(0.0, (session_expires_at - datetime.utcnow()).total_seconds())
     ttl = min(_SESSION_TTL_SECONDS, remaining)
@@ -163,14 +184,60 @@ def current_account(request: Request, db: Session = Depends(get_db)):
     return _cache_account(token_hash, account, expires_at)
 
 
-def public_account(account):
-    return {
+def optional_account(request: Request, db: Session = Depends(get_db)):
+    try:
+        return current_account(request, db)
+    except Exception:
+        return None
+
+
+def public_account(account, db=None):
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    brand_name = getattr(account, "brand_name", None)
+    if not brand_name:
+        brand_name = "Aster & Oak" if is_demo else "Brand"
+
+    display_name = getattr(account, "full_name", None)
+    if not display_name:
+        display_name = account.username.replace("_", " ").replace(".", " ").title() if "_" in account.username or "." in account.username else account.username
+
+    res = {
         "id": account.id,
         "username": account.username,
+        "name": display_name,
         "email": account.email,
         "role": getattr(account, "role", "owner") or "owner",
         "is_approved": getattr(account, "is_approved", True),
+        "is_demo": is_demo,
+        "brand_name": brand_name,
+        "brand_code": "KLARITY-2026" if is_demo else "BRAND-1000",
+        "brand_values": "Authenticity, craft, sustainability, quiet confidence" if is_demo else "",
     }
+    try:
+        if db:
+            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(brand_name)).first()
+            if brand_rec:
+                res["brand_code"] = brand_rec.brand_code
+                res["brand_values"] = brand_rec.brand_values
+            elif not is_demo and brand_name:
+                clean_slug = re.sub(r"[^A-Za-z0-9]", "", brand_name).upper()[:6] or "BRAND"
+                new_c = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+                new_b = Brand(brand_name=brand_name, brand_code=new_c, brand_values="")
+                try:
+                    db.add(new_b)
+                    db.commit()
+                    res["brand_code"] = new_c
+                except Exception:
+                    db.rollback()
+        elif is_demo:
+            with SessionLocal() as session:
+                setting = session.get(WorkspaceSettings, 1)
+                if setting:
+                    res["brand_code"] = setting.brand_code
+                    res["brand_values"] = setting.brand_values
+    except Exception:
+        pass
+    return res
 
 
 def start_session(account, request, response, db):
@@ -190,7 +257,7 @@ def start_session(account, request, response, db):
     db.add(LoginSession(token_hash=token_hash, account_id=account.id, expires_at=expires_at))
     db.commit()
     _cache_account(token_hash, account, expires_at)
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.set_cookie(
         "klarity_session",
@@ -201,7 +268,7 @@ def start_session(account, request, response, db):
         max_age=86400,
         path="/",
     )
-    res = public_account(account)
+    res = public_account(account, db)
     res["token"] = token
     return res
 
@@ -214,6 +281,7 @@ class RegisterRequest(BaseModel):
     brand_code: str | None = Field(default=None, max_length=64)
     brand_name: str | None = Field(default=None, max_length=120)
     brand_values: str | None = Field(default=None, max_length=500)
+    clean_workspace: bool | None = Field(default=False)
 
 
 class LoginRequest(BaseModel):
@@ -221,21 +289,27 @@ class LoginRequest(BaseModel):
     password: str = Field(min_length=1, max_length=128)
 
 
-class VerifyOTPRequest(BaseModel):
-    email: str = Field(min_length=1, max_length=254)
-    otp: str = Field(min_length=6, max_length=6)
-
-
-class ResendOTPRequest(BaseModel):
-    email: str = Field(min_length=1, max_length=254)
-
-
 class ApproveAccountRequest(BaseModel):
     account_id: int
     approve: bool = True
 
 
+class InviteMemberRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    email: str = Field(min_length=3, max_length=254)
+    role: str = Field(default="Team Member", max_length=50)
+    status: str = Field(default="Active", max_length=30)
+    brand_name: str | None = Field(default=None, max_length=120)
+
+
+class UpdateMemberRequest(BaseModel):
+    name: str | None = Field(default=None, max_length=120)
+    role: str | None = Field(default=None, max_length=50)
+    status: str | None = Field(default=None, max_length=30)
+
+
 class UpdateWorkspaceRequest(BaseModel):
+    old_brand_name: str | None = Field(default=None, max_length=120)
     brand_name: str | None = Field(default=None, max_length=120)
     brand_values: str | None = Field(default=None, max_length=500)
     brand_code: str | None = Field(default=None, max_length=32)
@@ -284,8 +358,33 @@ def list_brands(db: Session = Depends(get_db)):
 
 @router.get("/brand-directory")
 def brand_directory(account: Account = Depends(current_account), db: Session = Depends(get_db)):
-    """Return all brands and their brand codes for authenticated workspace members."""
-    return {"brands": _get_cached_brands(db)}
+    """Return all brands for demo accounts, or only their own brand for newly created brands."""
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if is_demo:
+        return {"brands": _get_cached_brands(db)}
+
+    user_brand = getattr(account, "brand_name", None) or "Brand"
+    brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
+    if not brand_rec and user_brand:
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", user_brand).upper()[:6] or "BRAND"
+        b_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand_rec = Brand(brand_name=user_brand, brand_values="", brand_code=b_code)
+        try:
+            db.add(brand_rec)
+            db.commit()
+        except Exception:
+            db.rollback()
+            brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
+    return {
+        "brands": [
+            {
+                "id": brand_rec.id if brand_rec else 1,
+                "brand_name": user_brand,
+                "brand_code": brand_rec.brand_code if brand_rec else "BRAND-1000",
+                "brand_values": brand_rec.brand_values if brand_rec else "",
+            }
+        ]
+    }
 
 
 @router.post("/switch-brand")
@@ -294,7 +393,17 @@ def switch_brand(
     account: Account = Depends(current_account),
     db: Session = Depends(get_db),
 ):
-    """Switch active brand workspace."""
+    """Switch active brand workspace (allowed for multi-brand demo accounts)."""
+    is_demo = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo:
+        user_brand = getattr(account, "brand_name", "Brand")
+        brand_rec = db.query(Brand).filter(Brand.brand_name.ilike(user_brand)).first()
+        return {
+            "message": f"Workspace locked to {user_brand}",
+            "brand_name": user_brand,
+            "brand_code": brand_rec.brand_code if brand_rec else "BRAND-1000",
+            "brand_values": brand_rec.brand_values if brand_rec else "",
+        }
     brand = db.query(Brand).filter(Brand.brand_name == payload.brand_name.strip()).first()
     if not brand:
         raise HTTPException(404, "Brand not found")
@@ -311,6 +420,7 @@ def switch_brand(
         setting.brand_name = brand.brand_name
         setting.brand_values = brand.brand_values
         setting.brand_code = brand.brand_code
+    account.brand_name = brand.brand_name
     db.commit()
     global _SETTINGS_CACHE
     _SETTINGS_CACHE = None
@@ -350,9 +460,37 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
 
     if is_admin:
         if payload.brand_name and payload.brand_name.strip():
-            setting.brand_name = payload.brand_name.strip()
-        if payload.brand_values and payload.brand_values.strip():
-            setting.brand_values = payload.brand_values.strip()
+            b_name = payload.brand_name.strip()
+            # Generate brand code
+            clean_slug = re.sub(r"[^A-Za-z0-9]", "", b_name).upper()[:6] or "BRAND"
+            rand_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+            b_values = payload.brand_values.strip() if payload.brand_values and payload.brand_values.strip() else "Authenticity, craft, excellence, quiet confidence"
+
+            # Upsert into Brand table
+            existing_brand = db.query(Brand).filter(Brand.brand_name.ilike(b_name)).first()
+            if not existing_brand:
+                existing_brand = Brand(
+                    brand_name=b_name,
+                    brand_values=b_values,
+                    brand_code=rand_code,
+                )
+                db.add(existing_brand)
+            else:
+                existing_brand.brand_values = b_values
+                rand_code = existing_brand.brand_code
+            assigned_brand = existing_brand.brand_name
+        else:
+            assigned_brand = "My Brand"
+
+        global _SETTINGS_CACHE, _BRANDS_CACHE
+        _SETTINGS_CACHE = None
+        _BRANDS_CACHE = None
+        try:
+            from services.workspace import invalidate_bootstrap_cache
+            invalidate_bootstrap_cache()
+        except Exception:
+            pass
+
         db.commit()
         is_approved = True
     else:
@@ -364,10 +502,21 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
             expected_code = (setting.brand_code or "KLARITY-2026").strip().upper()
             if not provided_code or provided_code != expected_code:
                 raise HTTPException(400, "Invalid brand value code. Please provide the authorized code from your Brand Owner.")
+            assigned_brand = setting.brand_name or "Aster & Oak"
+        else:
+            assigned_brand = matched_brand.brand_name
         # Reviewers and users require admin/owner approval before login
         is_approved = False
 
-    account = Account(username=username, email=email, password_hash=hash_password(payload.password), role=chosen_role, is_approved=is_approved)
+    account = Account(
+        username=username,
+        email=email,
+        password_hash=hash_password(payload.password),
+        role=chosen_role,
+        is_approved=is_approved,
+        brand_name=assigned_brand,
+        is_demo=False,
+    )
     db.add(account)
     try:
         db.flush()
@@ -384,7 +533,7 @@ def register(payload: RegisterRequest, request: Request, response: Response, db:
     return {
         "message": msg,
         "is_approved": is_approved,
-        "account": public_account(account),
+        "account": public_account(account, db),
     }
 
 
@@ -393,7 +542,7 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     identifier = payload.identifier.strip().lower()
     account = db.query(Account).filter(or_(Account.username == identifier, Account.email == identifier)).first()
     if not account and identifier in ("ashwik@topper", "ashwik") and payload.password == "klarity":
-        account = Account(username="ashwik", email="ashwik@topper", password_hash=hash_password("klarity"), role="owner", is_approved=True)
+        account = Account(username="ashwik", email="ashwik@topper", password_hash=hash_password(os.getenv("DEMO_ADMIN_PASSWORD", "klarity")), role="owner", is_approved=True)
         db.add(account)
         db.commit()
         db.refresh(account)
@@ -413,93 +562,236 @@ def login(payload: LoginRequest, request: Request, response: Response, db: Sessi
     if not getattr(account, "is_approved", True):
         raise HTTPException(403, "Account pending Admin/Owner verification. Please contact your Brand Administrator to verify your account.")
 
-    # --- OTP flow: send code to registered email ---
-    email = account.email
-    result = create_otp(db, email)
-    if not result.get("success", False):
-        raise HTTPException(500, result.get("message", "Could not generate verification code"))
-
-    # Clean up old OTPs periodically
-    try:
-        cleanup_expired_otps(db)
-    except Exception:
-        pass
-
-    return {
-        "otp_required": True,
-        "email": email,
-        "message": result.get("message", ""),
-        "email_sent": result.get("email_sent", False),
-        "dev_otp": result.get("dev_otp"),
-        "from_email": result.get("from_email") or get_smtp_email(),
-    }
-
-
-@router.post("/verify-otp")
-def verify_otp_endpoint(payload: VerifyOTPRequest, request: Request, response: Response, db: Session = Depends(get_db)):
-    """Verify the OTP and create a login session if valid."""
-    email = payload.email.strip().lower()
-
-    msg, success = verify_otp(db, email, payload.otp)
-    if not success:
-        raise HTTPException(400, msg)
-
-    # OTP verified — find the account and create a session
-    account = db.query(Account).filter(Account.email == email).first()
-    if not account:
-        raise HTTPException(404, "Account not found")
-
-    if not getattr(account, "is_approved", True):
-        raise HTTPException(403, "Account pending Admin/Owner verification.")
-
     return start_session(account, request, response, db)
 
 
-@router.post("/resend-otp")
-def resend_otp_endpoint(payload: ResendOTPRequest, db: Session = Depends(get_db)):
-    """Resend a new OTP to the given email address."""
-    email = payload.email.strip().lower()
+ROLE_DISPLAY_MAP = {
+    "owner": "Brand Owner",
+    "admin": "Brand Owner",
+    "reviewer": "Reviewer",
+    "member": "Team Member",
+    "creator": "Team Member",
+}
 
-    # Verify the email belongs to an existing account
-    account = db.query(Account).filter(Account.email == email).first()
-    if not account:
-        raise HTTPException(404, "No account found with that email address.")
-
-    result = create_otp(db, email)
-    if not result.get("success", False):
-        raise HTTPException(500, result.get("message", "Could not send verification code"))
-
-    return {
-        "message": result.get("message", ""),
-        "email": email,
-        "email_sent": result.get("email_sent", False),
-        "dev_otp": result.get("dev_otp"),
-    }
+ROLE_DB_MAP = {
+    "Brand Owner": "owner",
+    "Reviewer": "reviewer",
+    "Team Member": "member",
+    "owner": "owner",
+    "admin": "admin",
+    "reviewer": "reviewer",
+    "member": "member",
+    "creator": "creator",
+}
 
 
 @router.get("/pending-accounts")
-def list_pending_accounts(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+def list_pending_accounts(
+    brand_name: str | None = None,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only Brand Owners and Admins can view pending accounts.")
-    pending = db.query(Account).filter_by(is_approved=False).all()
-    return [public_account(acc) for acc in pending]
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    target_brand = (brand_name or getattr(account, "brand_name", "") or "").strip()
+
+    query = db.query(Account).filter_by(is_approved=False)
+    if not is_demo_admin and target_brand:
+        query = query.filter(Account.brand_name.ilike(target_brand))
+    elif target_brand and target_brand.lower() != "all":
+        query = query.filter(Account.brand_name.ilike(target_brand))
+
+    pending = query.all()
+    return [public_account(acc, db) for acc in pending]
 
 
 @router.post("/verify-account")
-def verify_account(payload: ApproveAccountRequest, account: Account = Depends(current_account), db: Session = Depends(get_db)):
+def verify_account(
+    payload: ApproveAccountRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only Brand Owners and Admins can verify accounts.")
     target = db.get(Account, payload.account_id)
     if not target:
         raise HTTPException(404, "Account not found")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot verify account for another brand.")
+
     if payload.approve:
         target.is_approved = True
         db.commit()
-        return {"message": f"Account '{target.username}' approved successfully.", "account": public_account(target)}
+        return {"message": f"Account '{target.username}' approved successfully.", "account": public_account(target, db)}
     else:
         db.delete(target)
         db.commit()
         return {"message": f"Account '{target.username}' rejected and removed."}
+
+
+@router.get("/team-members")
+def get_team_members(
+    brand_name: str | None = None,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    target_brand = (brand_name or getattr(account, "brand_name", "") or "").strip()
+    is_demo_user = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not target_brand:
+        target_brand = "Aster & Oak" if is_demo_user else (getattr(account, "brand_name", "") or "")
+
+    accounts = []
+    if target_brand:
+        accounts = db.query(Account).filter(Account.brand_name.ilike(target_brand)).all()
+
+    # If the user is an owner/admin and no accounts returned, make sure current account is present
+    if not accounts and account:
+        accounts = [account]
+
+    roster = []
+    for acc in accounts:
+        display_name = getattr(acc, "full_name", None)
+        if not display_name:
+            display_name = (
+                acc.username.replace("_", " ").replace(".", " ").title()
+                if "_" in acc.username or "." in acc.username
+                else acc.username
+            )
+        role_label = ROLE_DISPLAY_MAP.get(acc.role, "Team Member")
+        status = "Active" if acc.is_approved else "Invited"
+        roster.append({
+            "id": acc.id,
+            "name": display_name,
+            "username": acc.username,
+            "email": acc.email,
+            "role": role_label,
+            "status": status,
+            "is_approved": acc.is_approved,
+            "is_demo": getattr(acc, "is_demo", False),
+            "brand_name": acc.brand_name,
+        })
+
+    # Sort order: Brand Owner -> Reviewer -> Team Member; Active before Invited
+    role_weights = {"Brand Owner": 0, "Reviewer": 1, "Team Member": 2}
+    roster.sort(key=lambda m: (role_weights.get(m["role"], 3), not m["is_approved"], m["name"].lower()))
+    return roster
+
+
+@router.post("/team-members")
+def invite_team_member(
+    payload: InviteMemberRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can add team members.")
+
+    target_brand = (payload.brand_name or getattr(account, "brand_name", "") or "").strip()
+    if not target_brand:
+        raise HTTPException(400, "Brand name is required.")
+
+    email = payload.email.strip().lower()
+    existing = db.query(Account).filter_by(email=email).first()
+    if existing:
+        raise HTTPException(400, f"Account with email '{email}' already exists.")
+
+    name = payload.name.strip()
+    clean_base = re.sub(r"[^a-z0-9_]", "_", name.lower())[:70] or "member"
+    username = clean_base
+    counter = 1
+    while db.query(Account).filter_by(username=username).first():
+        username = f"{clean_base}_{counter}"
+        counter += 1
+
+    role_db = ROLE_DB_MAP.get(payload.role, "member")
+    is_active = (payload.status.lower() == "active")
+    temp_pass = secrets.token_hex(8)
+
+    new_acc = Account(
+        username=username,
+        full_name=name,
+        email=email,
+        password_hash=hash_password(temp_pass),
+        role=role_db,
+        is_approved=is_active,
+        brand_name=target_brand,
+        is_demo=False,
+    )
+    db.add(new_acc)
+    db.commit()
+    db.refresh(new_acc)
+
+    return {
+        "message": f"Added {name} directly to {target_brand} roster.",
+        "member": {
+            "id": new_acc.id,
+            "name": name,
+            "username": new_acc.username,
+            "email": new_acc.email,
+            "role": ROLE_DISPLAY_MAP.get(new_acc.role, "Team Member"),
+            "status": "Active" if new_acc.is_approved else "Invited",
+            "is_approved": new_acc.is_approved,
+            "brand_name": new_acc.brand_name,
+        },
+    }
+
+
+@router.patch("/team-members/{member_id}")
+def update_team_member(
+    member_id: int,
+    payload: UpdateMemberRequest,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can edit member credentials.")
+
+    target = db.get(Account, member_id)
+    if not target:
+        raise HTTPException(404, "Member not found.")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot edit members of another brand.")
+
+    if payload.name:
+        target.full_name = payload.name.strip()
+    if payload.role:
+        target.role = ROLE_DB_MAP.get(payload.role, "member")
+    if payload.status:
+        target.is_approved = (payload.status.lower() == "active")
+
+    db.commit()
+    return {"message": f"Updated governance settings for {target.username}."}
+
+
+@router.delete("/team-members/{member_id}")
+def delete_team_member(
+    member_id: int,
+    account: Account = Depends(current_account),
+    db: Session = Depends(get_db),
+):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can remove team members.")
+
+    target = db.get(Account, member_id)
+    if not target:
+        raise HTTPException(404, "Member not found.")
+
+    if target.id == account.id:
+        raise HTTPException(400, "You cannot remove yourself from the workspace.")
+
+    is_demo_admin = getattr(account, "is_demo", False) or getattr(account, "username", "") in ("ashwik", "sunless")
+    if not is_demo_admin and target.brand_name and account.brand_name and target.brand_name.lower() != account.brand_name.lower():
+        raise HTTPException(403, "Cannot remove members of another brand.")
+
+    username = target.username
+    db.delete(target)
+    db.commit()
+    return {"message": f"Removed {username} from roster."}
 
 
 _SETTINGS_CACHE: tuple[float, dict] | None = None
@@ -530,7 +822,47 @@ def _get_cached_settings(db: Session) -> dict:
 
 
 @router.get("/workspace-settings")
-def get_workspace_settings(db: Session = Depends(get_db)):
+def get_workspace_settings(
+    request: Request,
+    brand_name: str | None = None,
+    db: Session = Depends(get_db),
+):
+    target_brand = (brand_name or "").strip()
+    if not target_brand:
+        try:
+            acc = current_account(request, db)
+            if acc and getattr(acc, "brand_name", None):
+                target_brand = acc.brand_name.strip()
+        except Exception:
+            pass
+
+    if target_brand:
+        brand = db.query(Brand).filter(Brand.brand_name.ilike(target_brand)).first()
+        if brand:
+            return {
+                "brand_name": brand.brand_name,
+                "brand_values": brand.brand_values,
+                "brand_code": brand.brand_code,
+            }
+        # If not present yet, auto-provision Brand with unique code
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", target_brand).upper()[:6] or "BRAND"
+        rand_code = f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand = Brand(
+            brand_name=target_brand,
+            brand_values="Authenticity, craft, excellence, quiet confidence",
+            brand_code=rand_code,
+        )
+        try:
+            db.add(brand)
+            db.commit()
+            return {
+                "brand_name": brand.brand_name,
+                "brand_values": brand.brand_values,
+                "brand_code": brand.brand_code,
+            }
+        except Exception:
+            db.rollback()
+
     return _get_cached_settings(db)
 
 
@@ -542,40 +874,110 @@ def update_workspace_settings(
 ):
     if getattr(account, "role", "member") not in ("owner", "admin"):
         raise HTTPException(403, "Only the Brand Owner can modify workspace settings.")
-    setting = db.get(WorkspaceSettings, 1)
-    if not setting:
-        setting = WorkspaceSettings(
-            id=1,
-            brand_name="Aster & Oak",
-            brand_values="Authenticity, craft, sustainability, quiet confidence",
-            brand_code="KLARITY-2026",
+
+    current_brand_name = (
+        payload.old_brand_name
+        or getattr(account, "brand_name", None)
+        or "Aster & Oak"
+    ).strip()
+
+    new_brand_name = (payload.brand_name.strip() if payload.brand_name and payload.brand_name.strip() else current_brand_name)
+    new_code = (payload.brand_code.strip().upper() if payload.brand_code and payload.brand_code.strip() else None)
+    new_values = (payload.brand_values.strip() if payload.brand_values is not None else None)
+
+    # Find brand
+    brand = db.query(Brand).filter(Brand.brand_name.ilike(current_brand_name)).first()
+    if not brand and new_brand_name:
+        brand = db.query(Brand).filter(Brand.brand_name.ilike(new_brand_name)).first()
+
+    if new_code:
+        # Check collision with other brands
+        existing_with_code = db.query(Brand).filter(
+            Brand.brand_code == new_code,
+            Brand.id != (brand.id if brand else -1)
+        ).first()
+        if existing_with_code:
+            raise HTTPException(400, f"Brand code '{new_code}' is already used by brand '{existing_with_code.brand_name}'. Please choose a unique code.")
+
+    if not brand:
+        clean_slug = re.sub(r"[^A-Za-z0-9]", "", new_brand_name).upper()[:6] or "BRAND"
+        final_code = new_code or f"{clean_slug}-{secrets.randbelow(9000) + 1000}"
+        brand = Brand(
+            brand_name=new_brand_name,
+            brand_values=new_values or "Authenticity, craft, excellence, quiet confidence",
+            brand_code=final_code,
         )
-        db.add(setting)
-    if payload.brand_name is not None and payload.brand_name.strip():
-        setting.brand_name = payload.brand_name.strip()
-    if payload.brand_values is not None:
-        setting.brand_values = payload.brand_values.strip()
-    if payload.brand_code is not None and payload.brand_code.strip():
-        setting.brand_code = payload.brand_code.strip().upper()
+        db.add(brand)
+    else:
+        if new_brand_name:
+            brand.brand_name = new_brand_name
+        if new_code:
+            brand.brand_code = new_code
+        if new_values is not None:
+            brand.brand_values = new_values
+
+    # Update account's brand_name
+    account_obj = db.get(Account, account.id)
+    if account_obj:
+        account_obj.brand_name = brand.brand_name
+
+    # Update other accounts belonging to this brand if renamed
+    if current_brand_name.lower() != brand.brand_name.lower():
+        db.query(Account).filter(Account.brand_name.ilike(current_brand_name)).update(
+            {"brand_name": brand.brand_name},
+            synchronize_session=False,
+        )
+
+    # Sync default WorkspaceSettings row if demo or Aster & Oak
+    setting = db.get(WorkspaceSettings, 1)
+    if setting and (setting.brand_name.lower() == current_brand_name.lower() or getattr(account, "is_demo", False)):
+        setting.brand_name = brand.brand_name
+        setting.brand_code = brand.brand_code
+        setting.brand_values = brand.brand_values
+
     db.commit()
-    global _SETTINGS_CACHE
+
+    global _SETTINGS_CACHE, _BRANDS_CACHE, _SESSION_CACHE
     _SETTINGS_CACHE = None
+    _BRANDS_CACHE = None
+    _SESSION_CACHE.clear()
+
     try:
         from services.workspace import invalidate_bootstrap_cache
         invalidate_bootstrap_cache()
     except Exception:
         pass
+
     return {
         "message": "Workspace settings updated successfully.",
-        "brand_name": setting.brand_name,
-        "brand_values": setting.brand_values,
-        "brand_code": setting.brand_code,
+        "brand_name": brand.brand_name,
+        "brand_values": brand.brand_values,
+        "brand_code": brand.brand_code,
     }
 
 
+@router.post("/clean-workspace")
+def clean_workspace(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    if getattr(account, "role", "member") not in ("owner", "admin"):
+        raise HTTPException(403, "Only Brand Owners and Admins can clear workspace submissions.")
+    try:
+        from models import ContentSubmission
+        db.query(ContentSubmission).delete()
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(500, "Failed to clear workspace submissions.")
+    try:
+        from services.workspace import invalidate_bootstrap_cache
+        invalidate_bootstrap_cache()
+    except Exception:
+        pass
+    return {"message": "Workspace submissions cleared. Clean slate initialized."}
+
+
 @router.get("/me")
-def me(account: Account = Depends(current_account)):
-    return public_account(account)
+def me(account: Account = Depends(current_account), db: Session = Depends(get_db)):
+    return public_account(account, db)
 
 
 @router.post("/logout", status_code=204)
@@ -591,7 +993,7 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
         _SESSION_CACHE.pop(token_hash, None)
         db.query(LoginSession).filter_by(token_hash=token_hash).delete()
         db.commit()
-    is_secure = os.getenv("COOKIE_SECURE", "false").lower() == "true" or any("https://" in o for o in CORS_ORIGINS)
+    is_secure = (os.getenv("COOKIE_SECURE", "false").lower() == "true") or (request.url.scheme == "https") or (request.headers.get("x-forwarded-proto") == "https")
     samesite_val = "none" if is_secure else "lax"
     response.delete_cookie("klarity_session", path="/", samesite=samesite_val, secure=is_secure)
     response.headers["Clear-Site-Data"] = '"cookies", "storage", "cache"'
@@ -600,16 +1002,6 @@ def logout(request: Request, response: Response, db: Session = Depends(get_db)):
 # ---------------------------------------------------------------------------
 # Password Reset & OTP Flow (Supabase Database + goklarity@gmail.com)
 # ---------------------------------------------------------------------------
-
-class PasswordResetOTP(Base):
-    __tablename__ = "password_reset_otps"
-    id = Column(Integer, primary_key=True)
-    email = Column(String(255), nullable=False, index=True)
-    otp_code = Column(String(10), nullable=False)
-    expires_at = Column(DateTime, nullable=False)
-    used = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
 
 class ForgotPasswordRequest(BaseModel):
     email: str = Field(min_length=3, max_length=254)
@@ -621,6 +1013,75 @@ class ResetPasswordRequest(BaseModel):
     new_password: str = Field(min_length=8, max_length=128)
 
 
+class VerifyOtpRequest(BaseModel):
+    email: str = Field(min_length=3, max_length=254)
+    otp: str = Field(min_length=6, max_length=10)
+
+
+def send_otp_email(to_email: str, otp_code: str) -> bool:
+    """Send OTP via goklarity@gmail.com. Supports STARTTLS (587) and SSL (465), falls back to logs if unconfigured."""
+    import ssl
+    sender_email = (os.getenv("GMAIL_SENDER_EMAIL") or os.getenv("SMTP_EMAIL") or "goklarity@gmail.com").strip()
+    sender_app_password = (os.getenv("GMAIL_APP_PASSWORD") or os.getenv("SMTP_PASSWORD") or "").strip().replace(" ", "").strip("'\"")
+    if sender_app_password in ("YOUR_GMAIL_APP_PASSWORD_HERE", "YOUR_APP_PASSWORD_HERE"):
+        sender_app_password = ""
+
+    subject = f"Your Klarity Password Reset OTP: {otp_code}"
+    body = f"""Hello,
+
+You requested a password reset for your Klarity account.
+
+Your verification code is: {otp_code}
+
+This code is valid for 10 minutes. If you did not request this, you can safely ignore this email.
+
+Best regards,
+The Klarity Team
+"""
+
+    if sender_app_password:
+        from email.mime.text import MIMEText
+        msg = MIMEText(body)
+        msg["Subject"] = subject
+        msg["From"] = f"Klarity <{sender_email}>"
+        msg["To"] = to_email
+
+        # Try 1: STARTTLS on port 587
+        try:
+            import smtplib
+            context = ssl.create_default_context()
+            with smtplib.SMTP("smtp.gmail.com", 587, timeout=12) as server:
+                server.ehlo()
+                server.starttls(context=context)
+                server.ehlo()
+                server.login(sender_email, sender_app_password)
+                server.sendmail(sender_email, [to_email], msg.as_string())
+            print(f"[OTP Mailer] Real email sent successfully to {to_email} via STARTTLS")
+            return True
+        except Exception as err1:
+            print(f"[OTP Mailer STARTTLS Error]: {err1}")
+
+        # Try 2: SSL on port 465
+        try:
+            import smtplib
+            context = ssl.create_default_context()
+            with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=context, timeout=12) as server:
+                server.login(sender_email, sender_app_password)
+                server.sendmail(sender_email, [to_email], msg.as_string())
+            print(f"[OTP Mailer] Real email sent successfully to {to_email} via SSL")
+            return True
+        except Exception as err2:
+            print(f"[OTP Mailer SSL Error]: {err2}")
+
+    # Development / Fallback mode: Print code prominently in logs
+    print(f"\n=======================================================")
+    print(f"[KLARITY OTP] To: {to_email}")
+    print(f"[KLARITY OTP] Code: {otp_code}")
+    print(f"[KLARITY OTP] Expiry: 10 minutes")
+    print(f"=======================================================\n")
+    return False
+
+
 @router.post("/forgot-password")
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
     email_clean = payload.email.strip().lower()
@@ -629,11 +1090,11 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     if not account:
         raise HTTPException(404, "No registered account found with that email. Please check your email address.")
 
-    from services.email_otp import generate_otp, send_otp_email, get_smtp_password
-    otp_code = generate_otp(6)
+    # Generate cryptographically secure 6-digit OTP
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
     expires_at = datetime.utcnow() + timedelta(minutes=10)
 
-    # Invalidate old OTPs for this email in Supabase
+    # Invalidate old OTPs for this email
     db.query(PasswordResetOTP).filter_by(email=account.email, used=False).update({"used": True})
 
     # Store new OTP record in Supabase
@@ -647,14 +1108,39 @@ def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db
     db.commit()
 
     # Dispatch email from goklarity@gmail.com
-    sent, _ = send_otp_email(account.email, otp_code)
+    sent = send_otp_email(account.email, otp_code)
 
     return {
-        "message": f"Verification code sent to {account.email}!",
+        "message": f"Verification code sent to {account.email}!" if sent else f"Verification code generated for {account.email}.",
         "email": account.email,
         "email_sent": sent,
         "dev_code": otp_code if not sent else None,
     }
+
+
+@router.post("/verify-otp")
+def verify_otp(payload: VerifyOtpRequest, db: Session = Depends(get_db)):
+    email_clean = payload.email.strip().lower()
+    account = db.query(Account).filter(or_(Account.email.ilike(email_clean), Account.username.ilike(email_clean))).first()
+
+    if not account:
+        raise HTTPException(404, "Account not found")
+
+    otp_record = (
+        db.query(PasswordResetOTP)
+        .filter(
+            PasswordResetOTP.email == account.email,
+            PasswordResetOTP.otp_code == payload.otp.strip(),
+            PasswordResetOTP.used == False,
+        )
+        .order_by(PasswordResetOTP.id.desc())
+        .first()
+    )
+
+    if not otp_record or otp_record.expires_at < datetime.utcnow():
+        raise HTTPException(400, "Invalid or expired OTP code. Please enter the correct code.")
+
+    return {"valid": True, "message": "Verification code confirmed!"}
 
 
 @router.post("/reset-password")

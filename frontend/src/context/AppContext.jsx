@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { api, getStoredToken, setStoredToken } from '../lib/api'
-import { DEFAULT_BRANDS } from '../lib/brands'
+import { DEFAULT_BRANDS, createDefaultBrand } from '../lib/brands'
 
 const AppContext = createContext(null)
 
@@ -66,7 +66,7 @@ export function AppProvider({ children }) {
   const [data, setData] = useState(() => initialCache?.data ?? null)
   const [loading, setLoading] = useState(() => !(initialCache?.user && initialCache?.data))
   const [connected, setConnected] = useState(() => Boolean(initialCache?.data))
-  const [currentRole, setCurrentRole] = useState(() => localStorage.getItem('klarity_role') || 'owner')
+  const [currentRole, setCurrentRole] = useState(null)
   const [visibilitySettings, setVisibilitySettings] = useState(() => {
     try {
       const stored = localStorage.getItem(VISIBILITY_STORAGE_KEY)
@@ -75,36 +75,106 @@ export function AppProvider({ children }) {
       return DEFAULT_VISIBILITY
     }
   })
+  const [toasts, setToasts] = useState([])
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
+  const [allBrands, setAllBrands] = useState(DEFAULT_BRANDS)
   const [theme, setTheme] = useState(() => {
     try {
       const stored = localStorage.getItem('klarity_theme')
-      if (stored) return stored
-      if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        return 'dark'
-      }
+      if (stored === 'dark' || stored === 'light') return stored
     } catch {}
-    return 'dark'
+    return 'light'
   })
 
   useEffect(() => {
     try {
+      localStorage.setItem('klarity_theme', theme)
       document.documentElement.setAttribute('data-theme', theme)
+      document.documentElement.style.colorScheme = theme
+      const meta = document.querySelector('meta[name="color-scheme"]')
+      if (meta) meta.content = theme
       if (theme === 'dark') {
         document.documentElement.classList.add('dark')
       } else {
         document.documentElement.classList.remove('dark')
       }
-      localStorage.setItem('klarity_theme', theme)
     } catch {}
   }, [theme])
 
-  const toggleTheme = useCallback(() => {
-    setTheme(prev => (prev === 'dark' ? 'light' : 'dark'))
-  }, [])
+  const toggleTheme = useCallback((event) => {
+    const isSwitchingToDark = (theme !== 'dark')
 
-  const [toasts, setToasts] = useState([])
-  const [pendingApprovalsCount, setPendingApprovalsCount] = useState(0)
-  const [allBrands, setAllBrands] = useState(DEFAULT_BRANDS)
+    // If browser supports native View Transitions API, animate directional wave with proper S-curve
+    if (typeof document.startViewTransition === 'function' && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      // Retain directional flow:
+      // When switching to dark: flows from top-right down to bottom-left
+      // When switching back to light: flows in the opposite direction (from bottom-left up to top-right)
+      let x, y
+      if (isSwitchingToDark) {
+        x = event?.clientX ?? (window.innerWidth - 30)
+        y = event?.clientY ?? 30
+      } else {
+        // Opposite direction origin: bottom-left corner
+        x = 24
+        y = window.innerHeight - 24
+      }
+
+      // Calculate distance to furthest corner to guarantee 100% full screen coverage
+      const maxRadius = Math.hypot(
+        Math.max(x, window.innerWidth - x),
+        Math.max(y, window.innerHeight - y)
+      ) * 1.35
+
+      // Generate dynamic keyframes with harmonic S-curve front:
+      // wave = 0.72 * sin(1.8 * pi * v - 1.4 * pi * p) + 0.28 * sin(3.6 * pi * v + 0.9 * pi * p)
+      const steps = 18
+      const numPoints = 36
+      const clipKeyframes = []
+
+      for (let s = 0; s <= steps; s++) {
+        const p = s / steps
+        const currR = maxRadius * p
+        // Wave amplitude peaks during mid expansion for maximum defined liquid crests & valleys
+        const amp = p === 0 || p === 1 ? 0 : 0.26 * Math.sin(p * Math.PI)
+
+        const points = []
+        for (let i = 0; i < numPoints; i++) {
+          const v = i / numPoints
+          const angle = v * 2 * Math.PI
+          // Exact harmonic S-curve wave boundary formula from reference
+          const wave = 0.72 * Math.sin(1.8 * Math.PI * v - 1.4 * Math.PI * p) +
+                       0.28 * Math.sin(3.6 * Math.PI * v + 0.9 * Math.PI * p)
+          const r = Math.max(0, currR * (1 + wave * amp))
+          const px = (x + r * Math.cos(angle)).toFixed(1)
+          const py = (y + r * Math.sin(angle)).toFixed(1)
+          points.push(`${px}px ${py}px`)
+        }
+        clipKeyframes.push(`polygon(${points.join(', ')})`)
+      }
+
+      const transition = document.startViewTransition(() => {
+        setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+      })
+
+      transition.ready.then(() => {
+        // Directional wave animation with harmonic S-curve:
+        // - To Dark: expands with S-curve wave boundary from top-right down to bottom-left
+        // - To Light: expands in the opposite direction with fluid wave from bottom-left up to top-right
+        document.documentElement.animate(
+          {
+            clipPath: clipKeyframes
+          },
+          {
+            duration: 850,
+            easing: 'cubic-bezier(0.22, 1, 0.36, 1)',
+            pseudoElement: '::view-transition-new(root)'
+          }
+        )
+      }).catch(() => {})
+    } else {
+      setTheme(curr => (curr === 'dark' ? 'light' : 'dark'))
+    }
+  }, [theme])
   const [activeBrand, setActiveBrand] = useState(() => {
     try {
       const stored = localStorage.getItem('klarity_active_brand')
@@ -112,6 +182,10 @@ export function AppProvider({ children }) {
         const parsed = JSON.parse(stored)
         const match = DEFAULT_BRANDS.find(b => b.brand_name === parsed.brand_name || b.name === parsed.name)
         if (match) return match
+        if (parsed.swatches?.length === 6 &&
+            parsed.swatches.every(s => ['#FFFFFF', '#111827', '#298EE4', '#64748B', '#F8FAFC', '#E0F2FE'].includes(s.hex))) {
+          parsed.swatches = []
+        }
         return parsed
       }
     } catch {}
@@ -142,18 +216,72 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (user) {
+      const isDemo = Boolean(user.is_demo || ['ashwik', 'sunless'].includes(user.username))
+      if (!isDemo) {
+        const brandObj = createDefaultBrand(user.brand_name || 'My Brand', user.brand_values || '', user.brand_code || '')
+        setAllBrands([brandObj])
+        setActiveBrand(brandObj)
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+        return
+      }
+
       api.brandDirectory().then(res => {
         if (res?.brands && Array.isArray(res.brands)) {
-          setAllBrands(prev => {
-            return DEFAULT_BRANDS.map(db => {
-              const serverBrand = res.brands.find(sb => sb.brand_name === db.brand_name)
-              return serverBrand ? { ...db, ...serverBrand } : db
-            })
+          const merged = [...DEFAULT_BRANDS]
+          res.brands.forEach(sb => {
+            const idx = merged.findIndex(
+              b => (b.brand_name || b.name || '').toLowerCase() === (sb.brand_name || '').toLowerCase()
+            )
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...sb }
+            } else {
+              merged.push(createDefaultBrand(sb.brand_name, sb.brand_values, sb.brand_code))
+            }
           })
+          setAllBrands(merged)
+
+          const targetName = user.brand_name
+          if (targetName) {
+            const matched = merged.find(
+              b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+            )
+            if (matched) {
+              setActiveBrand(matched)
+              try {
+                localStorage.setItem('klarity_active_brand', JSON.stringify(matched))
+              } catch {}
+            }
+          }
         }
       }).catch(() => {})
     }
   }, [user])
+
+  const updateActiveBrand = useCallback((updates) => {
+    setActiveBrand(prev => {
+      const next = { ...prev, ...updates }
+      try {
+        localStorage.setItem('klarity_active_brand', JSON.stringify(next))
+      } catch {}
+      return next
+    })
+    setUser(prev => prev ? {
+      ...prev,
+      brand_name: updates.brand_name || updates.name || prev.brand_name,
+      brand_code: updates.brand_code || updates.code || prev.brand_code,
+      brand_values: updates.brand_values !== undefined ? updates.brand_values : prev.brand_values,
+    } : prev)
+    setAllBrands(prev => {
+      return prev.map(b => {
+        if ((b.brand_name || b.name) === (updates.old_brand_name || updates.brand_name || updates.name)) {
+          return { ...b, ...updates }
+        }
+        return b
+      })
+    })
+  }, [])
 
   const refresh = useCallback(async (accountOverride) => {
     try {
@@ -196,6 +324,19 @@ export function AppProvider({ children }) {
       .then(([account, payload]) => {
         if (!alive) return
         setUser(account)
+        if (account?.brand_name) {
+          const targetName = account.brand_name
+          const existing = DEFAULT_BRANDS.find(
+            b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+          )
+          const brandObj = existing
+            ? { ...existing, brand_name: targetName }
+            : createDefaultBrand(targetName, account.brand_values, account.brand_code)
+          setActiveBrand(brandObj)
+          try {
+            localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+          } catch {}
+        }
         setData(payload)
         setConnected(true)
         writeCachedWorkspace(account, payload)
@@ -230,9 +371,43 @@ export function AppProvider({ children }) {
       setStoredToken(account.token)
     }
     setUser(account)
+    if (account?.brand_name) {
+      const isDemo = Boolean(account.is_demo || ['ashwik', 'sunless'].includes(account.username))
+      const targetName = account.brand_name
+      if (!isDemo) {
+        const brandObj = createDefaultBrand(targetName, account.brand_values, account.brand_code)
+        setActiveBrand(brandObj)
+        setAllBrands([brandObj])
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+      } else {
+        const existing = DEFAULT_BRANDS.find(
+          b => (b.brand_name || b.name || '').toLowerCase() === targetName.toLowerCase()
+        )
+        const brandObj = existing
+          ? { ...existing, brand_name: targetName }
+          : createDefaultBrand(targetName, account.brand_values, account.brand_code)
+        setActiveBrand(brandObj)
+        try {
+          localStorage.setItem('klarity_active_brand', JSON.stringify(brandObj))
+        } catch {}
+      }
+    }
     const bootstrapPayload = await refresh(account)
     writeCachedWorkspace(account, bootstrapPayload)
     return account
+  }
+  const cleanWorkspace = async () => {
+    try {
+      const res = await api.cleanWorkspace()
+      await refresh()
+      toast(res?.message || 'Workspace submissions cleared.', 'good')
+      return res
+    } catch (error) {
+      toast(error.message || 'Failed to clear workspace', 'warn')
+      throw error
+    }
   }
   const logout = async () => {
     try {
@@ -243,6 +418,11 @@ export function AppProvider({ children }) {
       setUser(null)
       setData(null)
       setConnected(false)
+      setAllBrands(DEFAULT_BRANDS)
+      setActiveBrand(DEFAULT_BRANDS[0])
+      try {
+        localStorage.removeItem('klarity_active_brand'); localStorage.removeItem('klarity_role')
+      } catch {}
     }
   }
   const mutate = async (operation, message) => {
@@ -263,19 +443,10 @@ export function AppProvider({ children }) {
     }
   }
 
-  const switchRole = (newRole) => {
-    setCurrentRole(newRole)
-    localStorage.setItem('klarity_role', newRole)
-    const roleLabels = {
-      owner: 'Stage 1 · Brand Owner (Executive Governance)',
-      reviewer: 'Stage 2 · Reviewer (Compliance Inspector)',
-      member: 'Stage 3 · Team Member (Creator Studio)',
-    }
-    toast(`Active Perspective: ${roleLabels[newRole] || newRole}`, 'good')
-  }
+  const switchRole = () => {}
 
   const userAccountRole = (user?.role || 'owner').toLowerCase()
-  const activeRole = currentRole || userAccountRole
+  const activeRole = userAccountRole
 
   const isOwner = activeRole === 'owner' || activeRole === 'admin'
   const isReviewer = activeRole === 'reviewer'
@@ -319,14 +490,15 @@ export function AppProvider({ children }) {
   }
 
   return <AppContext.Provider value={{
-    user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout,
-    theme, isDark: theme === 'dark', toggleTheme,
+    user, data, loading, connected, toasts, toast, dismissToast, refresh, authenticate, logout, cleanWorkspace,
+    theme, isDark: theme === 'dark', toggleTheme, setTheme,
     currentUser: user?.username || '',
     currentRole: activeRole,
     switchRole,
     activeBrand,
     allBrands,
     switchBrand,
+    updateActiveBrand,
     isOwner,
     isReviewer,
     isMember,

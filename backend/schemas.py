@@ -64,6 +64,7 @@ class GuidelineOut(BaseModel):
     category: GuidelineCategory
     content: str
     priority: int
+    brand_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 
@@ -88,6 +89,7 @@ class ContentSubmissionOut(BaseModel):
     content_text: str
     status: SubmissionStatus
     submitted_by: str
+    brand_name: Optional[str] = None
     submitted_at: datetime
     reviewed_at: Optional[datetime] = None
     reviewer_notes: Optional[str] = None

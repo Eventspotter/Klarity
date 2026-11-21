@@ -15,11 +15,16 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { BrandMark } from '../components/BrandMark'
+import WakeSlider from '../components/WakeSlider'
+import { useApp } from '../context/AppContext'
 
 export function Hero() {
   const navigate = useNavigate()
+  const { theme, toggleTheme } = useApp()
   const heroRef = useRef(null)
   const [applied, setApplied] = useState(false)
   const [scoreDisplay, setScoreDisplay] = useState(84)
@@ -137,6 +142,15 @@ export function Hero() {
           </nav>
 
           <div className="hero-nav__actions">
+            <button
+              type="button"
+              className="hero-theme-toggle"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+            </button>
             <Link to="/reviews" className="hero-btn hero-btn--sm hero-btn--primary">
               <span>Open Workspace</span>
               <ArrowRight size={14} />
@@ -173,11 +187,20 @@ export function Hero() {
         {/* Centerpiece: Real Editorial Proof Desk */}
         <div className="hero-container hero-plate-container" id="proof-desk">
           <div className="hero-plate">
+            {/* Seamless one-direction scanning beam */}
+            <div className="hero-plate__scan-track" aria-hidden="true">
+              <div className="hero-plate__scan-beam" />
+            </div>
+
             <div className="hero-plate__topbar">
               <div className="hero-plate__doc-info">
                 <FileText size={15} />
                 <span className="hero-plate__doc-title">Aster &amp; Oak · Spring Collection Launch Plate</span>
                 <span className="hero-plate__doc-channel">Web Editorial · v1.4</span>
+                <span className="hero-plate__scan-status">
+                  <span className="hero-plate__scan-pulse" />
+                  Live Auditing
+                </span>
               </div>
 
               <div className="hero-plate__topbar-right">
@@ -277,13 +300,24 @@ export function Hero() {
                     <small>/100</small>
                   </div>
 
-                  <div className="hero-score-bar">
-                    <div
-                      className="hero-score-bar__fill"
-                      style={{
-                        width: `${scoreDisplay}%`,
-                        backgroundColor: applied ? 'var(--good)' : 'var(--clay)',
-                      }}
+                  <div className="hero-wake-slider-wrap" style={{ margin: '14px 0 10px', width: '100%', pointerEvents: 'none' }}>
+                    <WakeSlider
+                      value={scoreDisplay}
+                      min={0}
+                      max={100}
+                      step={1}
+                      bars={28}
+                      height={44}
+                      restHeight={10}
+                      gap={3}
+                      fillColor={applied ? 'var(--good, #22c55e)' : 'var(--clay, #b85b35)'}
+                      trackColor="rgba(32, 21, 15, 0.12)"
+                      sensitivity={1.1}
+                      reach={5}
+                      skew={0.6}
+                      glide={0.3}
+                      smoothing={100}
+                      readOnly={true}
                     />
                   </div>
 
